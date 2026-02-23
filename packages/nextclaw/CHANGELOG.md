@@ -1,5 +1,11 @@
 # nextclaw
 
+## 0.8.15
+
+### Patch Changes
+
+- Refresh UI layout, components, and styling for the config pages.
+
 ## 0.8.14
 
 ### Patch Changes

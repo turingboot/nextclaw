@@ -1,5 +1,11 @@
 # @nextclaw/ui
 
+## 0.5.8
+
+### Patch Changes
+
+- Refresh UI layout, components, and styling for the config pages.
+
 ## 0.5.7
 
 ### Patch Changes
