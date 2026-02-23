@@ -231,6 +231,7 @@ function MarketplaceListCard(props: {
   onManage: (action: MarketplaceManageAction, record: MarketplaceInstalledRecord) => void;
 }) {
   const record = props.record;
+  const pluginRecord = record?.type === 'plugin' ? record : undefined;
   const type = props.item?.type ?? record?.type;
   const title = props.item?.name ?? record?.label ?? record?.id ?? record?.spec ?? 'Unknown Item';
   const summary = props.item?.summary ?? (record ? 'Installed locally. Details are currently unavailable from marketplace.' : '');
@@ -239,12 +240,12 @@ function MarketplaceListCard(props: {
   const targetId = record?.id || record?.spec;
   const busyForRecord = Boolean(targetId) && props.manageState.isPending && props.manageState.targetId === targetId;
 
-  const canToggle = record?.type === 'plugin';
+  const canToggle = Boolean(pluginRecord);
   const canUninstallPlugin = record?.type === 'plugin' && record.origin !== 'bundled';
   const canUninstallSkill = record?.type === 'skill' && record.source === 'workspace';
   const canUninstall = Boolean(canUninstallPlugin || canUninstallSkill);
 
-  const isDisabled = Boolean(record) && (record.enabled === false || record.runtimeStatus === 'disabled');
+  const isDisabled = record ? (record.enabled === false || record.runtimeStatus === 'disabled') : false;
   const isInstalling = props.installState.isPending && props.item && props.installState.installingSpec === props.item.install.spec;
 
   const displayType = type === 'plugin' ? 'Plugin' : type === 'skill' ? 'Skill' : 'Extension';
@@ -306,10 +307,10 @@ function MarketplaceListCard(props: {
           </button>
         )}
 
-        {record && canToggle && (
+        {pluginRecord && canToggle && (
           <button
             disabled={props.manageState.isPending}
-            onClick={() => props.onManage(isDisabled ? 'enable' : 'disable', record)}
+            onClick={() => props.onManage(isDisabled ? 'enable' : 'disable', pluginRecord)}
             className="inline-flex items-center h-8 px-4 rounded-full text-xs font-semibold border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 transition-colors"
           >
             {busyForRecord && props.manageState.action !== 'uninstall'
