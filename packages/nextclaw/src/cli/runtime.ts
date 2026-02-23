@@ -92,9 +92,7 @@ export class CliRuntime {
     this.configCommands = new ConfigCommands({
       requestRestart: (params) => this.requestRestart(params)
     });
-    this.pluginCommands = new PluginCommands({
-      requestRestart: (params) => this.requestRestart(params)
-    });
+    this.pluginCommands = new PluginCommands();
     this.channelCommands = new ChannelCommands({
       logo: this.logo,
       getBridgeDir: () => this.workspaceManager.getBridgeDir(),

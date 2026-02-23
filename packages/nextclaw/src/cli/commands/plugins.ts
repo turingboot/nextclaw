@@ -28,8 +28,7 @@ import type {
   PluginsInfoOptions,
   PluginsInstallOptions,
   PluginsListOptions,
-  PluginsUninstallOptions,
-  RequestRestartParams
+  PluginsUninstallOptions
 } from "../types.js";
 
 export function loadPluginRegistry(config: Config, workspaceDir: string): PluginRegistry {
@@ -158,11 +157,7 @@ export function mergePluginConfigView(
 }
 
 export class PluginCommands {
-  constructor(
-    private deps: {
-      requestRestart: (params: RequestRestartParams) => Promise<void>;
-    }
-  ) {}
+  constructor() {}
 
   pluginsList(opts: PluginsListOptions = {}): void {
     const config = loadConfig();
@@ -308,20 +303,16 @@ export class PluginCommands {
     const config = loadConfig();
     const next = enablePluginInConfig(config, id);
     saveConfig(next);
-    await this.deps.requestRestart({
-      reason: `plugin enabled: ${id}`,
-      manualMessage: `Enabled plugin "${id}". Restart the gateway to apply.`
-    });
+    console.log(`Enabled plugin "${id}".`);
+    console.log("If gateway is running, plugin changes are hot-applied automatically.");
   }
 
   async pluginsDisable(id: string): Promise<void> {
     const config = loadConfig();
     const next = disablePluginInConfig(config, id);
     saveConfig(next);
-    await this.deps.requestRestart({
-      reason: `plugin disabled: ${id}`,
-      manualMessage: `Disabled plugin "${id}". Restart the gateway to apply.`
-    });
+    console.log(`Disabled plugin "${id}".`);
+    console.log("If gateway is running, plugin changes are hot-applied automatically.");
   }
 
   async pluginsUninstall(id: string, opts: PluginsUninstallOptions = {}): Promise<void> {
@@ -440,10 +431,7 @@ export class PluginCommands {
     }
 
     console.log(`Uninstalled plugin "${pluginId}". Removed: ${removed.length > 0 ? removed.join(", ") : "nothing"}.`);
-    await this.deps.requestRestart({
-      reason: `plugin uninstalled: ${pluginId}`,
-      manualMessage: "Restart the gateway to apply changes."
-    });
+    console.log("If gateway is running, plugin changes are hot-applied automatically.");
   }
 
   async pluginsInstall(pathOrSpec: string, opts: PluginsInstallOptions = {}): Promise<void> {
@@ -476,10 +464,7 @@ export class PluginCommands {
 
         saveConfig(next);
         console.log(`Linked plugin path: ${resolved}`);
-        await this.deps.requestRestart({
-          reason: `plugin linked: ${probe.pluginId}`,
-          manualMessage: "Restart the gateway to load plugins."
-        });
+        console.log("If gateway is running, plugin changes are hot-applied automatically.");
         return;
       }
 
@@ -506,10 +491,7 @@ export class PluginCommands {
       });
       saveConfig(next);
       console.log(`Installed plugin: ${result.pluginId}`);
-      await this.deps.requestRestart({
-        reason: `plugin installed: ${result.pluginId}`,
-        manualMessage: "Restart the gateway to load plugins."
-      });
+      console.log("If gateway is running, plugin changes are hot-applied automatically.");
       return;
     }
 
@@ -546,10 +528,7 @@ export class PluginCommands {
     });
     saveConfig(next);
     console.log(`Installed plugin: ${result.pluginId}`);
-    await this.deps.requestRestart({
-      reason: `plugin installed: ${result.pluginId}`,
-      manualMessage: "Restart the gateway to load plugins."
-    });
+    console.log("If gateway is running, plugin changes are hot-applied automatically.");
   }
 
   pluginsDoctor(): void {

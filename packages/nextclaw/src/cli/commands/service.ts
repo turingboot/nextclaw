@@ -77,8 +77,8 @@ export class ServiceCommands {
   ): Promise<void> {
     const config = loadConfig();
     const workspace = getWorkspacePath(config.agents.defaults.workspace);
-    const pluginRegistry = loadPluginRegistry(config, workspace);
-    const extensionRegistry = toExtensionRegistry(pluginRegistry);
+    let pluginRegistry = loadPluginRegistry(config, workspace);
+    let extensionRegistry = toExtensionRegistry(pluginRegistry);
     logPluginDiagnostics(pluginRegistry);
 
     const bus = new MessageBus();
@@ -89,6 +89,27 @@ export class ServiceCommands {
       config
     });
     const sessionManager = new SessionManager(workspace);
+
+    let pluginGatewayHandles: Awaited<ReturnType<typeof startPluginChannelGateways>>["handles"] = [];
+    const pluginGatewayLogger = {
+      info: (message: string) => console.log(`[plugins] ${message}`),
+      warn: (message: string) => console.warn(`[plugins] ${message}`),
+      error: (message: string) => console.error(`[plugins] ${message}`),
+      debug: (message: string) => console.debug(`[plugins] ${message}`)
+    };
+    const logPluginGatewayDiagnostics = (
+      diagnostics: Awaited<ReturnType<typeof startPluginChannelGateways>>["diagnostics"]
+    ): void => {
+      for (const diag of diagnostics) {
+        const prefix = diag.pluginId ? `${diag.pluginId}: ` : "";
+        const text = `${prefix}${diag.message}`;
+        if (diag.level === "error") {
+          console.error(`[plugins] ${text}`);
+        } else {
+          console.warn(`[plugins] ${text}`);
+        }
+      }
+    };
 
     const cronStorePath = join(getDataDir(), "cron", "jobs.json");
     const cron = new CronService(cronStorePath);
@@ -156,8 +177,29 @@ export class ServiceCommands {
     });
 
     reloader.setApplyAgentRuntimeConfig((nextConfig) => runtimePool.applyRuntimeConfig(nextConfig));
+    reloader.setReloadPlugins(async (nextConfig) => {
+      const nextWorkspace = getWorkspacePath(nextConfig.agents.defaults.workspace);
+      const nextPluginRegistry = loadPluginRegistry(nextConfig, nextWorkspace);
+      const nextExtensionRegistry = toExtensionRegistry(nextPluginRegistry);
+      logPluginDiagnostics(nextPluginRegistry);
 
-    const pluginChannelBindings = getPluginChannelBindings(pluginRegistry);
+      await stopPluginChannelGateways(pluginGatewayHandles);
+      const startedPluginGateways = await startPluginChannelGateways({
+        registry: nextPluginRegistry,
+        logger: pluginGatewayLogger
+      });
+      pluginGatewayHandles = startedPluginGateways.handles;
+      logPluginGatewayDiagnostics(startedPluginGateways.diagnostics);
+
+      pluginRegistry = nextPluginRegistry;
+      extensionRegistry = nextExtensionRegistry;
+      pluginChannelBindings = getPluginChannelBindings(nextPluginRegistry);
+      runtimePool.applyExtensionRegistry(nextExtensionRegistry);
+      runtimePool.applyRuntimeConfig(nextConfig);
+      console.log("Config reload: plugin channel gateways restarted.");
+    });
+
+    let pluginChannelBindings = getPluginChannelBindings(pluginRegistry);
     setPluginRuntimeBridge({
       loadConfig: () => toPluginConfigView(loadConfig(), pluginChannelBindings),
       writeConfigFile: async (nextConfigView) => {
@@ -277,27 +319,13 @@ export class ServiceCommands {
     await cron.start();
     await heartbeat.start();
 
-    let pluginGatewayHandles: Awaited<ReturnType<typeof startPluginChannelGateways>>["handles"] = [];
     try {
       const startedPluginGateways = await startPluginChannelGateways({
         registry: pluginRegistry,
-        logger: {
-          info: (message) => console.log(`[plugins] ${message}`),
-          warn: (message) => console.warn(`[plugins] ${message}`),
-          error: (message) => console.error(`[plugins] ${message}`),
-          debug: (message) => console.debug(`[plugins] ${message}`)
-        }
+        logger: pluginGatewayLogger
       });
       pluginGatewayHandles = startedPluginGateways.handles;
-      for (const diag of startedPluginGateways.diagnostics) {
-        const prefix = diag.pluginId ? `${diag.pluginId}: ` : "";
-        const text = `${prefix}${diag.message}`;
-        if (diag.level === "error") {
-          console.error(`[plugins] ${text}`);
-        } else {
-          console.warn(`[plugins] ${text}`);
-        }
-      }
+      logPluginGatewayDiagnostics(startedPluginGateways.diagnostics);
 
       await reloader.getChannels().startAll();
       await this.wakeFromRestartSentinel({ bus, sessionManager });

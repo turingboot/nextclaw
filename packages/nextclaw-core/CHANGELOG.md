@@ -1,5 +1,16 @@
 # nextclaw-core
 
+## 0.6.27
+
+### Patch Changes
+
+- feat: hot-apply plugin config changes without restarting the gateway process.
+  - treat `plugins.*` as reloadable config paths
+  - hot-reload plugin registry / plugin channel gateways / channel manager in-place
+  - apply plugin extension registry updates to agent runtime pool
+  - make `plugins` CLI install/enable/disable/uninstall default to hot-apply messaging
+  - update usage docs with plugin hot-reload behavior
+
 ## 0.6.26
 
 ### Patch Changes

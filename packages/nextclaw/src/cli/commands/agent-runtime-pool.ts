@@ -125,6 +125,11 @@ export class GatewayAgentRuntimePool {
     this.rebuild(config);
   }
 
+  applyExtensionRegistry(extensionRegistry?: ExtensionRegistry): void {
+    this.options.extensionRegistry = extensionRegistry;
+    this.rebuild(this.options.config);
+  }
+
   async processDirect(params: {
     content: string;
     sessionKey?: string;

@@ -30,6 +30,7 @@ export class ConfigReloader {
       loadConfig: () => Config;
       getExtensionChannels?: () => ExtensionRegistry["channels"];
       applyAgentRuntimeConfig?: (config: Config) => void;
+      reloadPlugins?: (config: Config) => Promise<void> | void;
       onRestartRequired: (paths: string[]) => void;
     }
   ) {
@@ -45,6 +46,10 @@ export class ConfigReloader {
     this.options.applyAgentRuntimeConfig = callback;
   }
 
+  setReloadPlugins(callback: ((config: Config) => Promise<void> | void) | undefined): void {
+    this.options.reloadPlugins = callback;
+  }
+
   async applyReloadPlan(nextConfig: Config): Promise<void> {
     const changedPaths = diffConfigPaths(this.currentConfig, nextConfig);
     if (!changedPaths.length) {
@@ -53,6 +58,11 @@ export class ConfigReloader {
     this.currentConfig = nextConfig;
     this.options.providerManager?.setConfig(nextConfig);
     const plan = buildReloadPlan(changedPaths);
+
+    if (plan.reloadPlugins) {
+      await this.reloadPlugins(nextConfig);
+      console.log("Config reload: plugins reloaded.");
+    }
     if (plan.restartChannels) {
       await this.reloadChannels(nextConfig);
       console.log("Config reload: channels restarted.");
@@ -152,5 +162,12 @@ export class ConfigReloader {
     } finally {
       this.providerReloadTask = null;
     }
+  }
+
+  private async reloadPlugins(nextConfig: Config): Promise<void> {
+    if (!this.options.reloadPlugins) {
+      return;
+    }
+    await this.options.reloadPlugins(nextConfig);
   }
 }

@@ -134,13 +134,13 @@ When the gateway is already running, config changes from the UI or `nextclaw con
 - `agents.defaults.contextTokens`
 - `agents.context.*`
 - `tools.*`
+- `plugins.*` (v1 hot plugin runtime: plugin registry/channel gateways/channels are hot-reloaded)
 
 Restart is still required for:
 
 - UI bind port (`--port` / `--ui-port`)
-- `plugins.*`
 
-To confirm hot reload succeeded, check gateway console logs or `${NEXTCLAW_HOME:-~/.nextclaw}/logs/service.log` for messages like `Config reload: ... applied.`
+To confirm hot reload succeeded, check gateway console logs or `${NEXTCLAW_HOME:-~/.nextclaw}/logs/service.log` for messages like `Config reload: plugins reloaded.` / `Config reload: plugin channel gateways restarted.` / `Config reload: channels restarted.`
 
 UI note: **Model** page save now persists both `agents.defaults.model` and `agents.defaults.maxTokens` (refresh should keep the updated max token value).
 
