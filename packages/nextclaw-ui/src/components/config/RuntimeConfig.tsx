@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { hintForPath } from '@/lib/config-hints';
 import { t } from '@/lib/i18n';
+import { PageLayout, PageHeader } from '@/components/layout/page-layout';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -231,13 +232,8 @@ export function RuntimeConfig() {
   }
 
   return (
-    <div className="space-y-6 pb-20 animate-fade-in">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900">{t('runtimePageTitle')}</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          {t('runtimePageDescription')}
-        </p>
-      </div>
+    <PageLayout className="space-y-6">
+      <PageHeader title={t('runtimePageTitle')} description={t('runtimePageDescription')} />
 
       <Card>
         <CardHeader>
@@ -515,6 +511,6 @@ export function RuntimeConfig() {
           {updateRuntime.isPending ? t('saving') : t('saveRuntimeSettings')}
         </Button>
       </div>
-    </div>
+    </PageLayout>
   );
 }

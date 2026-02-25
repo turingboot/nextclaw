@@ -12,6 +12,7 @@ import { ConfigCard, ConfigCardHeader, ConfigCardBody, ConfigCardFooter } from '
 import { StatusDot } from '@/components/ui/status-dot';
 import { ActionLink } from '@/components/ui/action-link';
 import { t } from '@/lib/i18n';
+import { PageLayout, PageHeader } from '@/components/layout/page-layout';
 
 export function ProvidersList() {
   const { data: config } = useConfig();
@@ -35,10 +36,8 @@ export function ProvidersList() {
     : meta.providers;
 
   return (
-    <div className="animate-fade-in pb-20">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">{t('providersPageTitle')}</h2>
-      </div>
+    <PageLayout>
+      <PageHeader title={t('providersPageTitle')} />
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
@@ -107,6 +106,6 @@ export function ProvidersList() {
       )}
 
       <ProviderForm />
-    </div>
+    </PageLayout>
   );
 }

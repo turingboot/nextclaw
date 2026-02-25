@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { formatDateTime, t } from '@/lib/i18n';
+import { PageLayout, PageHeader, PageBody } from '@/components/layout/page-layout';
 import { AlarmClock, RefreshCw, Trash2, Play, Power } from 'lucide-react';
 
 type StatusFilter = 'all' | 'enabled' | 'disabled';
@@ -130,21 +131,21 @@ export function CronConfig() {
   };
 
   return (
-    <div className="h-[calc(100vh-80px)] w-full max-w-[1200px] mx-auto animate-fade-in flex flex-col pt-6 pb-2">
-      <div className="flex items-center justify-between mb-6 shrink-0">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 tracking-tight">{t('cronPageTitle')}</h2>
-          <p className="text-sm text-gray-500 mt-1">{t('cronPageDescription')}</p>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-          onClick={() => cronQuery.refetch()}
-        >
-          <RefreshCw className={cn('h-4 w-4', cronQuery.isFetching && 'animate-spin')} />
-        </Button>
-      </div>
+    <PageLayout fullHeight>
+      <PageHeader
+        title={t('cronPageTitle')}
+        description={t('cronPageDescription')}
+        actions={
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+            onClick={() => cronQuery.refetch()}
+          >
+            <RefreshCw className={cn('h-4 w-4', cronQuery.isFetching && 'animate-spin')} />
+          </Button>
+        }
+      />
 
       <div className="mb-6">
         <div className="flex flex-wrap gap-3 items-center">
@@ -274,6 +275,6 @@ export function CronConfig() {
         )}
       </div>
       <ConfirmDialog />
-    </div>
+    </PageLayout>
   );
 }

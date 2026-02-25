@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { formatDateShort, formatDateTime, t } from '@/lib/i18n';
+import { PageLayout, PageHeader, PageBody } from '@/components/layout/page-layout';
 import { RefreshCw, Search, Clock, Inbox, Hash, Bot, User, MessageCircle, Settings as SettingsIcon } from 'lucide-react';
 
 const UNKNOWN_CHANNEL_KEY = '__unknown_channel__';
@@ -213,14 +214,8 @@ export function SessionsConfig() {
   };
 
   return (
-    <div className="h-[calc(100vh-80px)] w-full max-w-[1400px] mx-auto animate-fade-in flex flex-col pt-6 pb-2">
-
-      <div className="flex items-center justify-between mb-6 shrink-0">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 tracking-tight">{t('sessionsPageTitle')}</h2>
-          <p className="text-sm text-gray-500 mt-1">{t('sessionsPageDescription')}</p>
-        </div>
-      </div>
+    <PageLayout fullHeight>
+      <PageHeader title={t('sessionsPageTitle')} description={t('sessionsPageDescription')} />
 
       {/* Main Mailbox Layout */}
       <div className="flex-1 flex gap-6 min-h-0 relative">
@@ -399,6 +394,6 @@ export function SessionsConfig() {
         </div>
       </div>
       <ConfirmDialog />
-    </div>
+    </PageLayout>
   );
 }

@@ -11,6 +11,7 @@ import {
   useMarketplaceItems
 } from '@/hooks/useMarketplace';
 import { t } from '@/lib/i18n';
+import { PageLayout, PageHeader } from '@/components/layout/page-layout';
 import { cn } from '@/lib/utils';
 import { PackageSearch } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -513,11 +514,8 @@ export function MarketplacePage() {
   };
 
   return (
-    <div className="animate-fade-in pb-20">
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">{t('marketplacePageTitle')}</h2>
-        <p className="text-[12px] text-gray-400 mt-0.5">{t('marketplacePageDescription')}</p>
-      </div>
+    <PageLayout>
+      <PageHeader title={t('marketplacePageTitle')} description={t('marketplacePageDescription')} />
 
       <Tabs
         tabs={tabs}
@@ -606,6 +604,6 @@ export function MarketplacePage() {
         />
       )}
       <ConfirmDialog />
-    </div>
+    </PageLayout>
   );
 }

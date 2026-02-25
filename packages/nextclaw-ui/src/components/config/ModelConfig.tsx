@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useConfig, useConfigSchema, useUpdateModel } from '@/hooks/useConfig';
 import { hintForPath } from '@/lib/config-hints';
 import { formatNumber, t } from '@/lib/i18n';
+import { PageLayout, PageHeader } from '@/components/layout/page-layout';
 import { Folder, Loader2, Sliders, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -68,11 +69,8 @@ export function ModelConfig() {
   }
 
   return (
-    <div className="max-w-4xl animate-fade-in pb-20">
-      <div className="mb-10">
-        <h2 className="text-xl font-semibold text-gray-900">{t('modelPageTitle')}</h2>
-        <p className="text-sm text-gray-500 mt-1">{t('modelPageDescription')}</p>
-      </div>
+    <PageLayout>
+      <PageHeader title={t('modelPageTitle')} description={t('modelPageDescription')} />
 
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -171,6 +169,6 @@ export function ModelConfig() {
           </Button>
         </div>
       </form>
-    </div>
+    </PageLayout>
   );
 }
