@@ -1,5 +1,6 @@
 # Logs
 
+- [docs/logs/2026-02-26-landing-seo-optimization/v0.0.1-landing-seo-optimization/README.md](docs/logs/2026-02-26-landing-seo-optimization/v0.0.1-landing-seo-optimization/README.md)
 - [docs/logs/2026-02-23-discord-streaming-preview/v0.8.15-discord-streaming-preview/README.md](docs/logs/2026-02-23-discord-streaming-preview/v0.8.15-discord-streaming-preview/README.md)
 - [docs/logs/2026-02-23-frontend-ui-refresh/v0.8.15-frontend-ui-refresh/README.md](docs/logs/2026-02-23-frontend-ui-refresh/v0.8.15-frontend-ui-refresh/README.md)
 - [docs/logs/2026-02-25-frontend-release-command/v0.8.16-frontend-release-command/README.md](docs/logs/2026-02-25-frontend-release-command/v0.8.16-frontend-release-command/README.md)
