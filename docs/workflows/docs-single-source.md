@@ -8,6 +8,7 @@ Prevent dual-maintenance between repository docs and docs-site pages.
 
 - Public documentation pages: `apps/docs/**` (VitePress source).
 - Internal engineering/process docs: `docs/**` (logs, workflows, designs, PRD, metrics, etc.).
+- Internal technical deep-dives/checklists/research notes: `docs/designs/**` (not `docs/guides/**`).
 
 ## Hard rules
 
@@ -15,6 +16,7 @@ Prevent dual-maintenance between repository docs and docs-site pages.
 - If content is user-facing docs, only edit under `apps/docs/`.
 - Repository README and other entry points should link directly to `https://docs.nextclaw.io/...` pages.
 - `docs/` keeps only internal project artifacts, not mirrored public docs pages.
+- Do not create `docs/guides/**`; this name is reserved for site-facing semantics and causes confusion with `apps/docs/guide/**`.
 
 ## Current canonical mapping
 

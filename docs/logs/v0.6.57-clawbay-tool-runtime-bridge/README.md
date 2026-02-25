@@ -50,4 +50,4 @@
 ## 相关文档
 
 - [USAGE](../../../docs/USAGE.md)
-- [Hot Plugin Runtime v1 清单](../../../docs/guides/hot-plugin-runtime-v1-checklist.md)
+- [Hot Plugin Runtime v1 清单](../../../docs/designs/hot-plugin-runtime-v1-checklist.md)

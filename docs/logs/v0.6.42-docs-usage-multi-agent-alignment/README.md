@@ -15,11 +15,11 @@
 - 运行脚本将 `docs/USAGE.md` 同步到 `packages/nextclaw/templates/USAGE.md`，确保初始化模板一致。
 
 3. 补齐缺失架构指南
-- 新增 `docs/guides/multi-agent-architecture.md`，系统化描述单 Gateway、多 Agent、bindings、dmScope、mention gate、验收清单。
+- 新增架构指南，系统化描述单 Gateway、多 Agent、bindings、dmScope、mention gate、验收清单（当前用户入口为 `apps/docs/guide/multi-agent.md`）。
 - 修复 README 中该文档链接“有链接无文件”的问题（通过新增文件落地）。
 
 4. 标注历史报告上下文
-- 在 `docs/guides/openclaw-alignment-gap-report.md` 增加说明：旧矩阵为历史基线，最新以 USAGE/架构指南为准。
+- 在 `docs/designs/openclaw-alignment-gap-report.md` 增加说明：旧矩阵为历史基线，最新以 USAGE/架构指南为准。
 
 ## 测试 / 验证 / 验收方式
 
@@ -27,14 +27,14 @@
 - 验证方式：
   - 检查 `docs/USAGE.md` 是否包含新章节与示例。
   - 检查 `packages/nextclaw/templates/USAGE.md` 是否已同步（含 generated header）。
-  - 检查 `docs/guides/multi-agent-architecture.md` 可访问且内容完整。
+  - 检查 `apps/docs/guide/multi-agent.md` 可访问且内容完整。
   - 检查 README 链接目标文件是否存在。
 
 ### 用户/产品视角验收步骤
 
 1. 打开 `docs/USAGE.md`，确认能直接找到并照抄使用“多 Agent 路由与会话隔离”的配置示例。
 2. 让新用户按文档执行一次配置（UI 或 CLI 任一），确认无需口头补充即可理解核心字段含义。
-3. 让团队成员阅读 `docs/guides/multi-agent-architecture.md`，确认能理解：
+3. 让团队成员阅读 `apps/docs/guide/multi-agent.md`，确认能理解：
    - 为什么用单 Gateway；
    - 如何做 bindings 分诊；
    - 如何做 dmScope 会话隔离；

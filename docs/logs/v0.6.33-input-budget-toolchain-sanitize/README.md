@@ -8,7 +8,7 @@
   - 清理非活跃历史中的 `assistant.tool_calls` 与 `reasoning_content`；
   - 保留尾部活跃工具链（`assistant(tool_calls)` + 对应 `tool`）不被破坏。
 - 该修复直接针对 Discord 多 agent 长会话中出现的 `400 Provider returned error` / `INVALID_ARGUMENT`。
-- 本次不改配置面，不新增用户参数；使用方式保持不变（见 [`docs/guides/multi-agent-architecture.md`](../../guides/multi-agent-architecture.md)）。
+- 本次不改配置面，不新增用户参数；使用方式保持不变（见 [docs site multi-agent](https://docs.nextclaw.io/guide/multi-agent)）。
 
 ## 测试 / 验证 / 验收方式
 

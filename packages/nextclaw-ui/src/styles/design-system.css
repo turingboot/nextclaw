@@ -7,65 +7,71 @@
 @layer base {
    :root {
       /* ========================================
-       BRAND COLORS (Blue)
+       BRAND COLORS (Olive Green - #677656 basis)
        ======================================== */
-      --brand-50: 217 100% 97%;
-      --brand-100: 217 95% 92%;
-      --brand-200: 217 90% 82%;
-      --brand-300: 217 80% 68%;
-      --brand-400: 217 72% 56%;
-      --brand-500: 217 80% 55%;
-      --brand-600: 217 70% 45%;
-      --brand-700: 217 60% 35%;
-      --brand-800: 217 55% 28%;
-      --brand-900: 217 60% 25%;
+      --brand-50: 88 20% 96%;
+      --brand-100: 88 20% 92%;
+      --brand-200: 88 18% 85%;
+      --brand-300: 88 16% 75%;
+      --brand-400: 88 16% 60%;
+      --brand-500: 88 16% 40%;
+      /* Primary Olive Green #677656 */
+      --brand-600: 88 20% 32%;
+      --brand-700: 88 25% 25%;
+      --brand-800: 88 30% 20%;
+      --brand-900: 88 35% 15%;
 
       /* ========================================
-       NEUTRAL COLORS (Gray Scale)
+       NEUTRAL COLORS (Warm Beige / Espresso scale)
        ======================================== */
-      --gray-50: 210 20% 98%;
-      --gray-100: 214 18% 96%;
-      --gray-200: 213 14% 90%;
-      --gray-300: 212 10% 83%;
-      --gray-400: 215 8% 64%;
-      --gray-500: 216 6% 46%;
-      --gray-600: 215 10% 34%;
-      --gray-700: 217 14% 26%;
-      --gray-800: 219 18% 18%;
-      --gray-900: 221 39% 11%;
+      --gray-50: 45 13% 95%;
+      /* #F4F3F0 Main App Background */
+      --gray-100: 48 11% 91%;
+      /* #EBEAE6 Sidebar Background */
+      --gray-200: 45 10% 86%;
+      /* Borders / Hover states */
+      --gray-300: 45 8% 75%;
+      --gray-400: 40 6% 60%;
+      --gray-500: 35 7% 45%;
+      --gray-600: 30 10% 35%;
+      --gray-700: 30 14% 25%;
+      /* #4A3F35 Secondary Text */
+      --gray-800: 0 0% 17%;
+      /* #2C2C2C Primary Text */
+      --gray-900: 0 0% 10%;
 
       /* ========================================
        SEMANTIC COLORS
        ======================================== */
-      /* Background - matches sidebar #f0f2f7 */
-      --background: 223 37% 96%;
-      --background-secondary: 223 20% 93%;
-      --background-tertiary: 223 15% 89%;
+      /* Backgrounds */
+      --background: var(--gray-50);
+      --background-secondary: var(--gray-100);
+      --background-tertiary: var(--gray-200);
 
       /* Foreground (Text) */
-      --foreground: 221 39% 11%;
-      --foreground-secondary: 219 18% 18%;
-      --foreground-tertiary: 216 6% 46%;
-      --foreground-muted: 215 8% 64%;
+      --foreground: var(--gray-800);
+      --foreground-secondary: var(--gray-700);
+      --foreground-tertiary: var(--gray-500);
+      --foreground-muted: var(--gray-400);
 
       /* Primary (Brand) */
-      --primary: 217 80% 55%;
-      --primary-hover: 217 70% 45%;
-      --primary-active: 217 60% 35%;
+      --primary: var(--brand-500);
+      --primary-hover: var(--brand-600);
+      --primary-active: var(--brand-700);
       --primary-foreground: 0 0% 100%;
 
       /* Secondary */
-      --secondary: 214 18% 96%;
-      --secondary-hover: 213 14% 90%;
-      --secondary-foreground: 219 18% 18%;
+      --secondary: var(--gray-100);
+      --secondary-hover: var(--gray-200);
+      --secondary-foreground: var(--gray-800);
 
       /* Accent */
-      --accent: 217 100% 97%;
-      --accent-foreground: 217 60% 35%;
+      --accent: var(--brand-50);
+      --accent-foreground: var(--brand-700);
 
       /* Muted */
-      --muted: 214 18% 96%;
-      --muted-foreground: 216 6% 46%;
+      --muted: var(--gray-100);
+      --muted-foreground: var(--gray-500);
 
       /* Destructive */
       --destructive: 0 84% 60%;
@@ -84,26 +90,26 @@
        ======================================== */
       /* Card */
       --card: 0 0% 100%;
-      --card-foreground: 221 39% 11%;
-      --card-border: 213 14% 90%;
+      --card-foreground: var(--gray-800);
+      --card-border: var(--gray-200);
 
       /* Popover */
       --popover: 0 0% 100%;
-      --popover-foreground: 221 39% 11%;
+      --popover-foreground: var(--gray-800);
 
       /* Border */
-      --border: 213 14% 90%;
-      --border-hover: 212 10% 83%;
-      --border-active: 217 80% 55%;
+      --border: var(--gray-200);
+      --border-hover: var(--gray-300);
+      --border-active: var(--brand-500);
 
       /* Input */
       --input: 0 0% 100%;
-      --input-border: 213 14% 90%;
-      --input-focus: 217 80% 55%;
+      --input-border: var(--gray-200);
+      --input-focus: var(--brand-500);
 
       /* Ring (Focus) */
-      --ring: 217 80% 55%;
-      --ring-offset: 0 0% 100%;
+      --ring: var(--brand-500);
+      --ring-offset: var(--gray-50);
 
       /* ========================================
        SPACING SYSTEM

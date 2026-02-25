@@ -14,7 +14,7 @@
   - [`packages/nextclaw-core/src/config/schema.labels.ts`](../../../packages/nextclaw-core/src/config/schema.labels.ts)
 - 更新使用文档与架构文档：
   - [`docs/USAGE.md`](../../../docs/USAGE.md)
-  - [`docs/guides/multi-agent-architecture.md`](../../../docs/guides/multi-agent-architecture.md)
+  - [docs site multi-agent](https://docs.nextclaw.io/guide/multi-agent)
 
 ## 测试 / 验证 / 验收方式
 
