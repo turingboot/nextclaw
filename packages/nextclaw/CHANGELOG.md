@@ -1,5 +1,11 @@
 # nextclaw
 
+## 0.8.23
+
+### Patch Changes
+
+- refactor marketplace tabs to use top-level plugins/skills routing with scope sub-tabs
+
 ## 0.8.22
 
 ### Patch Changes
