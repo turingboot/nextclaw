@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { compress } from "hono/compress";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { WebSocketServer, WebSocket } from "ws";
@@ -22,6 +23,7 @@ const DEFAULT_CORS_ORIGINS = (origin: string | undefined | null) => {
 
 export function startUiServer(options: UiServerOptions): UiServerHandle {
   const app = new Hono();
+  app.use("/*", compress());
   const origin = options.corsOrigins ?? DEFAULT_CORS_ORIGINS;
   app.use("/api/*", cors({ origin }));
 
