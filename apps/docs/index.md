@@ -2,24 +2,20 @@
 layout: home
 
 hero:
-  name: NextClaw
-  text: Personal AI Assistant
-  tagline: Effortlessly simple. Connect your AI to Discord, Telegram, Slack, and more.
+  name: NextClaw Docs
+  text: Choose Your Language
+  tagline: Select a language to read documentation.
   actions:
     - theme: brand
-      text: Get Started
-      link: /guide/getting-started
+      text: English
+      link: /en/
     - theme: alt
-      text: View on GitHub
-      link: https://github.com/Peiiii/nextclaw
+      text: 简体中文
+      link: /zh/
 
 features:
-  - title: 🔌 Multi-Channel
-    details: Connect to Discord, Telegram, Slack, Feishu, DingTalk, WhatsApp, Email, and more — all from one gateway.
-  - title: 🤖 Multi-Agent
-    details: Run multiple AI agents with routing rules. Assign specialists to specific channels, accounts, or groups.
-  - title: 🛠️ Extensible
-    details: Built-in tools for web search, command execution, cron jobs, and an OpenClaw-compatible plugin system.
-  - title: ⚡ Zero-Restart Config
-    details: Hot-reload providers, channels, models, and plugins without restarting the service.
+  - title: English
+    details: Documentation in English for global users.
+  - title: 简体中文
+    details: 面向中文用户的完整文档。
 ---

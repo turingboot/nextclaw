@@ -16,12 +16,12 @@ Prevent dual-maintenance between repository docs and docs-site pages.
 - If content is user-facing docs, only edit under `apps/docs/`.
 - Repository README and other entry points should link directly to `https://docs.nextclaw.io/...` pages.
 - `docs/` keeps only internal project artifacts, not mirrored public docs pages.
-- Do not create `docs/guides/**`; this name is reserved for site-facing semantics and causes confusion with `apps/docs/guide/**`.
+- Do not create `docs/guides/**`; this name is reserved for site-facing semantics and causes confusion with `apps/docs/en/guide/**`.
 
 ## Current canonical mapping
 
-- Roadmap canonical source: `apps/docs/guide/roadmap.md`
-- Public URL: `https://docs.nextclaw.io/guide/roadmap`
+- Roadmap canonical source: `apps/docs/en/guide/roadmap.md`
+- Public URL: `https://docs.nextclaw.io/en/guide/roadmap`
 
 ## Best-practice summary
 

@@ -199,7 +199,7 @@ Agent 主循环中注册的默认工具（`nextclaw-core` `agent/loop.ts` + `age
 - **Agent 间**：`session.agentToAgent.maxPingPongTurns` 限制自动乒乓。
 - **群组**：Discord/Telegram 支持 requireMention、mentionPatterns、groups 等。
 
-详见 [多 Agent 架构](https://docs.nextclaw.io/guide/multi-agent)。
+详见 [多 Agent 架构](https://docs.nextclaw.io/en/guide/multi-agent)。
 
 ---
 
@@ -238,7 +238,7 @@ Agent 主循环中注册的默认工具（`nextclaw-core` `agent/loop.ts` + `age
 ## 14. 文档与迭代
 
 - 使用说明：[USAGE](USAGE.md)
-- 多 Agent：[multi-agent-architecture](https://docs.nextclaw.io/guide/multi-agent)
+- 多 Agent：[multi-agent-architecture](https://docs.nextclaw.io/en/guide/multi-agent)
 - 迭代与发布：`docs/logs/`、`docs/workflows/`、`docs/prd/`
 
 ---

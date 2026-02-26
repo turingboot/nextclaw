@@ -156,7 +156,7 @@ You can now configure OpenClaw-style multi-agent runtime behavior directly in th
 > ⚠️ **Strict enum guard (OpenClaw-aligned):** `session.dmScope` accepts **only** these 4 values: `main`, `per-peer`, `per-channel-peer`, `per-account-channel-peer`.
 > Any other value (for example `per-account-channel-peer-agent`) is invalid and must not be written.
 
-See full architecture details in [Multi-Agent Architecture](https://docs.nextclaw.io/guide/multi-agent).
+See full architecture details in [Multi-Agent Architecture](https://docs.nextclaw.io/en/guide/multi-agent).
 
 Example:
 

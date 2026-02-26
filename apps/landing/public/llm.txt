@@ -12,8 +12,8 @@ It supports multi-provider model routing, multi-channel delivery, and local-firs
 Recommended entry points:
 - Product overview: https://nextclaw.io/
 - Getting started and guides: https://docs.nextclaw.io/
-- Roadmap: https://docs.nextclaw.io/guide/roadmap
-- Configuration guide: https://docs.nextclaw.io/guide/configuration
-- Multi-agent architecture: https://docs.nextclaw.io/guide/multi-agent
+- Roadmap: https://docs.nextclaw.io/en/guide/roadmap
+- Configuration guide: https://docs.nextclaw.io/en/guide/configuration
+- Multi-agent architecture: https://docs.nextclaw.io/en/guide/multi-agent
 
 Last updated: 2026-02-26

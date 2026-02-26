@@ -34,6 +34,6 @@ nextclaw stop
 
 ## What's Next?
 
-- [Configuration](/guide/configuration) — Set up providers, models, and workspace
-- [Channels](/guide/channels) — Connect to Discord, Telegram, Slack, and more
-- [Commands](/guide/commands) — Full CLI reference
+- [Configuration](/en/guide/configuration) — Set up providers, models, and workspace
+- [Channels](/en/guide/channels) — Connect to Discord, Telegram, Slack, and more
+- [Commands](/en/guide/commands) — Full CLI reference

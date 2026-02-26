@@ -52,11 +52,11 @@ File read/write/edit, list directory, `exec`, web search, web fetch, send messag
 
 ### Multi-agent and routing
 
-Single process, multiple agents (`agents.list`). Route by channel + accountId (and optionally peer) via `bindings` to different `agentId`. Session isolation with `session.dmScope` (main, per-peer, per-channel-peer, per-account-channel-peer). See [Multi-Agent Routing](/guide/multi-agent).
+Single process, multiple agents (`agents.list`). Route by channel + accountId (and optionally peer) via `bindings` to different `agentId`. Session isolation with `session.dmScope` (main, per-peer, per-channel-peer, per-account-channel-peer). See [Multi-Agent Routing](/en/guide/multi-agent).
 
 ### Plugins and Skills
 
-OpenClaw-format plugins (including channel plugins) from local paths or npm. Skills from ClawHub: `nextclaw skills install <slug>`; workspace `skills/` and context injection. See [Configuration](/guide/configuration) and [Commands](/guide/commands).
+OpenClaw-format plugins (including channel plugins) from local paths or npm. Skills from ClawHub: `nextclaw skills install <slug>`; workspace `skills/` and context injection. See [Configuration](/en/guide/configuration) and [Commands](/en/guide/commands).
 
 ---
 
@@ -81,9 +81,9 @@ Open **http://127.0.0.1:18791** in your browser and set a provider (e.g. OpenRou
 
 ## Learn more
 
-- [Quick Start](/guide/getting-started) — Install and first run
-- [Configuration](/guide/configuration) — Providers, models, workspace
-- [Channels](/guide/channels) — Connect Telegram, Discord, Slack, and more
-- [Multi-Agent Routing](/guide/multi-agent) — Bindings and session isolation
-- [Commands](/guide/commands) — Full CLI reference
+- [Quick Start](/en/guide/getting-started) — Install and first run
+- [Configuration](/en/guide/configuration) — Providers, models, workspace
+- [Channels](/en/guide/channels) — Connect Telegram, Discord, Slack, and more
+- [Multi-Agent Routing](/en/guide/multi-agent) — Bindings and session isolation
+- [Commands](/en/guide/commands) — Full CLI reference
 - [GitHub](https://github.com/Peiiii/nextclaw) · [npm](https://www.npmjs.com/package/nextclaw)
