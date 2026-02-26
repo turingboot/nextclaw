@@ -176,6 +176,7 @@ function ItemIcon({ name, fallback }: { name?: string; fallback: string }) {
 function FilterPanel(props: {
   scope: ScopeType;
   searchText: string;
+  searchPlaceholder: string;
   sort: MarketplaceSort;
   onSearchTextChange: (value: string) => void;
   onSortChange: (value: MarketplaceSort) => void;
@@ -188,7 +189,7 @@ function FilterPanel(props: {
           <input
             value={props.searchText}
             onChange={(event) => props.onSearchTextChange(event.target.value)}
-            placeholder={t('marketplaceSearchPlaceholder')}
+            placeholder={props.searchPlaceholder}
             className="w-full h-9 border border-gray-200/80 rounded-xl pl-9 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
           />
         </div>
@@ -368,6 +369,36 @@ export function MarketplacePage() {
   }, [routeType, navigate]);
 
   const typeFilter: MarketplaceItemType = routeType === 'skills' ? 'skill' : 'plugin';
+  const isPluginModule = typeFilter === 'plugin';
+  const copyKeys = isPluginModule
+    ? {
+      pageTitle: 'marketplacePluginsPageTitle',
+      pageDescription: 'marketplacePluginsPageDescription',
+      tabMarketplace: 'marketplaceTabMarketplacePlugins',
+      tabInstalled: 'marketplaceTabInstalledPlugins',
+      searchPlaceholder: 'marketplaceSearchPlaceholderPlugins',
+      sectionCatalog: 'marketplaceSectionPlugins',
+      sectionInstalled: 'marketplaceSectionInstalledPlugins',
+      errorLoadData: 'marketplaceErrorLoadingPluginsData',
+      errorLoadInstalled: 'marketplaceErrorLoadingInstalledPlugins',
+      emptyData: 'marketplaceNoPlugins',
+      emptyInstalled: 'marketplaceNoInstalledPlugins',
+      installedCountSuffix: 'marketplaceInstalledPluginsCountSuffix'
+    }
+    : {
+      pageTitle: 'marketplaceSkillsPageTitle',
+      pageDescription: 'marketplaceSkillsPageDescription',
+      tabMarketplace: 'marketplaceTabMarketplaceSkills',
+      tabInstalled: 'marketplaceTabInstalledSkills',
+      searchPlaceholder: 'marketplaceSearchPlaceholderSkills',
+      sectionCatalog: 'marketplaceSectionSkills',
+      sectionInstalled: 'marketplaceSectionInstalledSkills',
+      errorLoadData: 'marketplaceErrorLoadingSkillsData',
+      errorLoadInstalled: 'marketplaceErrorLoadingInstalledSkills',
+      emptyData: 'marketplaceNoSkills',
+      emptyInstalled: 'marketplaceNoInstalledSkills',
+      installedCountSuffix: 'marketplaceInstalledSkillsCountSuffix'
+    };
 
   const [searchText, setSearchText] = useState('');
   const [query, setQuery] = useState('');
@@ -455,7 +486,7 @@ export function MarketplacePage() {
       if (installedQuery.isLoading) {
         return t('loading');
       }
-      return `${installedEntries.length} ${t('marketplaceInstalledCountSuffix')}`;
+      return `${installedEntries.length} ${t(copyKeys.installedCountSuffix)}`;
     }
 
     if (!itemsQuery.data) {
@@ -463,7 +494,7 @@ export function MarketplacePage() {
     }
 
     return `${allItems.length} / ${total}`;
-  }, [scope, installedQuery.isLoading, installedEntries.length, itemsQuery.data, allItems.length, total]);
+  }, [scope, installedQuery.isLoading, installedEntries.length, itemsQuery.data, allItems.length, total, copyKeys.installedCountSuffix]);
 
   const installState: InstallState = {
     isPending: installMutation.isPending,
@@ -477,14 +508,9 @@ export function MarketplacePage() {
   };
 
   const scopeTabs = [
-    { id: 'all', label: t('marketplaceTabMarketplace') },
-    { id: 'installed', label: t('marketplaceTabInstalled'), count: installedQuery.data?.total ?? 0 }
+    { id: 'all', label: t(copyKeys.tabMarketplace) },
+    { id: 'installed', label: t(copyKeys.tabInstalled), count: installedQuery.data?.total ?? 0 }
   ];
-  const typeTabs = [
-    { id: 'plugins', label: t('marketplaceFilterPlugins') },
-    { id: 'skills', label: t('marketplaceFilterSkills') }
-  ];
-
   const handleInstall = (item: MarketplaceItemSummary) => {
     if (installMutation.isPending) {
       return;
@@ -524,20 +550,8 @@ export function MarketplacePage() {
 
   return (
     <PageLayout>
-      <PageHeader title={t('marketplacePageTitle')} description={t('marketplacePageDescription')} />
+      <PageHeader title={t(copyKeys.pageTitle)} description={t(copyKeys.pageDescription)} />
 
-      <Tabs
-        tabs={typeTabs}
-        activeTab={routeType ?? 'plugins'}
-        onChange={(value) => {
-          const routeValue = value === 'skills' ? 'skills' : 'plugins';
-          if (routeType === routeValue) {
-            return;
-          }
-          navigate(`/marketplace/${routeValue}`);
-        }}
-        className="mb-4"
-      />
       <Tabs
         tabs={scopeTabs}
         activeTab={scope}
@@ -551,6 +565,7 @@ export function MarketplacePage() {
       <FilterPanel
         scope={scope}
         searchText={searchText}
+        searchPlaceholder={t(copyKeys.searchPlaceholder)}
         sort={sort}
         onSearchTextChange={setSearchText}
         onSortChange={(value) => {
@@ -562,21 +577,19 @@ export function MarketplacePage() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-[14px] font-semibold text-gray-900">
-            {scope === 'installed' ? t('marketplaceSectionInstalled') : t('marketplaceSectionExtensions')}
-            {' · '}
-            {typeFilter === 'plugin' ? t('marketplaceFilterPlugins') : t('marketplaceFilterSkills')}
+            {scope === 'installed' ? t(copyKeys.sectionInstalled) : t(copyKeys.sectionCatalog)}
           </h3>
           <span className="text-[12px] text-gray-500">{listSummary}</span>
         </div>
 
         {scope === 'all' && itemsQuery.isError && (
           <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm">
-            {t('marketplaceErrorLoadingData')}: {itemsQuery.error.message}
+            {t(copyKeys.errorLoadData)}: {itemsQuery.error.message}
           </div>
         )}
         {scope === 'installed' && installedQuery.isError && (
           <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm">
-            {t('marketplaceErrorLoadingInstalled')}: {installedQuery.error.message}
+            {t(copyKeys.errorLoadInstalled)}: {installedQuery.error.message}
           </div>
         )}
 
@@ -607,10 +620,10 @@ export function MarketplacePage() {
         </div>
 
         {scope === 'all' && !itemsQuery.isLoading && !itemsQuery.isError && allItems.length === 0 && (
-          <div className="text-[13px] text-gray-500 py-8 text-center">{t('marketplaceNoItems')}</div>
+          <div className="text-[13px] text-gray-500 py-8 text-center">{t(copyKeys.emptyData)}</div>
         )}
         {scope === 'installed' && !installedQuery.isLoading && !installedQuery.isError && installedEntries.length === 0 && (
-          <div className="text-[13px] text-gray-500 py-8 text-center">{t('marketplaceNoInstalledItems')}</div>
+          <div className="text-[13px] text-gray-500 py-8 text-center">{t(copyKeys.emptyInstalled)}</div>
         )}
       </section>
 

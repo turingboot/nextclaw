@@ -1,5 +1,11 @@
 # @nextclaw/ui
 
+## 0.5.16
+
+### Patch Changes
+
+- refine marketplace module separation and module-specific copy for plugins and skills
+
 ## 0.5.15
 
 ### Patch Changes

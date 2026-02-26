@@ -54,7 +54,10 @@ export function useInstallMarketplaceItem() {
       queryClient.invalidateQueries({ queryKey: ['marketplace-installed', result.type] });
       queryClient.refetchQueries({ queryKey: ['marketplace-installed', result.type], type: 'active' });
       queryClient.refetchQueries({ queryKey: ['marketplace-items'], type: 'active' });
-      toast.success(result.message || `${result.type} ${t('marketplaceInstalledCountSuffix')}`);
+      const fallback = result.type === 'plugin'
+        ? t('marketplaceInstallSuccessPlugin')
+        : t('marketplaceInstallSuccessSkill');
+      toast.success(result.message || fallback);
     },
     onError: (error: Error) => {
       toast.error(error.message || t('marketplaceInstallFailed'));
@@ -72,7 +75,12 @@ export function useManageMarketplaceItem() {
       queryClient.invalidateQueries({ queryKey: ['marketplace-items'] });
       queryClient.refetchQueries({ queryKey: ['marketplace-installed', result.type], type: 'active' });
       queryClient.refetchQueries({ queryKey: ['marketplace-items'], type: 'active' });
-      toast.success(result.message || `${result.action} success`);
+      const fallback = result.action === 'enable'
+        ? t('marketplaceEnableSuccess')
+        : result.action === 'disable'
+          ? t('marketplaceDisableSuccess')
+          : t('marketplaceUninstallSuccess');
+      toast.success(result.message || fallback);
     },
     onError: (error: Error) => {
       toast.error(error.message || t('marketplaceOperationFailed'));

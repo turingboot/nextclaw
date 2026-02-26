@@ -1,5 +1,11 @@
 # nextclaw
 
+## 0.8.25
+
+### Patch Changes
+
+- refine marketplace module separation and module-specific copy for plugins and skills
+
 ## 0.8.24
 
 ### Patch Changes
