@@ -1,6 +1,6 @@
 {
   "version": "2026.02.27",
-  "generatedAt": "2026-02-27T15:36:10.000Z",
+  "generatedAt": "2026-02-27T16:14:00.000Z",
   "plugins": {
     "items": [
       {
@@ -425,6 +425,30 @@
         },
         "publishedAt": "2026-02-05T13:02:45.000Z",
         "updatedAt": "2026-02-05T13:02:45.000Z"
+      },
+      {
+        "id": "skill-cloudflare-deploy-openai",
+        "slug": "cloudflare-deploy",
+        "type": "skill",
+        "name": "Cloudflare Deploy",
+        "summary": "OpenAI curated skill for deploying apps and infra on Cloudflare.",
+        "description": "Use this skill to select Cloudflare products and deploy Workers, Pages, and related services.",
+        "tags": [
+          "skill",
+          "git",
+          "cloudflare",
+          "deploy"
+        ],
+        "author": "OpenAI",
+        "sourceRepo": "https://github.com/openai/skills",
+        "homepage": "https://github.com/openai/skills/tree/main/skills/.curated/cloudflare-deploy",
+        "install": {
+          "kind": "git",
+          "spec": "openai/skills/skills/.curated/cloudflare-deploy",
+          "command": "npx skild install openai/skills/skills/.curated/cloudflare-deploy --target agents --local --skill cloudflare-deploy"
+        },
+        "publishedAt": "2026-02-27T16:14:00.000Z",
+        "updatedAt": "2026-02-27T16:14:00.000Z"
       }
     ],
     "recommendations": [
@@ -457,6 +481,14 @@
           "skill-docx-anthropic",
           "skill-pptx-anthropic",
           "skill-xlsx-anthropic"
+        ]
+      },
+      {
+        "id": "cloudflare",
+        "title": "Cloudflare Mastery",
+        "description": "Recommended skill for Cloudflare deployment and platform architecture tasks.",
+        "itemIds": [
+          "skill-cloudflare-deploy-openai"
         ]
       }
     ]
