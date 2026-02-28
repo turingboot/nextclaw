@@ -1,7 +1,14 @@
 import { useMemo } from 'react';
 import type { SessionMessageView } from '@/api/types';
 import { cn } from '@/lib/utils';
-import { extractMessageText, extractToolCards, groupChatMessages, type ChatRole, type ToolCard } from '@/lib/chat-message';
+import {
+  combineToolCallAndResults,
+  extractMessageText,
+  extractToolCards,
+  groupChatMessages,
+  type ChatRole,
+  type ToolCard
+} from '@/lib/chat-message';
 import { formatDateTime, t } from '@/lib/i18n';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
@@ -101,6 +108,7 @@ function ToolCardView({ card }: { card: ToolCard }) {
   const output = card.text?.trim() ?? '';
   const showDetails = output.length > TOOL_OUTPUT_PREVIEW_MAX || output.includes('\n');
   const preview = showDetails ? `${output.slice(0, TOOL_OUTPUT_PREVIEW_MAX)}…` : output;
+  const showOutputSection = card.kind === 'result' || card.hasResult;
 
   return (
     <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-3 py-2.5">
@@ -112,7 +120,7 @@ function ToolCardView({ card }: { card: ToolCard }) {
       {card.detail && (
         <div className="mt-1 text-[11px] text-amber-800/90 font-mono break-words">{card.detail}</div>
       )}
-      {card.kind === 'result' && (
+      {showOutputSection && (
         <div className="mt-2">
           {!output ? (
             <div className="text-[11px] text-amber-700/80">{t('chatToolNoOutput')}</div>
@@ -175,7 +183,8 @@ function MessageCard({ message, role }: { message: SessionMessageView; role: Cha
 }
 
 export function ChatThread({ messages, isSending, className }: ChatThreadProps) {
-  const groups = useMemo(() => groupChatMessages(messages), [messages]);
+  const preparedMessages = useMemo(() => combineToolCallAndResults(messages), [messages]);
+  const groups = useMemo(() => groupChatMessages(preparedMessages), [preparedMessages]);
 
   return (
     <div className={cn('space-y-5', className)}>

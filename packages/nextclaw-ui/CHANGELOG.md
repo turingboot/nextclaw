@@ -1,5 +1,11 @@
 # @nextclaw/ui
 
+## 0.5.23
+
+### Patch Changes
+
+- Release frontend UI changes only.
+
 ## 0.5.22
 
 ### Patch Changes

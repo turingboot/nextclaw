@@ -12,6 +12,21 @@ import { formatDateTime, t } from '@/lib/i18n';
 import { MessageSquareText, Plus, RefreshCw, Search, Send, Trash2 } from 'lucide-react';
 
 const CHAT_SESSION_STORAGE_KEY = 'nextclaw.ui.chat.activeSession';
+const STREAM_FRAME_MS = 18;
+
+function streamChunkSize(remaining: number): number {
+  if (remaining > 2400) return 120;
+  if (remaining > 1200) return 72;
+  if (remaining > 600) return 40;
+  if (remaining > 220) return 20;
+  return 8;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
 
 function readStoredSessionKey(): string | null {
   if (typeof window === 'undefined') {
@@ -68,9 +83,11 @@ export function ChatPage() {
   const [selectedSessionKey, setSelectedSessionKey] = useState<string | null>(() => readStoredSessionKey());
   const [selectedAgentId, setSelectedAgentId] = useState('main');
   const [optimisticUserMessage, setOptimisticUserMessage] = useState<SessionMessageView | null>(null);
+  const [streamingAssistantMessage, setStreamingAssistantMessage] = useState<SessionMessageView | null>(null);
 
   const { confirm, ConfirmDialog } = useConfirmDialog();
   const threadRef = useRef<HTMLDivElement | null>(null);
+  const streamRunIdRef = useRef(0);
 
   const configQuery = useConfig();
   const sessionsQuery = useSessions({ q: query.trim() || undefined, limit: 120, activeMinutes: 0 });
@@ -96,12 +113,20 @@ export function ChatPage() {
   );
 
   const historyMessages = useMemo(() => historyQuery.data?.messages ?? [], [historyQuery.data?.messages]);
+  const isGenerating = sendChatTurn.isPending || Boolean(streamingAssistantMessage);
   const mergedMessages = useMemo(() => {
-    if (!optimisticUserMessage) {
+    if (!optimisticUserMessage && !streamingAssistantMessage) {
       return historyMessages;
     }
-    return [...historyMessages, optimisticUserMessage];
-  }, [historyMessages, optimisticUserMessage]);
+    const next = [...historyMessages];
+    if (optimisticUserMessage) {
+      next.push(optimisticUserMessage);
+    }
+    if (streamingAssistantMessage) {
+      next.push(streamingAssistantMessage);
+    }
+    return next;
+  }, [historyMessages, optimisticUserMessage, streamingAssistantMessage]);
 
   useEffect(() => {
     if (!selectedSessionKey && sessions.length > 0) {
@@ -129,9 +154,17 @@ export function ChatPage() {
       return;
     }
     element.scrollTop = element.scrollHeight;
-  }, [mergedMessages.length, sendChatTurn.isPending, selectedSessionKey]);
+  }, [mergedMessages, sendChatTurn.isPending, selectedSessionKey]);
+
+  useEffect(() => {
+    return () => {
+      streamRunIdRef.current += 1;
+    };
+  }, []);
 
   const createNewSession = () => {
+    streamRunIdRef.current += 1;
+    setStreamingAssistantMessage(null);
     const next = buildNewSessionKey(selectedAgentId);
     setSelectedSessionKey(next);
     setOptimisticUserMessage(null);
@@ -153,6 +186,8 @@ export function ChatPage() {
       { key: selectedSessionKey },
       {
         onSuccess: async () => {
+          streamRunIdRef.current += 1;
+          setStreamingAssistantMessage(null);
           setSelectedSessionKey(null);
           setOptimisticUserMessage(null);
           await sessionsQuery.refetch();
@@ -163,10 +198,12 @@ export function ChatPage() {
 
   const handleSend = async () => {
     const message = draft.trim();
-    if (!message || sendChatTurn.isPending) {
+    if (!message || isGenerating) {
       return;
     }
 
+    streamRunIdRef.current += 1;
+    setStreamingAssistantMessage(null);
     const hadActiveSession = Boolean(selectedSessionKey);
     const sessionKey = selectedSessionKey ?? buildNewSessionKey(selectedAgentId);
     if (!selectedSessionKey) {
@@ -193,11 +230,32 @@ export function ChatPage() {
       if (result.sessionKey !== sessionKey) {
         setSelectedSessionKey(result.sessionKey);
       }
+      const replyText = typeof result.reply === 'string' ? result.reply : '';
+      let previewRunId: number | null = null;
+      if (replyText.trim()) {
+        previewRunId = ++streamRunIdRef.current;
+        const timestamp = new Date().toISOString();
+        let cursor = 0;
+        while (cursor < replyText.length && previewRunId === streamRunIdRef.current) {
+          cursor = Math.min(replyText.length, cursor + streamChunkSize(replyText.length - cursor));
+          setStreamingAssistantMessage({
+            role: 'assistant',
+            content: replyText.slice(0, cursor),
+            timestamp
+          });
+          await delay(STREAM_FRAME_MS);
+        }
+      }
       await sessionsQuery.refetch();
       if (hadActiveSession) {
         await historyQuery.refetch();
       }
+      if (previewRunId && previewRunId === streamRunIdRef.current) {
+        setStreamingAssistantMessage(null);
+      }
     } catch {
+      streamRunIdRef.current += 1;
+      setStreamingAssistantMessage(null);
       setOptimisticUserMessage(null);
       setDraft(message);
     }
@@ -335,7 +393,7 @@ export function ChatPage() {
                 {mergedMessages.length === 0 ? (
                   <div className="text-sm text-gray-500">{t('chatNoMessages')}</div>
                 ) : (
-                  <ChatThread messages={mergedMessages} isSending={sendChatTurn.isPending} />
+                  <ChatThread messages={mergedMessages} isSending={sendChatTurn.isPending && !streamingAssistantMessage} />
                 )}
               </>
             )}
@@ -354,7 +412,7 @@ export function ChatPage() {
                 }}
                 placeholder={t('chatInputPlaceholder')}
                 className="w-full min-h-[68px] max-h-[220px] resize-y bg-transparent outline-none text-sm px-2 py-1.5 text-gray-800 placeholder:text-gray-400"
-                disabled={sendChatTurn.isPending}
+                disabled={isGenerating}
               />
               <div className="flex items-center justify-between px-2 pb-1">
                 <div className="text-[11px] text-gray-400">{t('chatInputHint')}</div>
@@ -362,10 +420,10 @@ export function ChatPage() {
                   size="sm"
                   className="rounded-lg"
                   onClick={() => void handleSend()}
-                  disabled={sendChatTurn.isPending || draft.trim().length === 0}
+                  disabled={isGenerating || draft.trim().length === 0}
                 >
                   <Send className="h-3.5 w-3.5 mr-1.5" />
-                  {sendChatTurn.isPending ? t('chatSending') : t('chatSend')}
+                  {isGenerating ? t('chatSending') : t('chatSend')}
                 </Button>
               </div>
             </div>

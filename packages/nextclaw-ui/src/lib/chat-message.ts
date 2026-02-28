@@ -8,6 +8,7 @@ export type ToolCard = {
   detail?: string;
   text?: string;
   callId?: string;
+  hasResult?: boolean;
 };
 
 export type GroupedChatMessage = {
@@ -158,11 +159,15 @@ export function extractToolCards(message: SessionMessageView): ToolCard[] {
     const fn = isRecord(call.function) ? call.function : null;
     const name = toToolName(fn?.name ?? call.name);
     const args = fn?.arguments ?? call.arguments;
+    const resultText = typeof call.result_text === 'string' ? call.result_text.trim() : '';
+    const hasResult = call.has_result === true || typeof call.result_text === 'string';
     cards.push({
       kind: 'call',
       name,
       detail: summarizeToolArgs(args),
-      callId: typeof call.id === 'string' ? call.id : undefined
+      callId: typeof call.id === 'string' ? call.id : undefined,
+      text: resultText,
+      hasResult
     });
   }
 
@@ -173,11 +178,84 @@ export function extractToolCards(message: SessionMessageView): ToolCard[] {
       kind: 'result',
       name: toToolName(message.name ?? cards[0]?.name),
       text,
-      callId: typeof message.tool_call_id === 'string' ? message.tool_call_id : undefined
+      callId: typeof message.tool_call_id === 'string' ? message.tool_call_id : undefined,
+      hasResult: true
     });
   }
 
   return cards;
+}
+
+type ToolResultBucket = {
+  name?: string;
+  texts: string[];
+};
+
+function cloneMessageForMerge(message: SessionMessageView): SessionMessageView {
+  return {
+    ...message,
+    tool_calls: Array.isArray(message.tool_calls)
+      ? message.tool_calls.map((call) => (isRecord(call) ? { ...call } : call))
+      : message.tool_calls
+  };
+}
+
+export function combineToolCallAndResults(messages: SessionMessageView[]): SessionMessageView[] {
+  const cloned = messages.map(cloneMessageForMerge);
+  const resultByCallId = new Map<string, ToolResultBucket>();
+
+  for (const message of cloned) {
+    if (normalizeChatRole(message) !== 'tool') {
+      continue;
+    }
+    if (typeof message.tool_call_id !== 'string' || !message.tool_call_id.trim()) {
+      continue;
+    }
+
+    const callId = message.tool_call_id.trim();
+    const text = extractMessageText(message.content).trim();
+    const existing = resultByCallId.get(callId) ?? { texts: [] };
+    if (typeof message.name === 'string' && message.name.trim()) {
+      existing.name = message.name.trim();
+    }
+    existing.texts.push(text);
+    resultByCallId.set(callId, existing);
+  }
+
+  const consumedCallIds = new Set<string>();
+
+  for (const message of cloned) {
+    if (normalizeChatRole(message) !== 'assistant' || !Array.isArray(message.tool_calls)) {
+      continue;
+    }
+
+    message.tool_calls = message.tool_calls.map((call) => {
+      if (!isRecord(call) || typeof call.id !== 'string') {
+        return call;
+      }
+      const result = resultByCallId.get(call.id);
+      if (!result) {
+        return call;
+      }
+      consumedCallIds.add(call.id);
+      return {
+        ...call,
+        result_text: result.texts.filter(Boolean).join('\n\n'),
+        has_result: true,
+        result_name: result.name
+      };
+    }) as Array<Record<string, unknown>>;
+  }
+
+  return cloned.filter((message) => {
+    if (normalizeChatRole(message) !== 'tool') {
+      return true;
+    }
+    if (typeof message.tool_call_id !== 'string' || !message.tool_call_id.trim()) {
+      return true;
+    }
+    return !consumedCallIds.has(message.tool_call_id.trim());
+  });
 }
 
 export function groupChatMessages(messages: SessionMessageView[]): GroupedChatMessage[] {
