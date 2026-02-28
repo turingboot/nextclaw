@@ -18,6 +18,8 @@
 }
 ```
 
+如需确认模型 id 与格式，见：[模型选型指南](/zh/guide/model-selection)。
+
 ## Secrets（OpenClaw 风格）
 
 NextClaw 已支持 `openclaw secrets` 风格的秘密引用，支持 `env` / `file` / `exec` 三类来源。

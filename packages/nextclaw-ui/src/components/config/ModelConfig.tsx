@@ -7,7 +7,8 @@ import { useConfig, useConfigSchema, useUpdateModel } from '@/hooks/useConfig';
 import { hintForPath } from '@/lib/config-hints';
 import { formatNumber, t } from '@/lib/i18n';
 import { PageLayout, PageHeader } from '@/components/layout/page-layout';
-import { Folder, Loader2, Sliders, Sparkles } from 'lucide-react';
+import { DOCS_DEFAULT_BASE_URL } from '@/components/doc-browser/DocBrowserContext';
+import { BookOpen, Folder, Loader2, Sliders, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export function ModelConfig() {
@@ -96,8 +97,15 @@ export function ModelConfig() {
               />
               <p className="text-xs text-gray-400">
                 {modelHint?.help ??
-                  'Examples: minimax/MiniMax-M2.5 · minimax/MiniMax-M2.1 · openrouter/anthropic/claude-3.5-sonnet · openrouter/openai/gpt-4o-mini'}
+                  'Examples: gpt-5.1 · claude-opus-4-1 · deepseek/deepseek-chat · dashscope/qwen-max-latest · openrouter/openai/gpt-5.3-codex'}
               </p>
+              <a
+                href={`${DOCS_DEFAULT_BASE_URL}/guide/model-selection`}
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary-hover transition-colors"
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                {t('channelsGuideTitle')}
+              </a>
             </div>
           </div>
 

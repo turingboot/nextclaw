@@ -5,6 +5,7 @@ import {
   fetchConfigSchema,
   updateModel,
   updateProvider,
+  testProviderConnection,
   updateChannel,
   updateRuntime,
   updateSecrets,
@@ -75,6 +76,13 @@ export function useUpdateProvider() {
     onError: (error: Error) => {
       toast.error(t('configSaveFailed') + ': ' + error.message);
     }
+  });
+}
+
+export function useTestProviderConnection() {
+  return useMutation({
+    mutationFn: ({ provider, data }: { provider: string; data: unknown }) =>
+      testProviderConnection(provider, data as Parameters<typeof testProviderConnection>[1])
   });
 }
 

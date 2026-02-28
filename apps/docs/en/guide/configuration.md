@@ -18,6 +18,8 @@
 }
 ```
 
+Need help choosing model ids and format? See [Model Selection Guide](/en/guide/model-selection).
+
 ## Secrets (OpenClaw-style)
 
 NextClaw supports `openclaw secrets`-style secret references with `env` / `file` / `exec` sources.

@@ -6,6 +6,8 @@ import type {
   ProviderConfigView,
   ChannelConfigUpdate,
   ProviderConfigUpdate,
+  ProviderConnectionTestRequest,
+  ProviderConnectionTestResult,
   RuntimeConfigUpdate,
   SecretsConfigUpdate,
   SecretsView,
@@ -71,6 +73,21 @@ export async function updateProvider(
 ): Promise<ProviderConfigView> {
   const response = await api.put<ProviderConfigView>(
     `/api/config/providers/${provider}`,
+    data
+  );
+  if (!response.ok) {
+    throw new Error(response.error.message);
+  }
+  return response.data;
+}
+
+// POST /api/config/providers/:provider/test
+export async function testProviderConnection(
+  provider: string,
+  data: ProviderConnectionTestRequest
+): Promise<ProviderConnectionTestResult> {
+  const response = await api.post<ProviderConnectionTestResult>(
+    `/api/config/providers/${provider}/test`,
     data
   );
   if (!response.ok) {

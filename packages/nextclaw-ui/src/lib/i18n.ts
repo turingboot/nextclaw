@@ -199,6 +199,10 @@ export const LABELS: Record<string, { zh: string; en: string }> = {
   enterApiKey: { zh: '请输入 API 密钥', en: 'Enter API Key' },
   providerApiBaseHelp: { zh: '留空或恢复默认即可使用预置 API Base。', en: 'Leave empty or reset to use the default API base.' },
   providerExtraHeadersHelp: { zh: '用于自定义请求头（可选）。', en: 'Optional custom request headers.' },
+  providerTestConnection: { zh: '测试连接', en: 'Test Connection' },
+  providerTestingConnection: { zh: '测试中...', en: 'Testing...' },
+  providerTestConnectionSuccess: { zh: '连接测试通过', en: 'Connection test passed' },
+  providerTestConnectionFailed: { zh: '连接测试失败', en: 'Connection test failed' },
   resetToDefault: { zh: '恢复默认', en: 'Reset to Default' },
   leaveBlankToKeepUnchanged: { zh: '留空则保持不变', en: 'Leave blank to keep unchanged' },
 

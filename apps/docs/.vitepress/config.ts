@@ -84,7 +84,8 @@ const enSidebar = [
     items: [
       { text: 'Introduction', link: '/en/guide/introduction' },
       { text: 'Quick Start', link: '/en/guide/getting-started' },
-      { text: 'Configuration', link: '/en/guide/configuration' }
+      { text: 'Configuration', link: '/en/guide/configuration' },
+      { text: 'Model Selection', link: '/en/guide/model-selection' }
     ]
   },
   {
@@ -117,7 +118,8 @@ const zhSidebar = [
     items: [
       { text: '介绍', link: '/zh/guide/introduction' },
       { text: '上手', link: '/zh/guide/getting-started' },
-      { text: '配置', link: '/zh/guide/configuration' }
+      { text: '配置', link: '/zh/guide/configuration' },
+      { text: '模型选型', link: '/zh/guide/model-selection' }
     ]
   },
   {

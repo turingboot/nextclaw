@@ -111,27 +111,27 @@ nextclaw stop   # 停止服务
 
 **配置 UI** — 模型、Provider 与默认项一屏搞定：
 
-![Config UI](images/screenshots/nextclaw-ui-screenshot.png)
+![Config UI](https://github.com/Peiiii/nextclaw/raw/master/images/screenshots/nextclaw-ui-screenshot.png)
 
 **AI Provider** — 配置 OpenRouter、OpenAI、MiniMax、DashScope 等；查看已配置与全部 Provider：
 
-![AI Providers](images/screenshots/nextclaw-providers-page.png)
+![AI Providers](https://github.com/Peiiii/nextclaw/raw/master/images/screenshots/nextclaw-providers-page.png)
 
 **消息渠道** — 启用与配置 Discord、飞书、QQ 等：
 
-![Message Channels](images/screenshots/nextclaw-channels-page.png)
+![Message Channels](https://github.com/Peiiii/nextclaw/raw/master/images/screenshots/nextclaw-channels-page.png)
 
 **定时任务** — 查看与管理 Cron，立即运行、启用/禁用、查看上次运行：
 
-<img src="images/screenshots/nextclaw-cron-job-page.png" width="960" alt="Cron Jobs" />
+<img src="https://github.com/Peiiii/nextclaw/raw/master/images/screenshots/nextclaw-cron-job-page.png" width="960" alt="Cron Jobs" />
 
 **插件** — 从目录安装与管理渠道、Provider 等插件：
 
-![Plugins](images/screenshots/nextclaw-plugins-page.png)
+![Plugins](https://github.com/Peiiii/nextclaw/raw/master/images/screenshots/nextclaw-plugins-page.png)
 
 **技能** — 启用与配置技能（网页搜索、exec、记忆、子 Agent 等）：
 
-![Skills](images/screenshots/nextclaw-skills-page.png)
+![Skills](https://github.com/Peiiii/nextclaw/raw/master/images/screenshots/nextclaw-skills-page.png)
 
 ---
 

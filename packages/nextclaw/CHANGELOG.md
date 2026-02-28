@@ -1,5 +1,17 @@
 # nextclaw
 
+## 0.8.44
+
+### Patch Changes
+
+- Release frontend UI changes only.
+
+## 0.8.43
+
+### Patch Changes
+
+- eb6446f: Fix provider list icon consistency by enforcing a fixed logo size in the UI.
+
 ## 0.8.42
 
 ### Patch Changes

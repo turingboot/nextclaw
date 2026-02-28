@@ -111,27 +111,27 @@ nextclaw stop   # stop the service
 
 **Config UI** — providers, models, and defaults in one screen:
 
-![Config UI](images/screenshots/nextclaw-ui-screenshot.png)
+![Config UI](https://github.com/Peiiii/nextclaw/raw/master/images/screenshots/nextclaw-ui-screenshot.png)
 
 **AI Providers** — configure OpenRouter, OpenAI, MiniMax, DashScope, and more; view configured vs all providers:
 
-![AI Providers](images/screenshots/nextclaw-providers-page.png)
+![AI Providers](https://github.com/Peiiii/nextclaw/raw/master/images/screenshots/nextclaw-providers-page.png)
 
 **Message Channels** — enable and configure Discord, Feishu, QQ, and more:
 
-![Message Channels](images/screenshots/nextclaw-channels-page.png)
+![Message Channels](https://github.com/Peiiii/nextclaw/raw/master/images/screenshots/nextclaw-channels-page.png)
 
 **Cron Jobs** — view and manage scheduled tasks, run now, enable/disable, track last run:
 
-<img src="images/screenshots/nextclaw-cron-job-page.png" width="960" alt="Cron Jobs" />
+<img src="https://github.com/Peiiii/nextclaw/raw/master/images/screenshots/nextclaw-cron-job-page.png" width="960" alt="Cron Jobs" />
 
 **Plugins** — install and manage channel and provider plugins from the catalog:
 
-![Plugins](images/screenshots/nextclaw-plugins-page.png)
+![Plugins](https://github.com/Peiiii/nextclaw/raw/master/images/screenshots/nextclaw-plugins-page.png)
 
 **Skills** — enable and configure skills (web search, exec, memory, subagents, etc.):
 
-![Skills](images/screenshots/nextclaw-skills-page.png)
+![Skills](https://github.com/Peiiii/nextclaw/raw/master/images/screenshots/nextclaw-skills-page.png)
 
 ---
 

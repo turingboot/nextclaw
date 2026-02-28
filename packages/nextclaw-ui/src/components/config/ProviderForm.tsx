@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useConfig, useConfigMeta, useConfigSchema, useUpdateProvider } from '@/hooks/useConfig';
+import { useConfig, useConfigMeta, useConfigSchema, useTestProviderConnection, useUpdateProvider } from '@/hooks/useConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,8 +9,9 @@ import { KeyValueEditor } from '@/components/common/KeyValueEditor';
 import { StatusDot } from '@/components/ui/status-dot';
 import { t } from '@/lib/i18n';
 import { hintForPath } from '@/lib/config-hints';
-import type { ProviderConfigUpdate } from '@/api/types';
-import { KeyRound, Globe, Hash, RotateCcw } from 'lucide-react';
+import type { ProviderConfigUpdate, ProviderConnectionTestRequest } from '@/api/types';
+import { KeyRound, Globe, Hash, RotateCcw, CircleDotDashed } from 'lucide-react';
+import { toast } from 'sonner';
 
 type WireApiType = 'auto' | 'chat' | 'responses';
 
@@ -56,6 +57,7 @@ export function ProviderForm({ providerName }: ProviderFormProps) {
   const { data: meta } = useConfigMeta();
   const { data: schema } = useConfigSchema();
   const updateProvider = useUpdateProvider();
+  const testProviderConnection = useTestProviderConnection();
 
   const [apiKey, setApiKey] = useState('');
   const [apiBase, setApiBase] = useState('');
@@ -152,6 +154,39 @@ export function ProviderForm({ providerName }: ProviderFormProps) {
     updateProvider.mutate({ provider: providerName, data: payload });
   };
 
+  const handleTestConnection = async () => {
+    if (!providerName) {
+      return;
+    }
+
+    const payload: ProviderConnectionTestRequest = {
+      apiBase: apiBase.trim(),
+      extraHeaders: normalizeHeaders(extraHeaders),
+      model: config?.agents.defaults.model ?? null
+    };
+    if (apiKey.trim().length > 0) {
+      payload.apiKey = apiKey.trim();
+    }
+    if (providerSpec?.supportsWireApi) {
+      payload.wireApi = wireApi;
+    }
+
+    try {
+      const result = await testProviderConnection.mutateAsync({
+        provider: providerName,
+        data: payload
+      });
+      if (result.success) {
+        toast.success(`${t('providerTestConnectionSuccess')} (${result.latencyMs}ms)`);
+        return;
+      }
+      toast.error(`${t('providerTestConnectionFailed')}: ${result.message}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`${t('providerTestConnectionFailed')}: ${message}`);
+    }
+  };
+
   if (!providerName || !providerSpec || !providerConfig) {
     return (
       <div className="flex min-h-[520px] items-center justify-center rounded-2xl border border-gray-200/70 bg-white px-6 text-center xl:h-[calc(100vh-180px)] xl:min-h-[600px] xl:max-h-[860px]">
@@ -244,10 +279,16 @@ export function ProviderForm({ providerName }: ProviderFormProps) {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-6 py-4">
-          <Button type="button" variant="outline" onClick={resetToDefault}>
-            <RotateCcw className="mr-2 h-4 w-4" />
-            {t('resetToDefault')}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" onClick={resetToDefault}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              {t('resetToDefault')}
+            </Button>
+            <Button type="button" variant="outline" onClick={handleTestConnection} disabled={testProviderConnection.isPending}>
+              <CircleDotDashed className="mr-2 h-4 w-4" />
+              {testProviderConnection.isPending ? t('providerTestingConnection') : t('providerTestConnection')}
+            </Button>
+          </div>
           <Button type="submit" disabled={updateProvider.isPending || !hasChanges}>
             {updateProvider.isPending ? t('saving') : hasChanges ? t('save') : t('unchanged')}
           </Button>

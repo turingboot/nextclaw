@@ -3,6 +3,7 @@ import {
   saveConfig,
   ConfigSchema,
   probeFeishu,
+  LiteLLMProvider,
   type Config,
   type ConfigActionExecuteRequest,
   type ConfigActionExecuteResult,
@@ -13,6 +14,7 @@ import {
   PROVIDERS,
   buildConfigSchema,
   findProviderByName,
+  getProviderName,
   getPackageVersion,
   hasSecretRef,
   isSensitiveConfigPath,
@@ -26,6 +28,8 @@ import type {
   ConfigSchemaResponse,
   ConfigView,
   ProviderConfigUpdate,
+  ProviderConnectionTestRequest,
+  ProviderConnectionTestResult,
   ProviderConfigView,
   SecretsConfigUpdate,
   SecretsView,
@@ -36,6 +40,19 @@ import type {
 
 const MASK_MIN_LENGTH = 8;
 const EXTRA_SENSITIVE_PATH_PATTERNS = [/authorization/i, /cookie/i, /session/i, /bearer/i];
+const PROVIDER_TEST_MODEL_FALLBACKS: Record<string, string> = {
+  openai: "gpt-4o-mini",
+  deepseek: "deepseek-chat",
+  gemini: "gemini-2.0-flash",
+  zhipu: "glm-4-flash",
+  dashscope: "qwen-plus",
+  moonshot: "moonshot-v1-8k",
+  minimax: "minimax-text-01",
+  groq: "llama-3.1-8b-instant",
+  openrouter: "openai/gpt-4o-mini",
+  aihubmix: "gpt-4o-mini",
+  anthropic: "claude-3-5-haiku-latest"
+};
 
 type ExecuteActionResult =
   | { ok: true; data: ConfigActionExecuteResult }
@@ -485,6 +502,135 @@ export function updateProvider(
   const uiHints = buildUiHints(next);
   const updated = (next.providers as Record<string, ProviderConfig>)[providerName];
   return toProviderView(next, updated, providerName, uiHints, spec ?? undefined);
+}
+
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeHeaders(input: Record<string, string> | null | undefined): Record<string, string> | null {
+  if (!input) {
+    return null;
+  }
+  const entries = Object.entries(input)
+    .map(([key, value]) => [key.trim(), String(value ?? "").trim()] as const)
+    .filter(([key, value]) => key.length > 0 && value.length > 0);
+  if (entries.length === 0) {
+    return null;
+  }
+  return Object.fromEntries(entries);
+}
+
+function resolveTestModel(config: Config, providerName: string, requestedModel: string | null): string | null {
+  if (requestedModel) {
+    return requestedModel;
+  }
+
+  const defaultModel = normalizeOptionalString(config.agents.defaults.model);
+  if (defaultModel) {
+    const routedProvider = getProviderName(config, defaultModel);
+    if (!routedProvider || routedProvider === providerName) {
+      return defaultModel;
+    }
+  }
+
+  return PROVIDER_TEST_MODEL_FALLBACKS[providerName] ?? defaultModel ?? null;
+}
+
+function stringifyError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  return raw.replace(/\s+/g, " ").trim();
+}
+
+export async function testProviderConnection(
+  configPath: string,
+  providerName: string,
+  patch: ProviderConnectionTestRequest
+): Promise<ProviderConnectionTestResult | null> {
+  const config = loadConfigOrDefault(configPath);
+  const provider = (config.providers as Record<string, ProviderConfig>)[providerName];
+  if (!provider) {
+    return null;
+  }
+
+  const spec = findProviderByName(providerName);
+  const hasApiKeyPatch = Object.prototype.hasOwnProperty.call(patch, "apiKey");
+  const providedApiKey = normalizeOptionalString(patch.apiKey);
+  const currentApiKey = normalizeOptionalString(provider.apiKey);
+  const apiKey = hasApiKeyPatch ? providedApiKey : currentApiKey;
+
+  const hasApiBasePatch = Object.prototype.hasOwnProperty.call(patch, "apiBase");
+  const patchedApiBase = normalizeOptionalString(patch.apiBase);
+  const currentApiBase = normalizeOptionalString(provider.apiBase);
+  const apiBase = hasApiBasePatch
+    ? patchedApiBase ?? spec?.defaultApiBase ?? null
+    : currentApiBase ?? spec?.defaultApiBase ?? null;
+
+  const hasHeadersPatch = Object.prototype.hasOwnProperty.call(patch, "extraHeaders");
+  const extraHeaders = hasHeadersPatch
+    ? normalizeHeaders(patch.extraHeaders ?? null)
+    : normalizeHeaders(provider.extraHeaders ?? null);
+
+  const wireApi = spec?.supportsWireApi
+    ? patch.wireApi ?? provider.wireApi ?? spec.defaultWireApi ?? "auto"
+    : null;
+
+  if (!apiKey && !spec?.isLocal) {
+    return {
+      success: false,
+      provider: providerName,
+      latencyMs: 0,
+      message: "API key is required before testing the connection."
+    };
+  }
+
+  const requestedModel = normalizeOptionalString(patch.model);
+  const model = resolveTestModel(config, providerName, requestedModel);
+  if (!model) {
+    return {
+      success: false,
+      provider: providerName,
+      latencyMs: 0,
+      message: "No test model found. Set a default model first, then try again."
+    };
+  }
+
+  const probe = new LiteLLMProvider({
+    apiKey,
+    apiBase,
+    defaultModel: model,
+    extraHeaders,
+    providerName,
+    wireApi
+  });
+
+  const startedAtMs = Date.now();
+  try {
+    await probe.chat({
+      model,
+      messages: [{ role: "user", content: "ping" }],
+      maxTokens: 8
+    });
+    return {
+      success: true,
+      provider: providerName,
+      model,
+      latencyMs: Date.now() - startedAtMs,
+      message: "Connection test passed."
+    };
+  } catch (error) {
+    return {
+      success: false,
+      provider: providerName,
+      model,
+      latencyMs: Date.now() - startedAtMs,
+      message: stringifyError(error) || "Connection test failed."
+    };
+  }
 }
 
 export function updateChannel(

@@ -24,6 +24,18 @@ export type ProviderConfigUpdate = {
   wireApi?: "auto" | "chat" | "responses" | null;
 };
 
+export type ProviderConnectionTestRequest = ProviderConfigUpdate & {
+  model?: string | null;
+};
+
+export type ProviderConnectionTestResult = {
+  success: boolean;
+  provider: string;
+  model?: string;
+  latencyMs: number;
+  message: string;
+};
+
 export type AgentProfileView = {
   id: string;
   default?: boolean;

@@ -10,6 +10,7 @@ import {
   updateChannel,
   updateModel,
   updateProvider,
+  testProviderConnection,
   updateSecrets,
   updateRuntime,
   listSessions,
@@ -39,6 +40,7 @@ import type {
   CronRunRequest,
   CronActionResult,
   CronJobView,
+  ProviderConnectionTestRequest,
   ProviderConfigUpdate,
   SecretsConfigUpdate,
   RuntimeConfigUpdate,
@@ -1273,6 +1275,23 @@ export function createUiRouter(options: UiRouterOptions): Hono {
       return c.json(err("NOT_FOUND", `unknown provider: ${provider}`), 404);
     }
     options.publish({ type: "config.updated", payload: { path: `providers.${provider}` } });
+    return c.json(ok(result));
+  });
+
+  app.post("/api/config/providers/:provider/test", async (c) => {
+    const provider = c.req.param("provider");
+    const body = await readJson<Record<string, unknown>>(c.req.raw);
+    if (!body.ok) {
+      return c.json(err("INVALID_BODY", "invalid json body"), 400);
+    }
+    const result = await testProviderConnection(
+      options.configPath,
+      provider,
+      body.data as ProviderConnectionTestRequest
+    );
+    if (!result) {
+      return c.json(err("NOT_FOUND", `unknown provider: ${provider}`), 404);
+    }
     return c.json(ok(result));
   });
 
