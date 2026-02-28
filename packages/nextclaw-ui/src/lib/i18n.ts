@@ -172,14 +172,20 @@ export const LABELS: Record<string, { zh: string; en: string }> = {
 
   // Provider
   providersPageTitle: { zh: 'AI 提供商', en: 'AI Providers' },
+  providersPageDescription: { zh: '在一个页面内完成提供商切换、配置与保存。', en: 'Switch, configure, and save providers in one continuous workspace.' },
   providersLoading: { zh: '加载中...', en: 'Loading...' },
   providersTabConfigured: { zh: '已配置', en: 'Configured' },
   providersTabAll: { zh: '全部提供商', en: 'All Providers' },
+  providersFilterPlaceholder: { zh: '搜索提供商', en: 'Search providers' },
+  providersNoMatch: { zh: '没有匹配的提供商', en: 'No matching providers' },
+  providersSelectPlaceholder: { zh: '选择提供商', en: 'Select Provider' },
+  providersSelectTitle: { zh: '选择左侧提供商开始配置', en: 'Select a provider from the left to configure' },
+  providersSelectDescription: { zh: '你可以连续切换多个提供商并逐个保存配置。', en: 'Switch between providers continuously and save each configuration.' },
   providersDefaultDescription: { zh: '为你的 Agent 配置 AI 服务', en: 'Configure AI services for your agents' },
   providersEmptyTitle: { zh: '尚未配置提供商', en: 'No providers configured' },
   providersEmptyDescription: { zh: '添加一个 AI 提供商后即可开始使用。', en: 'Add an AI provider to start using the platform.' },
   apiKey: { zh: 'API 密钥', en: 'API Key' },
-  apiBase: { zh: 'API Base', en: 'API Base' },
+  apiBase: { zh: 'API Base URL', en: 'API Base URL' },
   extraHeaders: { zh: '额外请求头', en: 'Extra Headers' },
   wireApi: { zh: '请求接口', en: 'Wire API' },
   wireApiAuto: { zh: '自动（优先 Chat，必要时 Responses）', en: 'Auto (Chat with fallback)' },
@@ -191,6 +197,9 @@ export const LABELS: Record<string, { zh: string; en: string }> = {
   hideKey: { zh: '隐藏密钥', en: 'Hide Key' },
   providerFormDescription: { zh: '配置 AI 提供商的 API 密钥与参数', en: 'Configure API keys and parameters for AI provider' },
   enterApiKey: { zh: '请输入 API 密钥', en: 'Enter API Key' },
+  providerApiBaseHelp: { zh: '留空或恢复默认即可使用预置 API Base。', en: 'Leave empty or reset to use the default API base.' },
+  providerExtraHeadersHelp: { zh: '用于自定义请求头（可选）。', en: 'Optional custom request headers.' },
+  resetToDefault: { zh: '恢复默认', en: 'Reset to Default' },
   leaveBlankToKeepUnchanged: { zh: '留空则保持不变', en: 'Leave blank to keep unchanged' },
 
   // Channel

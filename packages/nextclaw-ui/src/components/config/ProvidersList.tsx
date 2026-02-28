@@ -1,111 +1,171 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useConfig, useConfigMeta, useConfigSchema } from '@/hooks/useConfig';
-import { KeyRound } from 'lucide-react';
-import { useState } from 'react';
+import { Search, KeyRound } from 'lucide-react';
 import { ProviderForm } from './ProviderForm';
-import { useUiStore } from '@/stores/ui.store';
 import { cn } from '@/lib/utils';
 import { Tabs } from '@/components/ui/tabs-custom';
 import { LogoBadge } from '@/components/common/LogoBadge';
 import { getProviderLogo } from '@/lib/logos';
 import { hintForPath } from '@/lib/config-hints';
-import { ConfigCard, ConfigCardHeader, ConfigCardBody, ConfigCardFooter } from '@/components/ui/config-card';
 import { StatusDot } from '@/components/ui/status-dot';
-import { ActionLink } from '@/components/ui/action-link';
 import { t } from '@/lib/i18n';
 import { PageLayout, PageHeader } from '@/components/layout/page-layout';
+import { Input } from '@/components/ui/input';
+
+function formatBasePreview(base?: string | null): string | null {
+  if (!base) {
+    return null;
+  }
+  try {
+    const parsed = new URL(base);
+    const path = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname : '';
+    return `${parsed.host}${path}`;
+  } catch {
+    return base.replace(/^https?:\/\//, '');
+  }
+}
 
 export function ProvidersList() {
   const { data: config } = useConfig();
   const { data: meta } = useConfigMeta();
   const { data: schema } = useConfigSchema();
-  const { openProviderModal } = useUiStore();
+
   const [activeTab, setActiveTab] = useState('installed');
+  const [selectedProvider, setSelectedProvider] = useState<string | undefined>();
+  const [query, setQuery] = useState('');
+
   const uiHints = schema?.uiHints;
+  const providers = meta?.providers ?? [];
+  const providersConfig = config?.providers ?? {};
+  const configuredCount = providers.filter((provider) => providersConfig[provider.name]?.apiKeySet).length;
+
+  const tabs = [
+    { id: 'installed', label: t('providersTabConfigured'), count: configuredCount },
+    { id: 'all', label: t('providersTabAll'), count: providers.length }
+  ];
+
+  const filteredProviders = useMemo(() => {
+    const baseProviders = meta?.providers ?? [];
+    const baseConfig = config?.providers ?? {};
+    const keyword = query.trim().toLowerCase();
+    return baseProviders
+      .filter((provider) => {
+        if (activeTab === 'installed') {
+          return Boolean(baseConfig[provider.name]?.apiKeySet);
+        }
+        return true;
+      })
+      .filter((provider) => {
+        if (!keyword) {
+          return true;
+        }
+        const display = (provider.displayName || provider.name).toLowerCase();
+        return display.includes(keyword) || provider.name.toLowerCase().includes(keyword);
+      });
+  }, [meta, config, activeTab, query]);
+
+  useEffect(() => {
+    if (filteredProviders.length === 0) {
+      setSelectedProvider(undefined);
+      return;
+    }
+
+    const exists = filteredProviders.some((provider) => provider.name === selectedProvider);
+    if (!exists) {
+      setSelectedProvider(filteredProviders[0].name);
+    }
+  }, [filteredProviders, selectedProvider]);
+
+  const selectedName = selectedProvider;
 
   if (!config || !meta) {
     return <div className="p-8">{t('providersLoading')}</div>;
   }
 
-  const tabs = [
-    { id: 'installed', label: t('providersTabConfigured'), count: config.providers ? Object.keys(config.providers).filter(k => config.providers[k].apiKeySet).length : 0 },
-    { id: 'all', label: t('providersTabAll'), count: meta.providers.length }
-  ];
-
-  const filteredProviders = activeTab === 'installed'
-    ? meta.providers.filter((p) => config.providers[p.name]?.apiKeySet)
-    : meta.providers;
-
   return (
     <PageLayout>
-      <PageHeader title={t('providersPageTitle')} />
+      <PageHeader title={t('providersPageTitle')} description={t('providersPageDescription')} />
 
-      <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
-
-      {/* Provider Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredProviders.map((provider) => {
-          const providerConfig = config.providers[provider.name];
-          const hasConfig = providerConfig?.apiKeySet;
-          const providerHint = hintForPath(`providers.${provider.name}`, uiHints);
-          const description = providerHint?.help || t('providersDefaultDescription');
-
-          return (
-            <ConfigCard key={provider.name} onClick={() => openProviderModal(provider.name)}>
-              <ConfigCardHeader>
-                <LogoBadge
-                  name={provider.name}
-                  src={getProviderLogo(provider.name)}
-                  className={cn(
-                    'h-11 w-11 rounded-xl border transition-all',
-                    hasConfig
-                      ? 'bg-white border-primary/30'
-                      : 'bg-white border-gray-200/60 group-hover:border-gray-300'
-                  )}
-                  imgClassName="h-6 w-6"
-                  fallback={(
-                    <span className={cn(
-                      'text-base font-semibold uppercase',
-                      hasConfig ? 'text-gray-800' : 'text-gray-400'
-                    )}>
-                      {provider.name[0]}
-                    </span>
-                  )}
-                />
-                <StatusDot
-                  status={hasConfig ? 'ready' : 'setup'}
-                  label={hasConfig ? t('statusReady') : t('statusSetup')}
-                />
-              </ConfigCardHeader>
-
-              <ConfigCardBody
-                title={provider.displayName || provider.name}
-                description={description}
-              />
-
-              <ConfigCardFooter>
-                <ActionLink label={hasConfig ? t('actionConfigure') : t('actionAddProvider')} />
-              </ConfigCardFooter>
-            </ConfigCard>
-          );
-        })}
-      </div>
-
-      {/* Empty State */}
-      {filteredProviders.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="h-14 w-14 flex items-center justify-center rounded-xl bg-gray-100/80 mb-4">
-            <KeyRound className="h-6 w-6 text-gray-300" />
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <section className="flex min-h-[520px] flex-col rounded-2xl border border-gray-200/70 bg-white shadow-card xl:h-[calc(100vh-180px)] xl:min-h-[600px] xl:max-h-[860px]">
+          <div className="border-b border-gray-100 px-4 pt-4">
+            <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} className="mb-0" />
           </div>
-          <h3 className="text-[14px] font-semibold text-gray-900 mb-1.5">
-            {t('providersEmptyTitle')}
-          </h3>
-          <p className="text-[13px] text-gray-400 max-w-sm">
-            {t('providersEmptyDescription')}
-          </p>
-        </div>
-      )}
 
-      <ProviderForm />
+          <div className="border-b border-gray-100 px-4 py-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t('providersFilterPlaceholder')}
+                className="h-10 rounded-xl pl-9"
+              />
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+            {filteredProviders.map((provider) => {
+              const providerConfig = config.providers[provider.name];
+              const isReady = Boolean(providerConfig?.apiKeySet);
+              const isActive = selectedName === provider.name;
+              const providerHint = hintForPath(`providers.${provider.name}`, uiHints);
+              const resolvedBase = providerConfig?.apiBase || provider.defaultApiBase || '';
+              const basePreview = formatBasePreview(resolvedBase);
+              const description = basePreview || providerHint?.help || t('providersDefaultDescription');
+
+              return (
+                <button
+                  key={provider.name}
+                  type="button"
+                  onClick={() => setSelectedProvider(provider.name)}
+                  className={cn(
+                    'w-full rounded-xl border p-2.5 text-left transition-all',
+                    isActive
+                      ? 'border-primary/30 bg-primary-50/40 shadow-sm'
+                      : 'border-gray-200/70 bg-white hover:border-gray-300 hover:bg-gray-50/70'
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <LogoBadge
+                        name={provider.name}
+                        src={getProviderLogo(provider.name)}
+                        className={cn(
+                          'h-10 w-10 rounded-lg border',
+                          isReady ? 'border-primary/30 bg-white' : 'border-gray-200/70 bg-white'
+                        )}
+                        imgClassName="h-5 w-5"
+                        fallback={<span className="text-sm font-semibold uppercase text-gray-500">{provider.name[0]}</span>}
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-900">{provider.displayName || provider.name}</p>
+                        <p className="line-clamp-1 text-[11px] text-gray-500">{description}</p>
+                      </div>
+                    </div>
+                    <StatusDot
+                      status={isReady ? 'ready' : 'setup'}
+                      label={isReady ? t('statusReady') : t('statusSetup')}
+                      className="min-w-[56px] justify-center"
+                    />
+                  </div>
+                </button>
+              );
+            })}
+
+            {filteredProviders.length === 0 && (
+              <div className="flex h-full min-h-[220px] flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50/70 py-10 text-center">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-white">
+                  <KeyRound className="h-5 w-5 text-gray-300" />
+                </div>
+                <p className="text-sm font-medium text-gray-700">{t('providersNoMatch')}</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <ProviderForm providerName={selectedName} />
+      </div>
     </PageLayout>
   );
 }

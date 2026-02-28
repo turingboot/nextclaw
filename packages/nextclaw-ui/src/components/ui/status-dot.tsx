@@ -43,7 +43,7 @@ const statusStyles: Record<StatusType, { dot: string; text: string; bg: string }
 export function StatusDot({ status, label, className }: StatusDotProps) {
     const style = statusStyles[status];
     return (
-        <div className={cn('flex items-center gap-1.5 px-2 py-0.5 rounded-full', style.bg, className)}>
+        <div className={cn('inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5', style.bg, className)}>
             <span className={cn('h-1.5 w-1.5 rounded-full', style.dot)} />
             <span className={cn('text-[11px] font-medium', style.text)}>{label}</span>
         </div>

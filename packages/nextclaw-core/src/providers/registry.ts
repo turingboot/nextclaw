@@ -65,7 +65,7 @@ export const PROVIDERS: ProviderSpec[] = [
     isLocal: false,
     detectByKeyPrefix: "",
     detectByBaseKeyword: "",
-    defaultApiBase: "",
+    defaultApiBase: "https://api.anthropic.com",
     stripModelPrefix: false,
     modelOverrides: []
   },
@@ -81,7 +81,7 @@ export const PROVIDERS: ProviderSpec[] = [
     isLocal: false,
     detectByKeyPrefix: "",
     detectByBaseKeyword: "",
-    defaultApiBase: "",
+    defaultApiBase: "https://api.openai.com/v1",
     stripModelPrefix: false,
     modelOverrides: [],
     supportsWireApi: true,
@@ -100,7 +100,7 @@ export const PROVIDERS: ProviderSpec[] = [
     isLocal: false,
     detectByKeyPrefix: "",
     detectByBaseKeyword: "",
-    defaultApiBase: "",
+    defaultApiBase: "https://api.deepseek.com",
     stripModelPrefix: false,
     modelOverrides: []
   },
@@ -116,7 +116,7 @@ export const PROVIDERS: ProviderSpec[] = [
     isLocal: false,
     detectByKeyPrefix: "",
     detectByBaseKeyword: "",
-    defaultApiBase: "",
+    defaultApiBase: "https://generativelanguage.googleapis.com/v1beta/openai",
     stripModelPrefix: false,
     modelOverrides: []
   },
@@ -132,7 +132,7 @@ export const PROVIDERS: ProviderSpec[] = [
     isLocal: false,
     detectByKeyPrefix: "",
     detectByBaseKeyword: "",
-    defaultApiBase: "",
+    defaultApiBase: "https://open.bigmodel.cn/api/paas/v4",
     stripModelPrefix: false,
     modelOverrides: []
   },
@@ -148,7 +148,7 @@ export const PROVIDERS: ProviderSpec[] = [
     isLocal: false,
     detectByKeyPrefix: "",
     detectByBaseKeyword: "",
-    defaultApiBase: "",
+    defaultApiBase: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     stripModelPrefix: false,
     modelOverrides: []
   },
@@ -196,7 +196,7 @@ export const PROVIDERS: ProviderSpec[] = [
     isLocal: true,
     detectByKeyPrefix: "",
     detectByBaseKeyword: "",
-    defaultApiBase: "",
+    defaultApiBase: "http://127.0.0.1:8000/v1",
     stripModelPrefix: false,
     modelOverrides: []
   },
@@ -212,7 +212,7 @@ export const PROVIDERS: ProviderSpec[] = [
     isLocal: false,
     detectByKeyPrefix: "",
     detectByBaseKeyword: "",
-    defaultApiBase: "",
+    defaultApiBase: "https://api.groq.com/openai/v1",
     stripModelPrefix: false,
     modelOverrides: []
   }

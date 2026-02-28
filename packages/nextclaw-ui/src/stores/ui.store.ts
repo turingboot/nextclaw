@@ -7,11 +7,6 @@ interface UiState {
   connectionStatus: ConnectionStatus;
   setConnectionStatus: (status: ConnectionStatus) => void;
 
-  // Provider modal
-  providerModal: { open: boolean; provider?: string };
-  openProviderModal: (provider?: string) => void;
-  closeProviderModal: () => void;
-
   // Channel modal
   channelModal: { open: boolean; channel?: string };
   openChannelModal: (channel?: string) => void;
@@ -21,10 +16,6 @@ interface UiState {
 export const useUiStore = create<UiState>((set) => ({
   connectionStatus: 'disconnected',
   setConnectionStatus: (status) => set({ connectionStatus: status }),
-
-  providerModal: { open: false },
-  openProviderModal: (provider) => set({ providerModal: { open: true, provider } }),
-  closeProviderModal: () => set({ providerModal: { open: false } }),
 
   channelModal: { open: false },
   openChannelModal: (channel) => set({ channelModal: { open: true, channel } }),

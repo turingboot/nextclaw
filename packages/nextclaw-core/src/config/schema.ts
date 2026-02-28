@@ -464,7 +464,7 @@ export function getApiBase(config: Config, model?: string): string | null {
   }
   if (name) {
     const spec = findProviderByName(name);
-    if (spec?.isGateway && spec.defaultApiBase) {
+    if (spec?.defaultApiBase) {
       return spec.defaultApiBase;
     }
   }
