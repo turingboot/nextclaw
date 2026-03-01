@@ -43,6 +43,8 @@ type LandingCopy = {
   screenshotSrc: string;
   screenshotChannelsAlt: string;
   screenshotChannelsSrc: string;
+  screenshotBrowserAlt: string;
+  screenshotBrowserSrc: string;
   featuresTitle: string;
   featuresSubtitle: string;
   features: FeatureItem[];
@@ -126,6 +128,8 @@ const COPY: Record<Locale, LandingCopy> = {
     screenshotSrc: '/nextclaw-providers-page-en.png',
     screenshotChannelsAlt: 'NextClaw message channels',
     screenshotChannelsSrc: '/nextclaw-channels-page-en.png',
+    screenshotBrowserAlt: 'NextClaw Micro Browser',
+    screenshotBrowserSrc: '/nextclaw-micro-browser-dock-en.png',
     featuresTitle: 'Everything you need.',
     featuresSubtitle:
       'A powerful core wrapped in a seamless interface. Run NextClaw locally or expose it safely.',
@@ -270,6 +274,8 @@ const COPY: Record<Locale, LandingCopy> = {
     screenshotSrc: '/nextclaw-providers-page-cn.png',
     screenshotChannelsAlt: 'NextClaw 消息渠道',
     screenshotChannelsSrc: '/nextclaw-channels-page-cn.png',
+    screenshotBrowserAlt: 'NextClaw 微浏览器',
+    screenshotBrowserSrc: '/nextclaw-micro-browser-dock-en.png',
     featuresTitle: '你需要的能力都在这里。',
     featuresSubtitle: '强大的核心能力与顺手的交互体验统一在一个入口中。',
     features: [
@@ -554,6 +560,7 @@ class LandingPage {
                 <div style="display: flex; flex-direction: column; gap: 1rem; width: 100%;">
                   <img src="${this.copy.screenshotSrc}" alt="${this.copy.screenshotAlt}" class="w-full h-auto object-cover border-t border-border/40" />
                   <img src="${this.copy.screenshotChannelsSrc}" alt="${this.copy.screenshotChannelsAlt}" class="w-full h-auto object-cover border-t border-border/40" />
+                  <img src="${this.copy.screenshotBrowserSrc}" alt="${this.copy.screenshotBrowserAlt}" class="w-full h-auto object-cover border-t border-border/40" />
                 </div>
               </div>
             </div>
