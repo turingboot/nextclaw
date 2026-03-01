@@ -15,17 +15,19 @@
 
 [Why NextClaw?](#why-nextclaw) · [Quick Start](#-quick-start) · [Features](#-features) · [Architecture](#-architecture) · [Screenshots](#-screenshots) · [Commands](#-commands) · [Channels](#-channels) · [Community](#-community) · [Docs](https://docs.nextclaw.io/en/)
 
-### 10+ AI Providers
+### 12+ AI Providers
 <p>
+  <img src="https://img.shields.io/badge/OpenRouter-6366F1?style=flat-square" alt="OpenRouter" />
   <img src="https://img.shields.io/badge/OpenAI-412991?style=flat-square&logo=openai&logoColor=white" alt="OpenAI" />
+  <img src="https://img.shields.io/badge/Anthropic-D4A27F?style=flat-square&logo=anthropic&logoColor=white" alt="Anthropic" />
   <img src="https://img.shields.io/badge/Gemini-8E75B2?style=flat-square&logo=googlegemini&logoColor=white" alt="Gemini" />
   <img src="https://img.shields.io/badge/DeepSeek-0066FF?style=flat-square" alt="DeepSeek" />
-  <img src="https://img.shields.io/badge/OpenRouter-6366F1?style=flat-square" alt="OpenRouter" />
   <img src="https://img.shields.io/badge/Groq-F55036?style=flat-square" alt="Groq" />
   <img src="https://img.shields.io/badge/MiniMax-FF6B35?style=flat-square" alt="MiniMax" />
   <img src="https://img.shields.io/badge/Moonshot-1A1A2E?style=flat-square" alt="Moonshot" />
   <img src="https://img.shields.io/badge/DashScope-FF6A00?style=flat-square" alt="DashScope" />
   <img src="https://img.shields.io/badge/Zhipu-0052CC?style=flat-square" alt="Zhipu" />
+  <img src="https://img.shields.io/badge/AiHubMix-00B4D8?style=flat-square" alt="AiHubMix" />
   <img src="https://img.shields.io/badge/vLLM-FF4500?style=flat-square" alt="vLLM" />
 </p>
 

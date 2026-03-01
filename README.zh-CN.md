@@ -15,17 +15,19 @@
 
 [为什么选择 NextClaw？](#为什么选择-nextclaw) · [快速开始](#-快速开始) · [功能](#-功能) · [架构](#-架构) · [截图](#-截图) · [命令](#-命令) · [渠道](#-渠道) · [社群](#-社群) · [文档](https://docs.nextclaw.io/zh/)
 
-### 10+ AI 提供商
+### 12+ AI 提供商
 <p>
+  <img src="https://img.shields.io/badge/OpenRouter-6366F1?style=flat-square" alt="OpenRouter" />
   <img src="https://img.shields.io/badge/OpenAI-412991?style=flat-square&logo=openai&logoColor=white" alt="OpenAI" />
+  <img src="https://img.shields.io/badge/Anthropic-D4A27F?style=flat-square&logo=anthropic&logoColor=white" alt="Anthropic" />
   <img src="https://img.shields.io/badge/Gemini-8E75B2?style=flat-square&logo=googlegemini&logoColor=white" alt="Gemini" />
   <img src="https://img.shields.io/badge/DeepSeek-0066FF?style=flat-square" alt="DeepSeek" />
-  <img src="https://img.shields.io/badge/OpenRouter-6366F1?style=flat-square" alt="OpenRouter" />
   <img src="https://img.shields.io/badge/Groq-F55036?style=flat-square" alt="Groq" />
   <img src="https://img.shields.io/badge/MiniMax-FF6B35?style=flat-square" alt="MiniMax" />
   <img src="https://img.shields.io/badge/Moonshot-1A1A2E?style=flat-square" alt="Moonshot" />
   <img src="https://img.shields.io/badge/通义千问-FF6A00?style=flat-square" alt="DashScope" />
   <img src="https://img.shields.io/badge/智谱-0052CC?style=flat-square" alt="Zhipu" />
+  <img src="https://img.shields.io/badge/AiHubMix-00B4D8?style=flat-square" alt="AiHubMix" />
   <img src="https://img.shields.io/badge/vLLM-FF4500?style=flat-square" alt="vLLM" />
 </p>
 
