@@ -1,5 +1,12 @@
 # nextclaw-core
 
+## 0.6.41
+
+### Patch Changes
+
+- Fix QQ group speaker distinction by injecting stable per-message speaker tags while keeping group-shared sessions.
+  Add a built-in skill that clarifies the group-shared-session plus speaker-distinction strategy.
+
 ## 0.6.40
 
 ### Patch Changes

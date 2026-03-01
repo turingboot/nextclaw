@@ -5,6 +5,7 @@ import type { Config } from "../config/schema.js";
 import {
   Bot,
   ReceiverMode,
+  SessionEvents,
   segment,
   type GroupMessageEvent,
   type GuildMessageEvent,
@@ -19,46 +20,35 @@ export class QQChannel extends BaseChannel<Config["channels"]["qq"]> {
   private bot: Bot | null = null;
   private processedIds: string[] = [];
   private processedSet: Set<string> = new Set();
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private connectTask: Promise<void> | null = null;
+  private reconnectAttempt = 0;
+  private readonly reconnectBaseMs = 1000;
+  private readonly reconnectMaxMs = 60000;
 
   constructor(config: Config["channels"]["qq"], bus: MessageBus) {
     super(config, bus);
   }
 
   async start(): Promise<void> {
-    this.running = true;
     if (!this.config.appId || !this.config.secret) {
+      this.running = false;
       throw new Error("QQ appId/appSecret not configured");
     }
 
-    this.bot = new Bot({
-      appid: this.config.appId,
-      secret: this.config.secret,
-      mode: ReceiverMode.WEBSOCKET,
-      intents: ["C2C_MESSAGE_CREATE", "GROUP_AT_MESSAGE_CREATE"],
-      removeAt: true,
-      logLevel: "info"
-    });
-
-    this.bot.on("message.private", async (event) => {
-      await this.handleIncoming(event);
-    });
-
-    this.bot.on("message.group", async (event) => {
-      await this.handleIncoming(event);
-    });
-
-    await this.bot.start();
-    // eslint-disable-next-line no-console
-    console.log("QQ bot connected");
+    this.running = true;
+    this.reconnectAttempt = 0;
+    this.clearReconnectTimer();
+    this.tryConnect("startup");
   }
 
   async stop(): Promise<void> {
     this.running = false;
-    if (this.bot) {
-      this.bot.removeAllListeners("message.private");
-      this.bot.removeAllListeners("message.group");
-      await this.bot.stop();
-      this.bot = null;
+    this.clearReconnectTimer();
+    this.reconnectAttempt = 0;
+    await this.teardownBot();
+    if (this.connectTask) {
+      await this.connectTask;
     }
   }
 
@@ -107,7 +97,15 @@ export class QQChannel extends BaseChannel<Config["channels"]["qq"]> {
     }
 
     const rawEvent = event as unknown as {
-      sender?: { user_openid?: string; member_openid?: string; user_id?: string };
+      sender?: {
+        user_openid?: string;
+        member_openid?: string;
+        user_id?: string;
+        nickname?: string;
+        nick?: string;
+        card?: string;
+        username?: string;
+      };
       group_openid?: string;
     };
     const senderId =
@@ -121,7 +119,8 @@ export class QQChannel extends BaseChannel<Config["channels"]["qq"]> {
     }
 
     const content = event.raw_message?.trim() ?? "";
-    const safeContent = content || "[empty message]";
+    const normalizedContent = content || "[empty message]";
+    const senderName = this.resolveSenderName(rawEvent);
 
     let chatId = senderId;
     let messageType: QQMessageType = "private";
@@ -133,22 +132,38 @@ export class QQChannel extends BaseChannel<Config["channels"]["qq"]> {
       chatId = groupId;
       qqMeta.groupId = groupId;
       qqMeta.userId = senderId;
+      if (senderName) {
+        qqMeta.userName = senderName;
+      }
     } else if (event.message_type === "guild") {
       messageType = "guild";
       chatId = event.channel_id ?? "";
       qqMeta.guildId = event.guild_id;
       qqMeta.channelId = event.channel_id;
       qqMeta.userId = senderId;
+      if (senderName) {
+        qqMeta.userName = senderName;
+      }
     } else if (event.sub_type === "direct") {
       messageType = "direct";
       chatId = event.guild_id ?? "";
       qqMeta.guildId = event.guild_id;
       qqMeta.userId = senderId;
+      if (senderName) {
+        qqMeta.userName = senderName;
+      }
     } else {
       qqMeta.userId = senderId;
     }
 
     qqMeta.messageType = messageType;
+
+    const safeContent = this.decorateSpeakerPrefix({
+      content: normalizedContent,
+      messageType,
+      senderId,
+      senderName
+    });
 
     if (!chatId) {
       return;
@@ -168,6 +183,58 @@ export class QQChannel extends BaseChannel<Config["channels"]["qq"]> {
         qq: qqMeta
       }
     });
+  }
+
+  private resolveSenderName(rawEvent: {
+    sender?: {
+      nickname?: string;
+      nick?: string;
+      card?: string;
+      username?: string;
+    };
+  }): string | null {
+    const candidates = [
+      rawEvent.sender?.card,
+      rawEvent.sender?.nickname,
+      rawEvent.sender?.nick,
+      rawEvent.sender?.username
+    ];
+    for (const value of candidates) {
+      if (typeof value !== "string") {
+        continue;
+      }
+      const normalized = value.trim();
+      if (normalized) {
+        return normalized;
+      }
+    }
+    return null;
+  }
+
+  private decorateSpeakerPrefix(params: {
+    content: string;
+    messageType: QQMessageType;
+    senderId: string;
+    senderName: string | null;
+  }): string {
+    // Group-like QQ sessions share one chat history; inject speaker identity per message.
+    if (params.messageType !== "group" && params.messageType !== "guild") {
+      return params.content;
+    }
+    const userId = this.sanitizeSpeakerToken(params.senderId);
+    if (!userId) {
+      return params.content;
+    }
+    const name = this.sanitizeSpeakerToken(params.senderName ?? "");
+    const speakerFields = [`user_id=${userId}`];
+    if (name) {
+      speakerFields.push(`name=${name}`);
+    }
+    return `[speaker:${speakerFields.join(";")}] ${params.content}`;
+  }
+
+  private sanitizeSpeakerToken(value: string): string {
+    return value.replace(/[\r\n;\]]/g, " ").trim();
   }
 
   private isDuplicate(messageId: string): boolean {
@@ -200,5 +267,134 @@ export class QQChannel extends BaseChannel<Config["channels"]["qq"]> {
   private isTokenExpiredError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error);
     return message.includes("code(11244)") || message.toLowerCase().includes("token not exist or expire");
+  }
+
+  private tryConnect(trigger: string): void {
+    if (!this.running || this.bot || this.connectTask) {
+      return;
+    }
+    this.connectTask = this.connect(trigger).finally(() => {
+      this.connectTask = null;
+    });
+  }
+
+  private async connect(trigger: string): Promise<void> {
+    let candidate: Bot | null = null;
+    try {
+      candidate = this.createBot();
+      await candidate.start();
+      if (!this.running) {
+        await this.safeStopBot(candidate);
+        return;
+      }
+      this.bot = candidate;
+      this.reconnectAttempt = 0;
+      // eslint-disable-next-line no-console
+      console.log("QQ bot connected");
+    } catch (error) {
+      if (candidate) {
+        await this.safeStopBot(candidate);
+      }
+      if (!this.running) {
+        return;
+      }
+      this.reconnectAttempt += 1;
+      const delayMs = this.getBackoffDelayMs(this.reconnectAttempt);
+      // eslint-disable-next-line no-console
+      console.error(
+        `[qq] start failed (${trigger}, attempt ${this.reconnectAttempt}), retry in ${delayMs}ms: ${this.formatError(error)}`
+      );
+      this.scheduleReconnect(delayMs, `${trigger}-retry`);
+    }
+  }
+
+  private createBot(): Bot {
+    const bot = new Bot({
+      appid: this.config.appId,
+      secret: this.config.secret,
+      mode: ReceiverMode.WEBSOCKET,
+      intents: ["C2C_MESSAGE_CREATE", "GROUP_AT_MESSAGE_CREATE"],
+      removeAt: true,
+      logLevel: "info"
+    });
+
+    bot.on("message.private", async (event) => {
+      await this.handleIncoming(event);
+    });
+
+    bot.on("message.group", async (event) => {
+      await this.handleIncoming(event);
+    });
+
+    bot.sessionManager.on(SessionEvents.DEAD, () => {
+      void this.handleSessionDead(bot);
+    });
+
+    return bot;
+  }
+
+  private async handleSessionDead(bot: Bot): Promise<void> {
+    if (!this.running || this.bot !== bot) {
+      return;
+    }
+    this.bot = null;
+    await this.safeStopBot(bot);
+    this.reconnectAttempt += 1;
+    const delayMs = this.getBackoffDelayMs(this.reconnectAttempt);
+    // eslint-disable-next-line no-console
+    console.error(`[qq] session dead, reconnect in ${delayMs}ms`);
+    this.scheduleReconnect(delayMs, "session-dead");
+  }
+
+  private scheduleReconnect(delayMs: number, trigger: string): void {
+    if (!this.running) {
+      return;
+    }
+    this.clearReconnectTimer();
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.tryConnect(trigger);
+    }, delayMs);
+  }
+
+  private clearReconnectTimer(): void {
+    if (!this.reconnectTimer) {
+      return;
+    }
+    clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
+  }
+
+  private async teardownBot(): Promise<void> {
+    if (!this.bot) {
+      return;
+    }
+    const bot = this.bot;
+    this.bot = null;
+    await this.safeStopBot(bot);
+  }
+
+  private async safeStopBot(bot: Bot): Promise<void> {
+    bot.removeAllListeners("message.private");
+    bot.removeAllListeners("message.group");
+    bot.sessionManager.removeAllListeners(SessionEvents.DEAD);
+    try {
+      await bot.stop();
+    } catch {
+      // ignore cleanup errors
+    }
+  }
+
+  private getBackoffDelayMs(attempt: number): number {
+    const jitter = Math.floor(Math.random() * 500);
+    const exp = Math.min(this.reconnectMaxMs, this.reconnectBaseMs * 2 ** Math.max(0, attempt - 1));
+    return Math.min(this.reconnectMaxMs, exp + jitter);
+  }
+
+  private formatError(error: unknown): string {
+    if (error instanceof Error) {
+      return error.stack ?? error.message;
+    }
+    return String(error);
   }
 }

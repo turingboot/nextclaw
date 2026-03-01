@@ -1,5 +1,14 @@
 # @nextclaw/channel-runtime
 
+## 0.1.24
+
+### Patch Changes
+
+- Fix QQ group speaker distinction by injecting stable per-message speaker tags while keeping group-shared sessions.
+  Add a built-in skill that clarifies the group-shared-session plus speaker-distinction strategy.
+- Updated dependencies
+  - @nextclaw/core@0.6.41
+
 ## 0.1.23
 
 ### Patch Changes

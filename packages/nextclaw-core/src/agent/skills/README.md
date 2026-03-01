@@ -23,3 +23,4 @@ The skill format and metadata structure follow OpenClaw's conventions to maintai
 | `tmux` | Remote-control tmux sessions |
 | `skill-creator` | Create new skills |
 | `nextclaw-skill-resource-hub` | Curate NextClaw, OpenClaw, and community skill resources |
+| `qq-group-speaker-distinction` | Keep one QQ group session while preserving per-message speaker identity |
