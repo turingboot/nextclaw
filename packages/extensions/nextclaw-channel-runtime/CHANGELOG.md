@@ -1,5 +1,13 @@
 # @nextclaw/channel-runtime
 
+## 0.1.23
+
+### Patch Changes
+
+- e196f45: Align Telegram ack reaction behavior with OpenClaw by adding `channels.telegram.ackReactionScope` and `channels.telegram.ackReaction`, defaulting to `all` and `👀`. Telegram inbound processing now sends an acknowledgment reaction before dispatch when scope rules match.
+- Updated dependencies [e196f45]
+  - @nextclaw/core@0.6.40
+
 ## 0.1.22
 
 ### Patch Changes
