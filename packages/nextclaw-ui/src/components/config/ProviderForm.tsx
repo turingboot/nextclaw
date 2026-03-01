@@ -432,6 +432,7 @@ export function ProviderForm({ providerName }: ProviderFormProps) {
                 {t('providerAddModel')}
               </Button>
             </div>
+            <p className="text-xs text-gray-500">{t('providerModelInputHint')}</p>
 
             {models.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">

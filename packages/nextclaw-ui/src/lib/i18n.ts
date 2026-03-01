@@ -168,6 +168,10 @@ export const LABELS: Record<string, { zh: string; en: string }> = {
   modelName: { zh: '模型', en: 'Model' },
   modelPickerNoOptions: { zh: '暂无可选模型', en: 'No model options available' },
   modelPickerUseCustom: { zh: '使用自定义模型：{value}', en: 'Use custom model: {value}' },
+  modelInputCustomHint: {
+    zh: '如果列表里没有目标模型，可直接输入自定义模型 ID。',
+    en: 'If the model is not listed, type a custom model ID directly.'
+  },
   maxTokens: { zh: '最大 Token 数', en: 'Max Tokens' },
   maxToolIterations: { zh: '最大工具迭代次数', en: 'Max Tool Iterations' },
   saveChanges: { zh: '保存变更', en: 'Save Changes' },
@@ -206,7 +210,14 @@ export const LABELS: Record<string, { zh: string; en: string }> = {
   providerTestConnectionSuccess: { zh: '连接测试通过', en: 'Connection test passed' },
   providerTestConnectionFailed: { zh: '连接测试失败', en: 'Connection test failed' },
   providerModelsTitle: { zh: '可用模型列表', en: 'Available Models' },
-  providerModelInputPlaceholder: { zh: '输入模型 ID（无需 provider 前缀）', en: 'Enter model id (without provider prefix)' },
+  providerModelInputPlaceholder: {
+    zh: '输入模型 ID（无需 provider 前缀，不在列表也可）',
+    en: 'Enter model id (without provider prefix; custom values allowed)'
+  },
+  providerModelInputHint: {
+    zh: '列表仅作参考，不在列表也可直接输入并添加。',
+    en: 'The list is only a reference. You can type and add models that are not listed.'
+  },
   providerAddModel: { zh: '添加模型', en: 'Add Model' },
   providerModelsEmpty: { zh: '当前没有模型，可直接输入并添加。', en: 'No models yet. Add one by typing model id.' },
   providerModelDefaultTag: { zh: '默认', en: 'Default' },

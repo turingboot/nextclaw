@@ -259,6 +259,7 @@ export function ModelConfig() {
                 />
               </div>
               <p className="text-xs text-gray-400">{modelHelpText}</p>
+              <p className="text-xs text-gray-500">{t('modelInputCustomHint')}</p>
               <a
                 href={`${DOCS_DEFAULT_BASE_URL}/guide/model-selection`}
                 className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary-hover transition-colors"
