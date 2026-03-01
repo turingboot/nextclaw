@@ -1,5 +1,15 @@
 # nextclaw
 
+## 0.8.53
+
+### Patch Changes
+
+- Align MiniMax default API base to the CN endpoint and add clear region-specific guidance in provider settings.
+- Updated dependencies
+  - @nextclaw/core@0.6.42
+  - @nextclaw/server@0.5.26
+  - @nextclaw/openclaw-compat@0.1.31
+
 ## 0.8.52
 
 ### Patch Changes

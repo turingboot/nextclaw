@@ -1,6 +1,6 @@
 {
   "name": "@nextclaw/openclaw-compat",
-  "version": "0.1.30",
+  "version": "0.1.31",
   "private": false,
   "description": "OpenClaw plugin compatibility layer for NextClaw.",
   "type": "module",
@@ -24,7 +24,7 @@
     "jiti": "^1.21.7",
     "jszip": "^3.10.1",
     "tar": "^7.4.3",
-    "@nextclaw/core": "^0.6.39",
+    "@nextclaw/core": "^0.6.42",
     "@nextclaw/channel-plugin-telegram": "^0.1.5",
     "@nextclaw/channel-plugin-whatsapp": "^0.1.5",
     "@nextclaw/channel-plugin-discord": "^0.1.6",
@@ -35,7 +35,7 @@
     "@nextclaw/channel-plugin-email": "^0.1.5",
     "@nextclaw/channel-plugin-slack": "^0.1.5",
     "@nextclaw/channel-plugin-qq": "^0.1.5",
-    "@nextclaw/channel-runtime": "^0.1.22"
+    "@nextclaw/channel-runtime": "^0.1.25"
   },
   "devDependencies": {
     "@types/node": "^20.17.6",

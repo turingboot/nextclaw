@@ -1,5 +1,11 @@
 # nextclaw-core
 
+## 0.6.42
+
+### Patch Changes
+
+- Align MiniMax default API base to the CN endpoint and add clear region-specific guidance in provider settings.
+
 ## 0.6.41
 
 ### Patch Changes
