@@ -15,6 +15,43 @@
 
 [为什么选择 NextClaw？](#为什么选择-nextclaw) · [快速开始](#-快速开始) · [功能](#-功能) · [架构](#-架构) · [截图](#-截图) · [命令](#-命令) · [渠道](#-渠道) · [社群](#-社群) · [文档](https://docs.nextclaw.io/zh/)
 
+### 10+ AI 提供商
+<p>
+  <img src="https://img.shields.io/badge/OpenAI-412991?style=flat-square&logo=openai&logoColor=white" alt="OpenAI" />
+  <img src="https://img.shields.io/badge/Gemini-8E75B2?style=flat-square&logo=googlegemini&logoColor=white" alt="Gemini" />
+  <img src="https://img.shields.io/badge/DeepSeek-0066FF?style=flat-square" alt="DeepSeek" />
+  <img src="https://img.shields.io/badge/OpenRouter-6366F1?style=flat-square" alt="OpenRouter" />
+  <img src="https://img.shields.io/badge/Groq-F55036?style=flat-square" alt="Groq" />
+  <img src="https://img.shields.io/badge/MiniMax-FF6B35?style=flat-square" alt="MiniMax" />
+  <img src="https://img.shields.io/badge/Moonshot-1A1A2E?style=flat-square" alt="Moonshot" />
+  <img src="https://img.shields.io/badge/通义千问-FF6A00?style=flat-square" alt="DashScope" />
+  <img src="https://img.shields.io/badge/智谱-0052CC?style=flat-square" alt="Zhipu" />
+  <img src="https://img.shields.io/badge/vLLM-FF4500?style=flat-square" alt="vLLM" />
+</p>
+
+### 10+ 消息渠道
+<p>
+  <img src="https://img.shields.io/badge/Discord-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Discord" />
+  <img src="https://img.shields.io/badge/Telegram-26A5E4?style=flat-square&logo=telegram&logoColor=white" alt="Telegram" />
+  <img src="https://img.shields.io/badge/Slack-4A154B?style=flat-square&logo=slack&logoColor=white" alt="Slack" />
+  <img src="https://img.shields.io/badge/WhatsApp-25D366?style=flat-square&logo=whatsapp&logoColor=white" alt="WhatsApp" />
+  <img src="https://img.shields.io/badge/飞书-00D6B9?style=flat-square" alt="Feishu" />
+  <img src="https://img.shields.io/badge/钉钉-0089FF?style=flat-square" alt="DingTalk" />
+  <img src="https://img.shields.io/badge/企业微信-07C160?style=flat-square" alt="WeCom" />
+  <img src="https://img.shields.io/badge/QQ-EB1923?style=flat-square&logo=tencentqq&logoColor=white" alt="QQ" />
+  <img src="https://img.shields.io/badge/Email-EA4335?style=flat-square&logo=gmail&logoColor=white" alt="Email" />
+  <img src="https://img.shields.io/badge/Mochat-6B7280?style=flat-square" alt="Mochat" />
+</p>
+
+### 随处部署
+<p>
+  <img src="https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=windows&logoColor=white" alt="Windows" />
+  <img src="https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS" />
+  <img src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black" alt="Linux" />
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/云服务器-4285F4?style=flat-square&logo=googlecloud&logoColor=white" alt="Cloud VMs" />
+</p>
+
 </div>
 
 ---
