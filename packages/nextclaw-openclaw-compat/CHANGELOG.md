@@ -1,5 +1,29 @@
 # @nextclaw/openclaw-compat
 
+## 0.1.34
+
+### Patch Changes
+
+- Release runtime/session fixes and frontend configuration improvements together.
+  - fix session persistence across non-streaming/runtime paths
+  - stabilize Feishu conversation routing
+  - include frontend max-token optimization and related config UX updates
+  - republish dependent channel/plugin packages for version consistency
+
+- Updated dependencies
+  - @nextclaw/core@0.6.45
+  - @nextclaw/channel-runtime@0.1.28
+  - @nextclaw/channel-plugin-telegram@0.1.6
+  - @nextclaw/channel-plugin-whatsapp@0.1.6
+  - @nextclaw/channel-plugin-discord@0.1.7
+  - @nextclaw/channel-plugin-feishu@0.1.6
+  - @nextclaw/channel-plugin-mochat@0.1.6
+  - @nextclaw/channel-plugin-dingtalk@0.1.6
+  - @nextclaw/channel-plugin-wecom@0.1.6
+  - @nextclaw/channel-plugin-email@0.1.6
+  - @nextclaw/channel-plugin-slack@0.1.6
+  - @nextclaw/channel-plugin-qq@0.1.6
+
 ## 0.1.33
 
 ### Patch Changes

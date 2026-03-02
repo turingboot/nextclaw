@@ -1,5 +1,18 @@
 # @nextclaw/channel-runtime
 
+## 0.1.28
+
+### Patch Changes
+
+- Release runtime/session fixes and frontend configuration improvements together.
+  - fix session persistence across non-streaming/runtime paths
+  - stabilize Feishu conversation routing
+  - include frontend max-token optimization and related config UX updates
+  - republish dependent channel/plugin packages for version consistency
+
+- Updated dependencies
+  - @nextclaw/core@0.6.45
+
 ## 0.1.27
 
 ### Patch Changes

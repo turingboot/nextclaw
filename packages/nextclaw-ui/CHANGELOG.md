@@ -1,5 +1,21 @@
 # @nextclaw/ui
 
+## 0.5.45
+
+### Patch Changes
+
+- Release frontend UI changes only.
+
+## 0.5.44
+
+### Patch Changes
+
+- Release runtime/session fixes and frontend configuration improvements together.
+  - fix session persistence across non-streaming/runtime paths
+  - stabilize Feishu conversation routing
+  - include frontend max-token optimization and related config UX updates
+  - republish dependent channel/plugin packages for version consistency
+
 ## 0.5.43
 
 ### Patch Changes

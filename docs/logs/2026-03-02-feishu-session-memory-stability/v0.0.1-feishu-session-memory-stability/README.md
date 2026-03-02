@@ -31,6 +31,34 @@
 - 若仅本地验证：
   - 在开发环境构建并重启 gateway，确认飞书入站会话连续。
 
+## 本次实际发布结果（2026-03-02）
+- 执行命令：
+  - `pnpm release:version`
+  - `pnpm release:publish`
+- 发布成功版本：
+  - `nextclaw@0.8.58`
+  - `@nextclaw/ui@0.5.44`
+  - `@nextclaw/core@0.6.45`
+  - `@nextclaw/channel-runtime@0.1.28`
+  - `@nextclaw/openclaw-compat@0.1.34`
+  - `@nextclaw/server@0.5.30`
+  - `@nextclaw/channel-plugin-discord@0.1.7`
+  - `@nextclaw/channel-plugin-dingtalk@0.1.6`
+  - `@nextclaw/channel-plugin-email@0.1.6`
+  - `@nextclaw/channel-plugin-feishu@0.1.6`
+  - `@nextclaw/channel-plugin-mochat@0.1.6`
+  - `@nextclaw/channel-plugin-qq@0.1.6`
+  - `@nextclaw/channel-plugin-slack@0.1.6`
+  - `@nextclaw/channel-plugin-telegram@0.1.6`
+  - `@nextclaw/channel-plugin-wecom@0.1.6`
+  - `@nextclaw/channel-plugin-whatsapp@0.1.6`
+- 发布后验证：
+  - 远端版本检查：`npm view nextclaw version`、`npm view @nextclaw/ui version`、`npm view @nextclaw/core version`、`npm view @nextclaw/channel-runtime version` 均返回新版本。
+  - CLI 冒烟（非仓库目录）：在 `/tmp` 执行 `NEXTCLAW_HOME=$(mktemp -d ...) npx -y nextclaw@0.8.58 --version`，输出 `0.8.58`。
+- 闭环动作适配说明：
+  - 远程 migration：不适用（本次为 npm 包发布，无后端数据库迁移）。
+  - 线上 API 冒烟：不适用（本次无独立线上后端部署动作）。
+
 ## 用户/产品视角的验收步骤
 1. 在飞书同一会话（私聊或群聊）连续发送三条上下文相关消息（例如“我叫小王”→“你记住我叫什么了吗”→“再复述一次”）。
 2. 在 `~/.nextclaw/sessions` 观察最新飞书会话文件，确认同一会话持续追加到同一个 `agent_main_feishu_*` 文件。

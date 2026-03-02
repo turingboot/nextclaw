@@ -1,5 +1,18 @@
 # @nextclaw/channel-plugin-qq
 
+## 0.1.6
+
+### Patch Changes
+
+- Release runtime/session fixes and frontend configuration improvements together.
+  - fix session persistence across non-streaming/runtime paths
+  - stabilize Feishu conversation routing
+  - include frontend max-token optimization and related config UX updates
+  - republish dependent channel/plugin packages for version consistency
+
+- Updated dependencies
+  - @nextclaw/channel-runtime@0.1.28
+
 ## 0.1.5
 
 ### Patch Changes

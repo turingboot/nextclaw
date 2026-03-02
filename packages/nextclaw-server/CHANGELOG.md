@@ -1,5 +1,19 @@
 # nextclaw-server
 
+## 0.5.30
+
+### Patch Changes
+
+- Release runtime/session fixes and frontend configuration improvements together.
+  - fix session persistence across non-streaming/runtime paths
+  - stabilize Feishu conversation routing
+  - include frontend max-token optimization and related config UX updates
+  - republish dependent channel/plugin packages for version consistency
+
+- Updated dependencies
+  - @nextclaw/core@0.6.45
+  - @nextclaw/openclaw-compat@0.1.34
+
 ## 0.5.29
 
 ### Patch Changes
