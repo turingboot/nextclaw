@@ -7,11 +7,6 @@ on:
         description: "Release tag to upload assets to (for manual backfill), e.g. v0.8.41"
         required: false
         type: string
-  push:
-    tags:
-      - "v*-installer*"
-  release:
-    types: [published]
 
 permissions:
   contents: write

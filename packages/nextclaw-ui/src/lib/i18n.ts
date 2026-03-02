@@ -131,6 +131,7 @@ export const LABELS: Record<string, { zh: string; en: string }> = {
   secrets: { zh: '密钥管理', en: 'Secrets' },
   runtime: { zh: '路由与运行时', en: 'Routing & Runtime' },
   marketplace: { zh: '市场', en: 'Marketplace' },
+  advanced: { zh: '高级', en: 'Advanced' },
 
   // Common
   enabled: { zh: '启用', en: 'Enabled' },

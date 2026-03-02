@@ -30,7 +30,8 @@ export function Sidebar() {
     setTheme(nextTheme);
   };
 
-  const navItems = [
+  // Core navigation items - primary features
+  const coreNavItems = [
     {
       target: '/chat',
       label: t('chat'),
@@ -52,6 +53,20 @@ export function Sidebar() {
       icon: MessageSquare,
     },
     {
+      target: '/cron',
+      label: t('cron'),
+      icon: AlarmClock,
+    },
+    {
+      target: '/marketplace/skills',
+      label: t('marketplaceFilterSkills'),
+      icon: BrainCircuit,
+    }
+  ];
+
+  // Advanced navigation items - secondary features
+  const advancedNavItems = [
+    {
       target: '/runtime',
       label: t('runtime'),
       icon: GitBranch,
@@ -62,11 +77,6 @@ export function Sidebar() {
       icon: History,
     },
     {
-      target: '/cron',
-      label: t('cron'),
-      icon: AlarmClock,
-    },
-    {
       target: '/secrets',
       label: t('secrets'),
       icon: KeyRound,
@@ -75,11 +85,6 @@ export function Sidebar() {
       target: '/marketplace/plugins',
       label: t('marketplaceFilterPlugins'),
       icon: Plug,
-    },
-    {
-      target: '/marketplace/skills',
-      label: t('marketplaceFilterSkills'),
-      icon: BrainCircuit,
     }
   ];
 
@@ -96,9 +101,10 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1">
+      <nav className="flex-1 flex flex-col">
+        {/* Core Navigation */}
         <ul className="space-y-1">
-          {navItems.map((item) => {
+          {coreNavItems.map((item) => {
             const Icon = item.icon;
 
             return (
@@ -126,6 +132,42 @@ export function Sidebar() {
             );
           })}
         </ul>
+
+        {/* Advanced Navigation */}
+        <div className="mt-3 pt-3 border-t border-[#dde0ea]">
+          <div className="px-3 mb-2">
+            <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">{t('advanced')}</span>
+          </div>
+          <ul className="space-y-1">
+            {advancedNavItems.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <li key={item.target}>
+                  <NavLink
+                    to={item.target}
+                    className={({ isActive }) => cn(
+                      'group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-base',
+                      isActive
+                        ? 'bg-gray-200 text-gray-900 font-semibold shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-200/60 hover:text-gray-900'
+                    )}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <Icon className={cn(
+                          'h-[17px] w-[17px] transition-colors',
+                          isActive ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-800'
+                        )} />
+                        <span className="flex-1 text-left">{item.label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </nav>
 
       {/* Help Button */}

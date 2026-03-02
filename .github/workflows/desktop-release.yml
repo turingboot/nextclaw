@@ -7,11 +7,6 @@ on:
         description: "Release tag to upload assets to, e.g. v0.8.61-desktop-beta.1"
         required: false
         type: string
-  push:
-    tags:
-      - "v*-desktop*"
-  release:
-    types: [published]
 
 permissions:
   contents: write
