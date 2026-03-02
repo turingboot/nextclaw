@@ -154,6 +154,10 @@ export function ChatPage() {
     historyData?.events && historyData.events.length > 0
       ? historyData.events
       : buildFallbackEventsFromMessages(historyMessages);
+  const nextOptimisticUserSeq = useMemo(
+    () => historyEvents.reduce((max, event) => (Number.isFinite(event.seq) ? Math.max(max, event.seq) : max), 0) + 1,
+    [historyEvents]
+  );
   const mergedEvents = useMemo(() => {
     const next = [...historyEvents];
     if (optimisticUserEvent) {
@@ -293,7 +297,7 @@ export function ChatPage() {
     setStreamingAssistantText('');
     setStreamingAssistantTimestamp(null);
     setOptimisticUserEvent({
-      seq: 0,
+      seq: nextOptimisticUserSeq,
       type: 'message.user.optimistic',
       timestamp: new Date().toISOString(),
       message: {
@@ -351,6 +355,7 @@ export function ChatPage() {
             return next;
           });
           if (event.data.message?.role === 'assistant') {
+            streamText = '';
             setStreamingAssistantText('');
             setIsAwaitingAssistantOutput(false);
           }
@@ -388,7 +393,7 @@ export function ChatPage() {
         setDraft((prev) => prev.trim().length === 0 ? item.message : prev);
       }
     }
-  }, [historyQuery, sessionsQuery]);
+  }, [historyQuery, nextOptimisticUserSeq, sessionsQuery]);
 
   useEffect(() => {
     if (isSending || queuedMessages.length === 0) {

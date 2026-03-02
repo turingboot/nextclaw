@@ -7,7 +7,7 @@ import {
   extractToolCards,
   normalizeChatRole,
   type ChatRole,
-  type ChatTimelineAssistantFlowItem,
+  type ChatTimelineAssistantTurnItem,
   type ToolCard
 } from '@/lib/chat-message';
 import { formatDateTime, t } from '@/lib/i18n';
@@ -188,20 +188,27 @@ function MessageCard({ message }: { message: SessionMessageView }) {
   );
 }
 
-function AssistantFlowCard({ item }: { item: ChatTimelineAssistantFlowItem }) {
+function AssistantTurnCard({ item }: { item: ChatTimelineAssistantTurnItem }) {
   return (
     <div className="rounded-2xl border px-4 py-3 shadow-sm bg-white text-gray-900 border-gray-200">
-      {item.primaryText && <MarkdownBlock text={item.primaryText} role="assistant" />}
-      {item.primaryReasoning && <ReasoningBlock reasoning={item.primaryReasoning} isUser={false} />}
-      {item.toolCards.length > 0 && (
-        <div className={cn('space-y-2', (item.primaryText || item.primaryReasoning) && 'mt-3')}>
-          {item.toolCards.map((card, index) => (
-            <ToolCardView key={`${card.kind}-${card.name}-${card.callId ?? index}`} card={card} />
-          ))}
-        </div>
-      )}
-      {item.followupReasoning && <ReasoningBlock reasoning={item.followupReasoning} isUser={false} />}
-      {item.followupText && <div className="mt-3"><MarkdownBlock text={item.followupText} role="assistant" /></div>}
+      <div className="space-y-3">
+        {item.segments.map((segment, index) => {
+          if (segment.kind === 'assistant_message') {
+            const hasText = Boolean(segment.text);
+            const hasReasoning = Boolean(segment.reasoning);
+            if (!hasText && !hasReasoning) {
+              return null;
+            }
+            return (
+              <div key={`${segment.key}-${index}`}>
+                {hasText && <MarkdownBlock text={segment.text} role="assistant" />}
+                {hasReasoning && <ReasoningBlock reasoning={segment.reasoning} isUser={false} />}
+              </div>
+            );
+          }
+          return <ToolCardView key={`${segment.key}-${index}`} card={segment.card} />;
+        })}
+      </div>
     </div>
   );
 }
@@ -212,14 +219,14 @@ export function ChatThread({ events, isSending, className }: ChatThreadProps) {
   return (
     <div className={cn('space-y-5', className)}>
       {timeline.map((item) => {
-        const role = item.kind === 'assistant_flow' ? 'assistant' : item.role;
+        const role = item.kind === 'assistant_turn' ? 'assistant' : item.role;
         const isUser = role === 'user';
         return (
           <div key={item.key} className={cn('flex gap-3', isUser ? 'justify-end' : 'justify-start')}>
             {!isUser && <RoleAvatar role={role} />}
             <div className={cn('max-w-[88%] min-w-[280px] space-y-2', isUser && 'flex flex-col items-end')}>
-              {item.kind === 'assistant_flow' ? (
-                <AssistantFlowCard item={item} />
+              {item.kind === 'assistant_turn' ? (
+                <AssistantTurnCard item={item} />
               ) : (
                 <MessageCard message={item.message} />
               )}

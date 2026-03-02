@@ -19,19 +19,28 @@ export type ChatTimelineMessageItem = {
   message: SessionMessageView;
 };
 
-export type ChatTimelineAssistantFlowItem = {
-  kind: 'assistant_flow';
+export type ChatTimelineAssistantTurnSegment =
+  | {
+      kind: 'assistant_message';
+      key: string;
+      text: string;
+      reasoning: string;
+    }
+  | {
+      kind: 'tool_card';
+      key: string;
+      card: ToolCard;
+    };
+
+export type ChatTimelineAssistantTurnItem = {
+  kind: 'assistant_turn';
   key: string;
   role: 'assistant';
   timestamp: string;
-  primaryText: string;
-  primaryReasoning: string;
-  followupText: string;
-  followupReasoning: string;
-  toolCards: ToolCard[];
+  segments: ChatTimelineAssistantTurnSegment[];
 };
 
-export type ChatTimelineItem = ChatTimelineMessageItem | ChatTimelineAssistantFlowItem;
+export type ChatTimelineItem = ChatTimelineMessageItem | ChatTimelineAssistantTurnItem;
 
 const TOOL_DETAIL_FIELDS = ['cmd', 'command', 'query', 'q', 'path', 'url', 'to', 'channel', 'agentId', 'sessionKey'];
 
@@ -263,17 +272,54 @@ export function buildChatTimeline(events: SessionEventView[]): ChatTimelineItem[
     });
 
   const timeline: ChatTimelineItem[] = [];
-  let activeFlow:
+  let activeTurn:
     | {
-        item: ChatTimelineAssistantFlowItem;
+        item: ChatTimelineAssistantTurnItem;
         cardByCallId: Map<string, ToolCard>;
-        pendingCallIds: Set<string>;
-        awaitingFollowup: boolean;
       }
     | null = null;
 
-  const closeActiveFlow = () => {
-    activeFlow = null;
+  const closeActiveTurn = () => {
+    activeTurn = null;
+  };
+
+  const ensureActiveTurn = (eventKey: string, timestamp: string) => {
+    if (activeTurn) {
+      activeTurn.item.timestamp = timestamp;
+      return activeTurn;
+    }
+    const item: ChatTimelineAssistantTurnItem = {
+      kind: 'assistant_turn',
+      key: `turn-${eventKey}`,
+      role: 'assistant',
+      timestamp,
+      segments: []
+    };
+    timeline.push(item);
+    activeTurn = {
+      item,
+      cardByCallId: new Map<string, ToolCard>()
+    };
+    return activeTurn;
+  };
+
+  const pushAssistantMessageSegment = (
+    target: { item: ChatTimelineAssistantTurnItem },
+    eventKey: string,
+    message: SessionMessageView
+  ) => {
+    const text = extractMessageText(message.content).trim();
+    const reasoning =
+      typeof message.reasoning_content === 'string' ? message.reasoning_content.trim() : '';
+    if (!text && !reasoning) {
+      return;
+    }
+    target.item.segments.push({
+      kind: 'assistant_message',
+      key: `assistant-${eventKey}-${target.item.segments.length}`,
+      text,
+      reasoning
+    });
   };
 
   for (const event of normalized) {
@@ -287,80 +333,58 @@ export function buildChatTimeline(events: SessionEventView[]): ChatTimelineItem[
       typeof message.timestamp === 'string' && message.timestamp
         ? message.timestamp
         : event.timestamp;
+    const eventKey = `${event._seq}-${event._idx}`;
 
-    if (role === 'assistant' && hasToolCalls(message)) {
-      closeActiveFlow();
-      const toolCards = buildToolCallCards(message);
-      const item: ChatTimelineAssistantFlowItem = {
-        kind: 'assistant_flow',
-        key: `flow-${event._seq}-${event._idx}`,
-        role: 'assistant',
-        timestamp,
-        primaryText: extractMessageText(message.content).trim(),
-        primaryReasoning:
-          typeof message.reasoning_content === 'string' ? message.reasoning_content.trim() : '',
-        followupText: '',
-        followupReasoning: '',
-        toolCards
-      };
-
-      const cardByCallId = new Map<string, ToolCard>();
-      const pendingCallIds = new Set<string>();
-      for (const card of toolCards) {
-        if (typeof card.callId === 'string' && card.callId.trim()) {
-          cardByCallId.set(card.callId, card);
-          pendingCallIds.add(card.callId);
-        }
+    if (role === 'assistant') {
+      const turn = ensureActiveTurn(eventKey, timestamp);
+      pushAssistantMessageSegment(turn, eventKey, message);
+      if (!hasToolCalls(message)) {
+        continue;
       }
 
-      timeline.push(item);
-      activeFlow = {
-        item,
-        cardByCallId,
-        pendingCallIds,
-        awaitingFollowup: pendingCallIds.size === 0
-      };
+      const toolCards = buildToolCallCards(message);
+      for (const card of toolCards) {
+        turn.item.segments.push({
+          kind: 'tool_card',
+          key: `tool-call-${eventKey}-${turn.item.segments.length}`,
+          card
+        });
+        if (typeof card.callId === 'string' && card.callId.trim()) {
+          turn.cardByCallId.set(card.callId, card);
+        }
+      }
       continue;
     }
 
     if (role === 'tool') {
+      const turn = ensureActiveTurn(eventKey, timestamp);
       const callId =
         typeof message.tool_call_id === 'string' && message.tool_call_id.trim()
           ? message.tool_call_id.trim()
           : undefined;
-      if (activeFlow && callId && activeFlow.cardByCallId.has(callId)) {
-        const card = activeFlow.cardByCallId.get(callId)!;
+      if (callId && turn.cardByCallId.has(callId)) {
+        const card = turn.cardByCallId.get(callId)!;
         const resultText = extractMessageText(message.content).trim();
         card.text = appendText(card.text ?? '', resultText);
         card.hasResult = true;
         if (typeof message.name === 'string' && message.name.trim()) {
           card.name = message.name.trim();
         }
-        activeFlow.pendingCallIds.delete(callId);
-        activeFlow.awaitingFollowup = activeFlow.pendingCallIds.size === 0;
-        activeFlow.item.timestamp = timestamp;
+        turn.item.timestamp = timestamp;
         continue;
       }
 
-      timeline.push({
-        kind: 'message',
-        key: `message-${event._seq}-${event._idx}`,
-        role,
-        timestamp,
-        message
+      turn.item.segments.push({
+        kind: 'tool_card',
+        key: `tool-result-${eventKey}-${turn.item.segments.length}`,
+        card: {
+          kind: 'result',
+          name: toToolName(message.name),
+          text: extractMessageText(message.content).trim(),
+          callId,
+          hasResult: true
+        }
       });
-      closeActiveFlow();
-      continue;
-    }
-
-    if (role === 'assistant' && activeFlow && activeFlow.awaitingFollowup && !hasToolCalls(message)) {
-      const text = extractMessageText(message.content).trim();
-      const reasoning =
-        typeof message.reasoning_content === 'string' ? message.reasoning_content.trim() : '';
-      activeFlow.item.followupText = appendText(activeFlow.item.followupText, text);
-      activeFlow.item.followupReasoning = appendText(activeFlow.item.followupReasoning, reasoning);
-      activeFlow.item.timestamp = timestamp;
-      closeActiveFlow();
       continue;
     }
 
@@ -371,7 +395,7 @@ export function buildChatTimeline(events: SessionEventView[]): ChatTimelineItem[
       timestamp,
       message
     });
-    closeActiveFlow();
+    closeActiveTurn();
   }
 
   return timeline;

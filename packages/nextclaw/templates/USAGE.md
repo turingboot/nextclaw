@@ -363,8 +363,7 @@ NextClaw UI includes a first-class **Chat** tab so you can talk to your agent di
 - stream assistant output in real time via UI SSE API (`POST /api/chat/turn/stream`)
 - render assistant replies as Markdown (tables/code blocks/links)
 - show tool calls/results as structured tool cards
-- merge tool result and its immediate assistant follow-up explanation into one card while preserving chronological order
-- merge consecutive same-role messages into grouped chat blocks for better readability
+- merge each full assistant turn (assistant + tool calls/results + follow-ups before next user input) into one card while preserving chronological order
 - keep input editable while AI is streaming, and queue additional sends during busy turns
 
 Notes:
