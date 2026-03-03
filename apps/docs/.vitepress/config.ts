@@ -110,7 +110,8 @@ const enSidebar = [
     text: 'Tutorials',
     items: [
       { text: 'Tutorial Hub', link: '/en/guide/tutorials' },
-      { text: 'Feishu Setup', link: '/en/guide/tutorials/feishu' }
+      { text: 'Feishu Setup', link: '/en/guide/tutorials/feishu' },
+      { text: 'Unsigned Desktop Install', link: '/en/guide/tutorials/desktop-install-unsigned' }
     ]
   },
   {
@@ -154,7 +155,8 @@ const zhSidebar = [
     text: '教程',
     items: [
       { text: '教程总览', link: '/zh/guide/tutorials' },
-      { text: '飞书配置教程', link: '/zh/guide/tutorials/feishu' }
+      { text: '飞书配置教程', link: '/zh/guide/tutorials/feishu' },
+      { text: '桌面端无签名安装教程', link: '/zh/guide/tutorials/desktop-install-unsigned' }
     ]
   },
   {
