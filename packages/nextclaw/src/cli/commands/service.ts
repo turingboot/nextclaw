@@ -10,6 +10,8 @@ import { startUiServer } from "@nextclaw/server";
 import { closeSync, cpSync, existsSync, mkdirSync, openSync, rmSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { spawn } from "node:child_process";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { fileURLToPath } from "node:url";
 import chokidar from "chokidar";
 import { GatewayControllerImpl } from "../gateway/controller.js";
@@ -621,13 +623,22 @@ export class ServiceCommands {
     }
 
     const healthUrl = `${apiUrl}/health`;
-    const started = await this.waitForBackgroundServiceReady({
+    let readiness = await this.waitForBackgroundServiceReady({
       pid: child.pid,
       healthUrl,
       timeoutMs: 8000
     });
 
-    if (!started) {
+    if (!readiness.ready && process.platform === "win32" && isProcessRunning(child.pid)) {
+      console.warn("Warning: Background service is still running but not ready after 8s; waiting up to 20s more on Windows.");
+      readiness = await this.waitForBackgroundServiceReady({
+        pid: child.pid,
+        healthUrl,
+        timeoutMs: 20000
+      });
+    }
+
+    if (!readiness.ready) {
       if (isProcessRunning(child.pid)) {
         try {
           process.kill(child.pid, "SIGTERM");
@@ -637,7 +648,8 @@ export class ServiceCommands {
         }
       }
       clearServiceState();
-      console.error(`Error: Failed to start background service. Check logs: ${logPath}`);
+      const hint = readiness.lastProbeError ? ` Last probe error: ${readiness.lastProbeError}` : "";
+      console.error(`Error: Failed to start background service. Check logs: ${logPath}.${hint}`);
       return;
     }
 
@@ -705,34 +717,96 @@ export class ServiceCommands {
     pid: number;
     healthUrl: string;
     timeoutMs: number;
-  }): Promise<boolean> {
+  }): Promise<{ ready: boolean; lastProbeError: string | null }> {
     const startedAt = Date.now();
+    let lastProbeError: string | null = null;
     while (Date.now() - startedAt < params.timeoutMs) {
       if (!isProcessRunning(params.pid)) {
-        return false;
+        return { ready: false, lastProbeError };
       }
-      try {
-        const response = await fetch(params.healthUrl, { method: "GET" });
-        if (!response.ok) {
-          await new Promise((resolve) => setTimeout(resolve, 200));
-          continue;
-        }
-        const payload = (await response.json()) as { ok?: boolean; data?: { status?: string } };
-        const healthy = payload?.ok === true && payload?.data?.status === "ok";
-        if (!healthy) {
-          await new Promise((resolve) => setTimeout(resolve, 200));
-          continue;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        if (isProcessRunning(params.pid)) {
-          return true;
-        }
-      } catch {
-        // Ignore readiness probe errors until timeout.
+      const probe = await this.probeHealthEndpoint(params.healthUrl);
+      if (!probe.healthy) {
+        lastProbeError = probe.error;
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        continue;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      if (isProcessRunning(params.pid)) {
+        return { ready: true, lastProbeError: null };
       }
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
-    return false;
+    return { ready: false, lastProbeError };
+  }
+
+  private async probeHealthEndpoint(
+    healthUrl: string
+  ): Promise<{ healthy: boolean; error: string | null }> {
+    let parsed: URL;
+    try {
+      parsed = new URL(healthUrl);
+    } catch {
+      return { healthy: false, error: "invalid health URL" };
+    }
+
+    const requestImpl = parsed.protocol === "https:" ? httpsRequest : httpRequest;
+
+    return new Promise((resolve) => {
+      const req = requestImpl(
+        {
+          protocol: parsed.protocol,
+          hostname: parsed.hostname,
+          port: parsed.port
+            ? Number(parsed.port)
+            : parsed.protocol === "https:"
+              ? 443
+              : 80,
+          method: "GET",
+          path: `${parsed.pathname}${parsed.search}`,
+          timeout: 1000,
+          headers: { Accept: "application/json" }
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on("data", (chunk) => {
+            if (typeof chunk === "string") {
+              chunks.push(Buffer.from(chunk));
+              return;
+            }
+            chunks.push(chunk);
+          });
+          res.on("end", () => {
+            if ((res.statusCode ?? 0) < 200 || (res.statusCode ?? 0) >= 300) {
+              resolve({ healthy: false, error: `http ${res.statusCode ?? "unknown"}` });
+              return;
+            }
+
+            try {
+              const payload = JSON.parse(Buffer.concat(chunks).toString("utf-8")) as {
+                ok?: boolean;
+                data?: { status?: string };
+              };
+              const healthy = payload?.ok === true && payload?.data?.status === "ok";
+              if (!healthy) {
+                resolve({ healthy: false, error: "health payload not ok" });
+                return;
+              }
+              resolve({ healthy: true, error: null });
+            } catch {
+              resolve({ healthy: false, error: "invalid health JSON response" });
+            }
+          });
+        }
+      );
+
+      req.on("timeout", () => {
+        req.destroy(new Error("probe timeout"));
+      });
+      req.on("error", (error) => {
+        resolve({ healthy: false, error: error.message || String(error) });
+      });
+      req.end();
+    });
   }
 
   createMissingProvider(config: ReturnType<typeof loadConfig>): LLMProvider {
