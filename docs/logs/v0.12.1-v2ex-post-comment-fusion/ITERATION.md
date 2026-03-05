@@ -1,4 +1,4 @@
-# v0.0.1-v2ex-post-comment-fusion
+# v0.12.1-v2ex-post-comment-fusion
 
 ## 迭代完成说明（改了什么）
 
