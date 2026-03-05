@@ -11,10 +11,30 @@ const repoRoot = path.resolve(__dirname, '..');
 
 const DEFAULT_UI_PORT = Number(process.env.SCREENSHOT_UI_PORT || 5194);
 const shouldStartUi = !process.env.SCREENSHOT_UI_ORIGIN;
+const useRealMarketplace = parseBooleanEnv(process.env.REAL_MARKETPLACE || process.env.SCREENSHOT_REAL_MARKETPLACE);
+const realMarketplaceBase = normalizeBaseUrl(
+  process.env.REAL_MARKETPLACE_BASE || process.env.SCREENSHOT_REAL_MARKETPLACE_BASE || 'https://marketplace-api.nextclaw.io'
+);
 
 const languageStorageKey = 'nextclaw.ui.language';
 const viewport = { width: 1512, height: 828 };
 const deviceScaleFactor = 2;
+
+function parseBooleanEnv(raw) {
+  if (!raw) {
+    return false;
+  }
+  const value = String(raw).trim().toLowerCase();
+  return value === '1' || value === 'true' || value === 'yes' || value === 'on';
+}
+
+function normalizeBaseUrl(raw) {
+  const value = String(raw || '').trim();
+  if (!value) {
+    return 'https://marketplace-api.nextclaw.io';
+  }
+  return value.replace(/\/+$/, '');
+}
 
 const uiText = {
   en: {
@@ -735,6 +755,168 @@ function resolveMock(pathname, searchParams, method) {
   return fail(405, `Unsupported mock endpoint: ${method} ${pathname}`);
 }
 
+function asObject(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  return value;
+}
+
+function buildMarketplaceContentFromItem(type, slug, item) {
+  const safeItem = asObject(item) || {};
+  const name = typeof safeItem.name === 'string' && safeItem.name.trim().length > 0 ? safeItem.name : slug;
+  const summary = typeof safeItem.summary === 'string' ? safeItem.summary : '';
+  const description = typeof safeItem.description === 'string' ? safeItem.description : '';
+  const bodyRaw = description || summary;
+  const install = asObject(safeItem.install) || { kind: 'git', spec: slug, command: '' };
+  const sourceUrl =
+    (typeof safeItem.sourceRepo === 'string' && safeItem.sourceRepo) ||
+    (typeof safeItem.homepage === 'string' && safeItem.homepage) ||
+    undefined;
+
+  if (type === 'skill') {
+    return {
+      type: 'skill',
+      slug,
+      name,
+      install,
+      source: 'remote',
+      raw: `# ${name}\n\n${bodyRaw}`,
+      bodyRaw,
+      metadataRaw: JSON.stringify(
+        {
+          id: safeItem.id,
+          author: safeItem.author,
+          tags: safeItem.tags,
+          publishedAt: safeItem.publishedAt,
+          updatedAt: safeItem.updatedAt
+        },
+        null,
+        2
+      ),
+      sourceUrl
+    };
+  }
+
+  return {
+    type: 'plugin',
+    slug,
+    name,
+    install,
+    source: 'remote',
+    bodyRaw,
+    metadataRaw: JSON.stringify(
+      {
+        id: safeItem.id,
+        author: safeItem.author,
+        tags: safeItem.tags,
+        publishedAt: safeItem.publishedAt,
+        updatedAt: safeItem.updatedAt
+      },
+      null,
+      2
+    ),
+    sourceUrl
+  };
+}
+
+function buildRemoteMarketplaceApiUrl(type, endpoint, slug, searchParams) {
+  const basePath =
+    endpoint === 'recommendations'
+      ? `/api/v1/${type}/recommendations`
+      : slug
+        ? `/api/v1/${type}/items/${encodeURIComponent(slug)}`
+        : `/api/v1/${type}/items`;
+  const query = searchParams.toString();
+  return `${realMarketplaceBase}${basePath}${query ? `?${query}` : ''}`;
+}
+
+async function fetchRemoteMarketplaceJson(url) {
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  const text = await response.text();
+  let payload = null;
+  try {
+    payload = text.length > 0 ? JSON.parse(text) : null;
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`real marketplace request failed (${response.status}) ${url}`);
+  }
+
+  const data = asObject(payload);
+  if (!data || typeof data.ok !== 'boolean') {
+    throw new Error(`real marketplace response shape invalid: ${url}`);
+  }
+
+  if (!data.ok) {
+    const errorMessage =
+      (asObject(data.error) && typeof data.error.message === 'string' ? data.error.message : 'unknown error');
+    throw new Error(`real marketplace returned error for ${url}: ${errorMessage}`);
+  }
+
+  return data;
+}
+
+async function resolveRealMarketplace(pathname, searchParams, method) {
+  if (!useRealMarketplace || method !== 'GET') {
+    return null;
+  }
+
+  const catalogMatch = pathname.match(/^\/api\/marketplace\/(plugins|skills)\/(items|recommendations)$/);
+  if (catalogMatch) {
+    const type = catalogMatch[1];
+    const endpoint = catalogMatch[2];
+    const url = buildRemoteMarketplaceApiUrl(type, endpoint, null, searchParams);
+    const payload = await fetchRemoteMarketplaceJson(url);
+    return {
+      status: 200,
+      contentType: 'application/json; charset=utf-8',
+      body: JSON.stringify(payload)
+    };
+  }
+
+  const itemMatch = pathname.match(/^\/api\/marketplace\/(plugins|skills)\/items\/([^/]+)$/);
+  if (itemMatch) {
+    const type = itemMatch[1];
+    const slug = decodeURIComponent(itemMatch[2]);
+    const url = buildRemoteMarketplaceApiUrl(type, 'items', slug, searchParams);
+    const payload = await fetchRemoteMarketplaceJson(url);
+    return {
+      status: 200,
+      contentType: 'application/json; charset=utf-8',
+      body: JSON.stringify(payload)
+    };
+  }
+
+  const contentMatch = pathname.match(/^\/api\/marketplace\/(plugins|skills)\/items\/([^/]+)\/content$/);
+  if (contentMatch) {
+    const type = contentMatch[1];
+    const slug = decodeURIComponent(contentMatch[2]);
+    const itemUrl = buildRemoteMarketplaceApiUrl(type, 'items', slug, new URLSearchParams());
+    const payload = await fetchRemoteMarketplaceJson(itemUrl);
+    const item = asObject(payload.data);
+    const content = buildMarketplaceContentFromItem(type === 'skills' ? 'skill' : 'plugin', slug, item);
+    return {
+      status: 200,
+      contentType: 'application/json; charset=utf-8',
+      body: JSON.stringify({
+        ok: true,
+        data: content
+      })
+    };
+  }
+
+  return null;
+}
+
 async function waitForServer(url, timeoutMs = 60_000) {
   const start = Date.now();
   let lastError = null;
@@ -845,7 +1027,20 @@ async function captureScene(browser, scene, uiOrigin) {
       (url) => new URL(url).pathname.startsWith('/api/'),
       async (route) => {
         const requestUrl = new URL(route.request().url());
-        const response = resolveMock(requestUrl.pathname, requestUrl.searchParams, route.request().method());
+        let response = null;
+        if (useRealMarketplace && requestUrl.pathname.startsWith('/api/marketplace/')) {
+          try {
+            response = await resolveRealMarketplace(requestUrl.pathname, requestUrl.searchParams, route.request().method());
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.warn(`[screenshot] real marketplace fallback -> mock: ${requestUrl.pathname} (${message})`);
+          }
+        }
+
+        if (!response) {
+          response = resolveMock(requestUrl.pathname, requestUrl.searchParams, route.request().method());
+        }
+
         await route.fulfill(response);
       }
     );
@@ -908,6 +1103,10 @@ async function main() {
   const resolvedUiOrigin = process.env.SCREENSHOT_UI_ORIGIN || `http://127.0.0.1:${uiPort}`;
 
   try {
+    if (useRealMarketplace) {
+      console.log(`[screenshot] REAL_MARKETPLACE enabled. source=${realMarketplaceBase}`);
+    }
+
     if (shouldStartUi) {
       console.log('[screenshot] starting @nextclaw/ui dev server...');
       uiProcess = startUiServer(uiPort);

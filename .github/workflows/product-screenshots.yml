@@ -38,7 +38,7 @@ jobs:
         run: pnpm exec playwright install chromium --with-deps
 
       - name: Refresh product screenshots
-        run: pnpm screenshots:refresh
+        run: REAL_MARKETPLACE=1 pnpm screenshots:refresh
 
       - name: Show changed screenshot files
         run: |

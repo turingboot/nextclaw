@@ -1,5 +1,7 @@
 # Logs
 
+- [docs/logs/2026-03-05-contact-wechat-qr/v0.0.1-contact-wechat-qr/ITERATION.md](docs/logs/2026-03-05-contact-wechat-qr/v0.0.1-contact-wechat-qr/ITERATION.md)
+- [docs/logs/2026-03-05-screenshot-real-marketplace-mode/v0.0.1-screenshot-real-marketplace-mode/ITERATION.md](docs/logs/2026-03-05-screenshot-real-marketplace-mode/v0.0.1-screenshot-real-marketplace-mode/ITERATION.md)
 - [docs/logs/2026-03-05-landing-skill-detail-screenshot/v0.0.1-landing-skill-detail-screenshot/ITERATION.md](docs/logs/2026-03-05-landing-skill-detail-screenshot/v0.0.1-landing-skill-detail-screenshot/ITERATION.md)
 - [docs/logs/2026-03-05-product-screenshot-automation/v0.0.1-product-screenshot-automation/ITERATION.md](docs/logs/2026-03-05-product-screenshot-automation/v0.0.1-product-screenshot-automation/ITERATION.md)
 - [docs/logs/2026-03-05-brand-copy-tone-adjust/v0.0.1-brand-copy-tone-adjust/ITERATION.md](docs/logs/2026-03-05-brand-copy-tone-adjust/v0.0.1-brand-copy-tone-adjust/ITERATION.md)

@@ -19,6 +19,20 @@ pnpm exec playwright install chromium
 pnpm screenshots:refresh
 ```
 
+3. Use real marketplace data (optional):
+
+```bash
+REAL_MARKETPLACE=1 pnpm screenshots:refresh
+```
+
+Optional override for remote source:
+
+```bash
+REAL_MARKETPLACE=1 REAL_MARKETPLACE_BASE=https://marketplace-api.nextclaw.io pnpm screenshots:refresh
+```
+
+When real marketplace fetch fails, script falls back to built-in mock data automatically.
+
 ## Outputs
 
 The command updates both screenshot locations in one run:

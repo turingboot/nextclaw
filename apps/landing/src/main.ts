@@ -58,10 +58,10 @@ type LandingCopy = {
   footerDocs: string;
   footerNpm: string;
   footerDiscord: string;
-  footerQQGroup: string;
+  footerWechatGroup: string;
   communityTitle: string;
   communitySubtitle: string;
-  communityQQLabel: string;
+  communityWechatLabel: string;
   communityDiscordLabel: string;
   communityScanHint: string;
   terminalHeader: string;
@@ -103,11 +103,11 @@ const LOCALE_OPTIONS: Array<{ value: Locale; label: string }> = [
   { value: 'zh', label: '简体中文' }
 ];
 
-const LINKS: Record<'github' | 'npm' | 'discord' | 'qqGroupImage', string> & { docs: Record<Locale, string> } = {
+const LINKS: Record<'github' | 'npm' | 'discord' | 'wechatGroupImage', string> & { docs: Record<Locale, string> } = {
   github: 'https://github.com/Peiiii/nextclaw',
   npm: 'https://www.npmjs.com/package/nextclaw',
   discord: 'https://discord.gg/j4Skbgye',
-  qqGroupImage: '/contact/nextclaw-contact-qq-group.jpg',
+  wechatGroupImage: '/contact/nextclaw-contact-wechat-group.jpg',
   docs: {
     en: 'https://docs.nextclaw.io/en/',
     zh: 'https://docs.nextclaw.io/zh/'
@@ -178,10 +178,10 @@ const COPY: Record<Locale, LandingCopy> = {
     footerDocs: 'Docs',
     footerNpm: 'NPM',
     footerDiscord: 'Discord',
-    footerQQGroup: 'QQ Group',
+    footerWechatGroup: 'WeChat Group',
     communityTitle: 'Join the community',
-    communitySubtitle: 'QQ Group for Chinese users, Discord for everyone.',
-    communityQQLabel: 'QQ Group (1084340143)',
+    communitySubtitle: 'WeChat group for Chinese users, Discord for everyone.',
+    communityWechatLabel: 'WeChat Group QR',
     communityDiscordLabel: 'Join Discord',
     communityScanHint: 'Scan to join',
     terminalHeader: 'nextclaw - bash',
@@ -324,10 +324,10 @@ const COPY: Record<Locale, LandingCopy> = {
     footerDocs: '文档',
     footerNpm: 'NPM',
     footerDiscord: 'Discord',
-    footerQQGroup: 'QQ 群',
+    footerWechatGroup: '微信群',
     communityTitle: '加入社群',
-    communitySubtitle: '国内用户加 QQ 群，海外与英文用户欢迎来 Discord。',
-    communityQQLabel: 'QQ 群（1084340143）',
+    communitySubtitle: '国内用户可扫码加入微信群，海外与英文用户欢迎来 Discord。',
+    communityWechatLabel: '微信群二维码',
     communityDiscordLabel: '加入 Discord',
     communityScanHint: '扫码加群',
     terminalHeader: 'nextclaw - bash',
@@ -552,9 +552,9 @@ class LandingPage {
             </a>
           </div>
           <div class="flex flex-row flex-wrap justify-center gap-4 mb-20 animate-slide-up opacity-0" style="animation-delay: 0.55s">
-            <button id="qq-group-btn" type="button" class="inline-flex items-center justify-center gap-2 h-12 w-48 rounded-full font-medium bg-[#12B7F5] text-white hover:bg-[#0EA5E0] transition-all hover:scale-105 shadow-sm focus:ring-2 focus:ring-[#12B7F5] focus:outline-none text-base cursor-pointer">
-              <img src="/logos/qq.svg" alt="QQ" class="w-5 h-5 brightness-0 invert" />
-              ${this.locale === 'zh' ? '加入 QQ 群' : 'QQ Group'}
+            <button id="community-qr-btn" type="button" class="inline-flex items-center justify-center gap-2 h-12 w-48 rounded-full font-medium bg-[#07C160] text-white hover:bg-[#06AD56] transition-all hover:scale-105 shadow-sm focus:ring-2 focus:ring-[#07C160] focus:outline-none text-base cursor-pointer">
+              <i data-lucide="message-circle" class="w-5 h-5"></i>
+              ${this.locale === 'zh' ? '加入微信群' : 'WeChat Group'}
             </button>
             <a href="${LINKS.discord}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 h-12 w-48 rounded-full font-medium bg-[#5865F2] text-white hover:bg-[#4752C4] transition-all hover:scale-105 shadow-sm focus:ring-2 focus:ring-[#5865F2] focus:outline-none text-base">
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.075.075 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
@@ -562,10 +562,10 @@ class LandingPage {
             </a>
           </div>
 
-          <!-- QQ QR Code Modal -->
-          <div id="qq-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+          <!-- Community QR Code Modal -->
+          <div id="community-qr-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
             <div class="glass-card rounded-2xl p-6 shadow-2xl max-w-xs mx-4 text-center">
-              <img src="${LINKS.qqGroupImage}" alt="QQ 群二维码" class="w-56 h-56 object-contain rounded-lg mx-auto mb-4" />
+              <img src="${LINKS.wechatGroupImage}" alt="${this.copy.communityWechatLabel}" class="w-56 h-56 object-contain rounded-lg mx-auto mb-4" />
               <p class="text-sm text-muted-foreground">${this.copy.communityScanHint}</p>
             </div>
           </div>
@@ -740,9 +740,9 @@ class LandingPage {
             <p class="text-muted-foreground text-lg">${this.copy.communitySubtitle}</p>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl mx-auto">
-            <a href="${LINKS.qqGroupImage}" target="_blank" rel="noopener noreferrer" class="glass-card rounded-2xl p-6 flex flex-col items-center gap-4 hover:-translate-y-1 transition-transform focus:ring-2 focus:ring-primary focus:outline-none">
-              <img src="${LINKS.qqGroupImage}" alt="${this.copy.communityQQLabel}" class="w-40 h-40 object-contain rounded-lg" />
-              <span class="font-medium text-foreground">${this.copy.communityQQLabel}</span>
+            <a href="${LINKS.wechatGroupImage}" target="_blank" rel="noopener noreferrer" class="glass-card rounded-2xl p-6 flex flex-col items-center gap-4 hover:-translate-y-1 transition-transform focus:ring-2 focus:ring-primary focus:outline-none">
+              <img src="${LINKS.wechatGroupImage}" alt="${this.copy.communityWechatLabel}" class="w-40 h-40 object-contain rounded-lg" />
+              <span class="font-medium text-foreground">${this.copy.communityWechatLabel}</span>
               <span class="text-sm text-muted-foreground">${this.copy.communityScanHint}</span>
             </a>
             <a href="${LINKS.discord}" target="_blank" rel="noopener noreferrer" class="glass-card rounded-2xl p-6 flex flex-col items-center justify-center gap-4 hover:-translate-y-1 transition-transform focus:ring-2 focus:ring-primary focus:outline-none">
@@ -767,7 +767,7 @@ class LandingPage {
               <a href="${LINKS.github}" target="_blank" rel="noopener noreferrer" class="text-muted-foreground hover:text-foreground transition-colors">GitHub</a>
               <a href="${LINKS.npm}" target="_blank" rel="noopener noreferrer" class="text-muted-foreground hover:text-foreground transition-colors">${this.copy.footerNpm}</a>
               <a href="${LINKS.discord}" target="_blank" rel="noopener noreferrer" class="text-muted-foreground hover:text-foreground transition-colors">${this.copy.footerDiscord}</a>
-              <a href="${LINKS.qqGroupImage}" target="_blank" rel="noopener noreferrer" class="text-muted-foreground hover:text-foreground transition-colors" title="QQ 群 1084340143">${this.copy.footerQQGroup}</a>
+              <a href="${LINKS.wechatGroupImage}" target="_blank" rel="noopener noreferrer" class="text-muted-foreground hover:text-foreground transition-colors" title="${this.copy.footerWechatGroup}">${this.copy.footerWechatGroup}</a>
             </div>
           </div>
         </footer>
@@ -782,7 +782,7 @@ class LandingPage {
     this.bindLocaleSelect();
     this.bindCopyAction();
     this.bindMobileMenu();
-    this.bindQQModal();
+    this.bindCommunityQrModal();
     this.runTerminalAnimation();
     createIcons({ icons, nameAttr: 'data-lucide' });
   }
@@ -804,9 +804,9 @@ class LandingPage {
     });
   }
 
-  private bindQQModal(): void {
-    const btn = document.querySelector<HTMLButtonElement>('#qq-group-btn');
-    const modal = document.querySelector<HTMLElement>('#qq-modal');
+  private bindCommunityQrModal(): void {
+    const btn = document.querySelector<HTMLButtonElement>('#community-qr-btn');
+    const modal = document.querySelector<HTMLElement>('#community-qr-modal');
     if (!btn || !modal) {
       return;
     }
