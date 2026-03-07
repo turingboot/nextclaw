@@ -810,13 +810,13 @@ app.get("/v1/usage", async (c) => {
 app.post("/v1/chat/completions", async (c) => {
   await ensurePlatformBootstrap(c.env);
 
-  if (!c.env.DASHSCOPE_API_KEY || c.env.DASHSCOPE_API_KEY.trim().length === 0) {
-    return openaiError(c, 503, "Upstream provider is not configured.", "service_unavailable");
-  }
-
   const auth = await requireAuthUser(c);
   if (!auth.ok) {
     return auth.response;
+  }
+
+  if (!c.env.DASHSCOPE_API_KEY || c.env.DASHSCOPE_API_KEY.trim().length === 0) {
+    return openaiError(c, 503, "Upstream provider is not configured.", "service_unavailable");
   }
 
   let body: ChatCompletionRequest;
