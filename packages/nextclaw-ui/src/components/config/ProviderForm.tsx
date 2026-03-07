@@ -20,7 +20,7 @@ import { KeyValueEditor } from '@/components/common/KeyValueEditor';
 import { StatusDot } from '@/components/ui/status-dot';
 import { getLanguage, t } from '@/lib/i18n';
 import { hintForPath } from '@/lib/config-hints';
-import type { ProviderConfigUpdate, ProviderConnectionTestRequest } from '@/api/types';
+import type { ProviderConfigView, ProviderConfigUpdate, ProviderConnectionTestRequest } from '@/api/types';
 import { CircleDotDashed, Plus, X, Trash2, ChevronDown, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CONFIG_DETAIL_CARD_CLASS, CONFIG_EMPTY_DETAIL_CARD_CLASS } from './config-layout';
@@ -30,6 +30,16 @@ type WireApiType = 'auto' | 'chat' | 'responses';
 type ProviderFormProps = {
   providerName?: string;
   onProviderDeleted?: (providerName: string) => void;
+};
+
+const EMPTY_PROVIDER_CONFIG: ProviderConfigView = {
+  displayName: '',
+  apiKeySet: false,
+  apiKeyMasked: undefined,
+  apiBase: null,
+  extraHeaders: null,
+  wireApi: null,
+  models: []
 };
 
 function normalizeHeaders(input: Record<string, string> | null | undefined): Record<string, string> | null {
@@ -168,6 +178,7 @@ export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormPr
 
   const providerSpec = meta?.providers.find((p) => p.name === providerName);
   const providerConfig = providerName ? config?.providers[providerName] : null;
+  const resolvedProviderConfig = providerConfig ?? EMPTY_PROVIDER_CONFIG;
   const uiHints = schema?.uiHints;
   const isCustomProvider = Boolean(providerSpec?.isCustom);
 
@@ -176,7 +187,7 @@ export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormPr
   const extraHeadersHint = providerName ? hintForPath(`providers.${providerName}.extraHeaders`, uiHints) : undefined;
   const wireApiHint = providerName ? hintForPath(`providers.${providerName}.wireApi`, uiHints) : undefined;
   const defaultDisplayName = providerSpec?.displayName || providerName || '';
-  const currentDisplayName = (providerConfig?.displayName || '').trim();
+  const currentDisplayName = (resolvedProviderConfig.displayName || '').trim();
   const effectiveDisplayName = currentDisplayName || defaultDisplayName;
 
   const providerTitle = providerDisplayName.trim() || effectiveDisplayName || providerName || t('providersSelectPlaceholder');
@@ -186,9 +197,9 @@ export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormPr
     [providerModelPrefix, providerName]
   );
   const defaultApiBase = providerSpec?.defaultApiBase || '';
-  const currentApiBase = providerConfig?.apiBase || defaultApiBase;
-  const currentHeaders = normalizeHeaders(providerConfig?.extraHeaders || null);
-  const currentWireApi = (providerConfig?.wireApi || providerSpec?.defaultWireApi || 'auto') as WireApiType;
+  const currentApiBase = resolvedProviderConfig.apiBase || defaultApiBase;
+  const currentHeaders = normalizeHeaders(resolvedProviderConfig.extraHeaders || null);
+  const currentWireApi = (resolvedProviderConfig.wireApi || providerSpec?.defaultWireApi || 'auto') as WireApiType;
   const defaultModels = useMemo(
     () =>
       normalizeModelList(
@@ -199,9 +210,9 @@ export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormPr
   const currentModels = useMemo(
     () =>
       normalizeModelList(
-        (providerConfig?.models ?? []).map((model) => toProviderLocalModelId(model, providerModelAliases))
+        (resolvedProviderConfig.models ?? []).map((model) => toProviderLocalModelId(model, providerModelAliases))
       ),
-    [providerConfig?.models, providerModelAliases]
+    [resolvedProviderConfig.models, providerModelAliases]
   );
   const currentEditableModels = useMemo(
     () => resolveEditableModels(defaultModels, currentModels),
@@ -285,7 +296,7 @@ export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormPr
 
     setApiKey('');
     setApiBase(currentApiBase);
-    setExtraHeaders(providerConfig?.extraHeaders || null);
+    setExtraHeaders(resolvedProviderConfig.extraHeaders || null);
     setWireApi(currentWireApi);
     setModels(currentEditableModels);
     setModelDraft('');
@@ -293,7 +304,7 @@ export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormPr
     setAuthSessionId(null);
     setAuthStatusMessage('');
     clearAuthPollTimer();
-  }, [providerName, currentApiBase, providerConfig?.extraHeaders, currentWireApi, currentEditableModels, effectiveDisplayName, clearAuthPollTimer]);
+  }, [providerName, currentApiBase, resolvedProviderConfig.extraHeaders, currentWireApi, currentEditableModels, effectiveDisplayName, clearAuthPollTimer]);
 
   useEffect(() => () => clearAuthPollTimer(), [clearAuthPollTimer]);
 
@@ -479,7 +490,7 @@ export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormPr
     }
   };
 
-  if (!providerName || !providerSpec || !providerConfig) {
+  if (!providerName || !providerSpec) {
     return (
       <div className={CONFIG_EMPTY_DETAIL_CARD_CLASS}>
         <div>
@@ -490,7 +501,7 @@ export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormPr
     );
   }
 
-  const statusLabel = providerConfig.apiKeySet ? t('statusReady') : t('statusSetup');
+  const statusLabel = resolvedProviderConfig.apiKeySet ? t('statusReady') : t('statusSetup');
 
   return (
     <div className={CONFIG_DETAIL_CARD_CLASS}>
@@ -509,7 +520,7 @@ export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormPr
                 <Trash2 className="h-4 w-4" />
               </button>
             )}
-            <StatusDot status={providerConfig.apiKeySet ? 'ready' : 'setup'} label={statusLabel} />
+            <StatusDot status={resolvedProviderConfig.apiKeySet ? 'ready' : 'setup'} label={statusLabel} />
           </div>
         </div>
       </div>
@@ -540,7 +551,7 @@ export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormPr
             <MaskedInput
               id="apiKey"
               value={apiKey}
-              isSet={providerConfig.apiKeySet}
+              isSet={resolvedProviderConfig.apiKeySet}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={apiKeyHint?.placeholder ?? t('enterApiKey')}
               className="rounded-xl"
