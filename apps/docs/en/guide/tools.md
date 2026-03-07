@@ -1,31 +1,37 @@
 # Tools
 
-## Web Search (Brave)
+Tools let the agent do more than answer questions. They let it perform actions.
 
-Add a Brave Search API key to enable web search for the agent:
+## Two Tool Categories
 
-```json
-{
-  "tools": {
-    "web": {
-      "search": { "apiKey": "YOUR_BRAVE_KEY", "maxResults": 5 }
-    }
-  }
-}
-```
+### 1) Information Retrieval
 
-## Command Execution (exec)
+- web search
+- web fetch and summarization
 
-Allow the agent to run shell commands:
+Best for: research, comparison, and source-based summaries.
 
-```json
-{
-  "tools": {
-    "exec": { "timeout": 60 }
-  },
-  "restrictToWorkspace": false
-}
-```
+### 2) Action Execution
 
-- `timeout`: max seconds per command
-- `restrictToWorkspace`: if `true`, commands are restricted to the agent workspace directory
+- file read/write/edit
+- command execution (`exec`)
+- messaging and scheduled tasks
+
+Best for: repetitive workflows and operational automation.
+
+## Beginner Recommendation
+
+1. Enable information tools first.
+2. Add action tools after your basic flow is stable.
+3. For `exec`, start with the narrowest permissions.
+
+## `exec` Safety Suggestions
+
+- set a reasonable timeout
+- restrict execution to workspace when possible
+- keep least privilege in production
+
+## Advanced Entry (Optional)
+
+For fine-grained parameters (for example `timeout`, `restrictToWorkspace`),
+see [Configuration](/en/guide/configuration) and [Commands](/en/guide/commands).

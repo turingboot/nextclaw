@@ -1,84 +1,51 @@
 # Secrets Management
 
-## Why Use Secrets (Instead of Plain `apiKey` in Config)
+## Why Use Secrets
 
-If you put keys directly in `~/.nextclaw/config.json`, they are easy to leak in:
+If keys are stored directly in config, common leak paths are:
 
 - screenshots
-- copied config files
-- accidental git commits
+- shared config files
+- accidental commits
 
-With secrets management, config only stores references. Real values stay in external sources.
+Secrets keep references in config while real values stay in external secure sources.
 
-## Where Real Secret Values Are Stored
+## Where Real Values Can Live
 
 - `env`: operating system environment variables
-- `file`: an external JSON file you control
-- `exec`: output of a command (for vault-like integrations)
+- `file`: external JSON file
+- `exec`: command output (commonly used with secret systems)
 
-`config.json` stores only:
+`config.json` keeps only:
 
 - `secrets.providers`
 - `secrets.defaults`
 - `secrets.refs`
 
-## Real-World Scenarios
+## Beginner Path (UI First)
 
-1. Team sharing one config template:
-Use refs in config, each teammate keeps real keys in local env variables.
+1. Open `/secrets` in the Web UI.
+2. Enable `enabled`.
+3. Configure one default provider (usually `env` first).
+4. Convert sensitive paths like `providers.<name>.apiKey` to `refs`.
+5. Save and run a connection test to confirm behavior.
 
-2. Dev / staging / prod switching:
-Keep the same refs, switch only environment variable values per environment.
+## Typical Benefits
 
-3. Key rotation:
-Update external key value, run reload, no need to rewrite business config.
+- Safe team templates without exposing real keys.
+- Easier multi-environment switching.
+- Simpler key rotation by updating secret sources only.
 
-## Quick Start (Beginner-Friendly)
-
-1. Create an env provider alias:
-
-```bash
-nextclaw secrets configure --provider env-main --source env --prefix APP_ --set-default
-```
-
-2. Bind OpenAI API key path to a secret ref:
-
-```bash
-nextclaw secrets apply \
-  --path providers.openai.apiKey \
-  --source env \
-  --provider env-main \
-  --id OPENAI_API_KEY
-```
-
-3. Set real key and audit:
-
-```bash
-export APP_OPENAI_API_KEY=sk-xxxxx
-nextclaw secrets audit --strict
-```
-
-4. Reload:
-
-```bash
-nextclaw secrets reload
-```
-
-## UI Workflow
-
-Open `/secrets` in the Web UI:
-
-- edit `enabled`
-- manage `defaults`
-- manage `providers`
-- manage `refs`
-
-Then run `nextclaw secrets audit --strict` as final acceptance.
-
-## Is Old Style Still Valid?
+## Is the Old Style Still Valid?
 
 Yes. Direct `providers.<name>.apiKey` still works.
 
-Use direct key for quick local experiments.
-Use secrets refs for team use, production, and safer operations.
+Recommended usage:
 
+- quick local experiments: direct key is acceptable
+- team/shared/long-running environments: use secrets refs
+
+## Advanced Entry (Optional)
+
+For automated/batch secret operations, use `nextclaw secrets` subcommands.
+See full options in [Commands](/en/guide/commands).

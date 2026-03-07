@@ -1,186 +1,55 @@
 # Channels
 
-All message channels use a common **allowFrom** rule:
+This page is organized for a "connect first, optimize later" path.
 
-- **Empty `allowFrom`** (`[]`): allow all senders.
-- **Non-empty `allowFrom`**: only messages from the listed user IDs are accepted.
+## One-Line Definition
 
-Configure channels in the UI or in `~/.nextclaw/config.json` under `channels`.
+A channel connects the same NextClaw assistant to different message entry points (for example Telegram, Discord, Slack).
 
-## Discord
+## Minimal First Success
 
-1. Create a bot in the [Discord Developer Portal](https://discord.com/developers/applications) and get the bot token.
-2. Enable **MESSAGE CONTENT INTENT** for the bot.
-3. Invite the bot to your server with permissions to read and send messages.
+1. Pick one channel in the UI (start with the one you use most).
+2. Fill in only required credentials (for example token / appId / appSecret).
+3. Save and run one real send/receive test.
+4. After it works, add allowlist and group policies.
 
-```json
-{
-  "channels": {
-    "discord": {
-      "enabled": true,
-      "token": "YOUR_BOT_TOKEN",
-      "allowBots": false,
-      "allowFrom": [],
-      "accountId": "default",
-      "dmPolicy": "open",
-      "groupPolicy": "allowlist",
-      "groupAllowFrom": ["dev-room"],
-      "requireMention": true,
-      "mentionPatterns": ["@engineer"]
-    }
-  }
-}
-```
+## Common Safety Field: `allowFrom`
 
-## Telegram
+- Empty `allowFrom` (`[]`): allow all senders.
+- Non-empty `allowFrom`: only listed user IDs are accepted.
 
-1. Create a bot via [@BotFather](https://t.me/BotFather) and get the token.
-2. Get your user ID from [@userinfobot](https://t.me/userinfobot).
+Recommendation: set `allowFrom` for higher-risk channels before production use.
 
-```json
-{
-  "channels": {
-    "telegram": {
-      "enabled": true,
-      "token": "YOUR_BOT_TOKEN",
-      "allowFrom": ["YOUR_USER_ID"],
-      "ackReaction": "👀",
-      "ackReactionScope": "all"
-    }
-  }
-}
-```
+## What You Need Per Channel (First Step)
 
-Optional: set `"proxy": "http://localhost:7890"` for network access.
+### Discord
 
-- `ackReaction` default is `"👀"` (set empty string to disable).
-- `ackReactionScope` default is `"all"` (`off` | `group-mentions` | `group-all` | `direct` | `all`).
+- Bot token
+- Enable `MESSAGE CONTENT INTENT`
+- Basic read/send message permissions for the bot
 
-## Slack
+### Telegram
 
-Socket mode setup. You need a **Bot Token** and an **App-Level Token** (with `connections:write`).
+- Bot token from BotFather
+- Your user ID (if using allowlist)
 
-```json
-{
-  "channels": {
-    "slack": {
-      "enabled": true,
-      "mode": "socket",
-      "botToken": "xoxb-...",
-      "appToken": "xapp-...",
-      "allowBots": false,
-      "dm": { "enabled": true, "allowFrom": [] }
-    }
-  }
-}
-```
+### Slack
 
-## Feishu (Lark)
+- Bot token
+- App-Level token with `connections:write`
 
-Create an app in the [Feishu open platform](https://open.feishu.com/).
+### Feishu (Lark)
 
-```json
-{
-  "channels": {
-    "feishu": {
-      "enabled": true,
-      "appId": "YOUR_APP_ID",
-      "appSecret": "YOUR_APP_SECRET",
-      "encryptKey": "",
-      "verificationToken": "",
-      "allowFrom": []
-    }
-  }
-}
-```
+- `appId` / `appSecret` from a Feishu Open Platform app
 
-## DingTalk
+### WhatsApp (whatsapp-web.js)
 
-```json
-{
-  "channels": {
-    "dingtalk": {
-      "enabled": true,
-      "clientId": "YOUR_CLIENT_ID",
-      "clientSecret": "YOUR_CLIENT_SECRET",
-      "allowFrom": []
-    }
-  }
-}
-```
+- QR scan on first login
 
-## WeCom (Enterprise WeChat)
+## Advanced Config (Optional)
 
-```json
-{
-  "channels": {
-    "wecom": {
-      "enabled": true,
-      "corpId": "YOUR_CORP_ID",
-      "agentId": "1000002",
-      "secret": "YOUR_APP_SECRET",
-      "token": "YOUR_CALLBACK_TOKEN",
-      "callbackPort": 18890,
-      "callbackPath": "/wecom/callback",
-      "allowFrom": []
-    }
-  }
-}
-```
+For batch management or versioned config, maintain channel settings under `channels` in `~/.nextclaw/config.json`.
 
-## WhatsApp
-
-```json
-{
-  "channels": {
-    "whatsapp": {
-      "enabled": true,
-      "bridgeUrl": "ws://localhost:3001",
-      "allowFrom": []
-    }
-  }
-}
-```
-
-## Email
-
-```json
-{
-  "channels": {
-    "email": {
-      "enabled": true,
-      "consentGranted": true,
-      "imapHost": "imap.example.com",
-      "imapPort": 993,
-      "imapUsername": "you@example.com",
-      "imapPassword": "YOUR_PASSWORD",
-      "smtpHost": "smtp.example.com",
-      "smtpPort": 587,
-      "smtpUsername": "you@example.com",
-      "smtpPassword": "YOUR_PASSWORD",
-      "smtpUseTls": true,
-      "fromAddress": "you@example.com",
-      "autoReplyEnabled": true,
-      "pollIntervalSeconds": 30,
-      "allowFrom": []
-    }
-  }
-}
-```
-
-## QQ
-
-```json
-{
-  "channels": {
-    "qq": {
-      "enabled": true,
-      "appId": "YOUR_APP_ID",
-      "secret": "YOUR_SECRET",
-      "allowFrom": []
-    }
-  }
-}
-```
-
-After changing channel config, NextClaw hot-reloads channel runtime automatically when the gateway is running.
+Full parameter references:
+- [Configuration](/en/guide/configuration)
+- [Commands](/en/guide/commands)

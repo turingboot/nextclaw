@@ -1,39 +1,34 @@
 # Cron & Heartbeat
 
-## Cron Jobs
+This page explains how to make your assistant run tasks automatically.
 
-Schedule one-off or recurring tasks. The agent receives the message at the scheduled time.
+## Cron: Trigger Tasks on Schedule
 
-### List Jobs
+You can create:
 
-```bash
-nextclaw cron list
-```
+- one-time tasks (run once at a specific time)
+- recurring tasks (daily/weekly pattern)
 
-### Add a One-Time Job
+Typical uses:
 
-```bash
-nextclaw cron add -n "reminder" -m "Stand up and stretch" --at "2026-02-15T09:00:00"
-```
+- daily summary draft
+- scheduled reminders
+- periodic checks and reports
 
-### Add a Recurring Job
+## Recommended Order (UI First)
 
-```bash
-nextclaw cron add -n "daily-summary" -m "Summarize yesterday" -c "0 9 * * *"
-```
+1. Create one one-time task and verify the full path.
+2. Add one recurring task (for example once per day).
+3. Add advanced rules only after baseline is stable.
 
-### Manage Jobs
+## Heartbeat: Periodic Workspace Task Check
 
-```bash
-nextclaw cron remove <jobId>
-nextclaw cron enable <jobId>
-nextclaw cron enable <jobId> --disable
-nextclaw cron run <jobId>          # Run once now
-nextclaw cron run <jobId> --force  # Run even if disabled
-```
+When the gateway is running, NextClaw checks `HEARTBEAT.md` in workspace periodically.
+If actionable tasks are found, the agent processes them.
 
-## Heartbeat
+If you do not need Heartbeat for now, keep the file empty.
 
-When the gateway is running, `HEARTBEAT.md` in the workspace is checked every 30 minutes. If it contains actionable tasks, the agent will process them.
+## Advanced Entry (Optional)
 
-Keep the file empty (or with only comments) to skip heartbeat API calls.
+For script-based task management, use `nextclaw cron` subcommands.
+See details in [Commands](/en/guide/commands).
