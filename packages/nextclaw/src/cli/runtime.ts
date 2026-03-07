@@ -30,7 +30,7 @@ import {
   type RestartStrategy,
 } from "./restart-coordinator.js";
 import { writeRestartSentinel } from "./restart-sentinel.js";
-import { installClawHubSkill } from "./skills/clawhub.js";
+import { installMarketplaceSkill, publishMarketplaceSkill } from "./skills/marketplace.js";
 import { runSelfUpdate } from "./update/runner.js";
 import {
   clearServiceState,
@@ -802,33 +802,96 @@ export class CliRuntime {
 
   async skillsInstall(options: {
     slug: string;
-    version?: string;
-    registry?: string;
     workdir?: string;
     dir?: string;
     force?: boolean;
+    apiBaseUrl?: string;
   }): Promise<void> {
     const workdir = options.workdir
       ? expandHome(options.workdir)
       : getWorkspacePath();
-    const result = await installClawHubSkill({
+    const result = await installMarketplaceSkill({
       slug: options.slug,
-      version: options.version,
-      registry: options.registry,
       workdir,
       dir: options.dir,
       force: options.force,
+      apiBaseUrl: options.apiBaseUrl
     });
 
-    const versionLabel = result.version ?? "latest";
     if (result.alreadyInstalled) {
       console.log(`✓ ${result.slug} is already installed`);
     } else {
-      console.log(`✓ Installed ${result.slug}@${versionLabel}`);
-    }
-    if (result.registry) {
-      console.log(`  Registry: ${result.registry}`);
+      console.log(`✓ Installed ${result.slug} (${result.source})`);
     }
     console.log(`  Path: ${result.destinationDir}`);
+  }
+
+  async skillsPublish(options: {
+    dir: string;
+    slug?: string;
+    name?: string;
+    summary?: string;
+    description?: string;
+    author?: string;
+    tag?: string[];
+    sourceRepo?: string;
+    homepage?: string;
+    publishedAt?: string;
+    updatedAt?: string;
+    apiBaseUrl?: string;
+    token?: string;
+  }): Promise<void> {
+    const result = await publishMarketplaceSkill({
+      skillDir: expandHome(options.dir),
+      slug: options.slug,
+      name: options.name,
+      summary: options.summary,
+      description: options.description,
+      author: options.author,
+      tags: options.tag,
+      sourceRepo: options.sourceRepo,
+      homepage: options.homepage,
+      publishedAt: options.publishedAt,
+      updatedAt: options.updatedAt,
+      apiBaseUrl: options.apiBaseUrl,
+      token: options.token
+    });
+
+    console.log(result.created ? `✓ Published new skill: ${result.slug}` : `✓ Updated skill: ${result.slug}`);
+    console.log(`  Files: ${result.fileCount}`);
+  }
+
+  async skillsUpdate(options: {
+    dir: string;
+    slug?: string;
+    name?: string;
+    summary?: string;
+    description?: string;
+    author?: string;
+    tag?: string[];
+    sourceRepo?: string;
+    homepage?: string;
+    updatedAt?: string;
+    apiBaseUrl?: string;
+    token?: string;
+  }): Promise<void> {
+    const result = await publishMarketplaceSkill({
+      skillDir: expandHome(options.dir),
+      slug: options.slug,
+      name: options.name,
+      summary: options.summary,
+      description: options.description,
+      author: options.author,
+      tags: options.tag,
+      sourceRepo: options.sourceRepo,
+      homepage: options.homepage,
+      updatedAt: options.updatedAt,
+      apiBaseUrl: options.apiBaseUrl,
+      token: options.token,
+      requireExisting: true
+    });
+
+    console.log(`✓ Updated skill: ${result.slug}`);
+    console.log(`  Files: ${result.fileCount}`);
   }
 }

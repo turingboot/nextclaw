@@ -7,9 +7,10 @@
     "dev": "wrangler dev",
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --max-warnings=0",
-    "validate:catalog": "node scripts/validate-catalog.mjs",
     "tsc": "tsc -p tsconfig.json --noEmit",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply MARKETPLACE_DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply MARKETPLACE_DB --remote"
   },
   "dependencies": {
     "hono": "^4.9.8"

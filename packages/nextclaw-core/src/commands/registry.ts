@@ -22,6 +22,11 @@ export type CommandResult = {
   ephemeral?: boolean;
 };
 
+export type ParsedTextCommand = {
+  name: string;
+  args: Record<string, unknown>;
+};
+
 type CommandHandlerContext = CommandExecutionContext & {
   sessionKey: string;
   config: Config;
@@ -85,6 +90,37 @@ export class CommandRegistry {
       sessionManager: this.sessionManager
     };
     return await spec.execute(commandCtx, args ?? {});
+  }
+
+  parseTextCommand(input: string): ParsedTextCommand | null {
+    const trimmed = input.trim();
+    if (!trimmed.startsWith("/")) {
+      return null;
+    }
+    const withoutSlash = trimmed.slice(1).trim();
+    if (!withoutSlash) {
+      return null;
+    }
+    const [nameToken, ...restTokens] = withoutSlash.split(/\s+/);
+    const name = normalizeCommandName(nameToken);
+    if (!name) {
+      return null;
+    }
+    const spec = this.lookup.get(name);
+    const restText = restTokens.join(" ").trim();
+    const args = spec ? this.parseTextArgs(spec, restText) : {};
+    return {
+      name,
+      args
+    };
+  }
+
+  async executeText(input: string, ctx: CommandExecutionContext): Promise<CommandResult | null> {
+    const parsed = this.parseTextCommand(input);
+    if (!parsed) {
+      return null;
+    }
+    return await this.execute(parsed.name, parsed.args, ctx);
   }
 
   private registerDefaults(): void {
@@ -218,6 +254,51 @@ export class CommandRegistry {
       return preferred;
     }
     return this.config.agents.defaults.model;
+  }
+
+  private parseTextArgs(spec: CommandSpec, raw: string): Record<string, unknown> {
+    if (!spec.options || spec.options.length === 0 || !raw) {
+      return {};
+    }
+    const tokens = raw.split(/\s+/).filter(Boolean);
+    const args: Record<string, unknown> = {};
+    let cursor = 0;
+    for (let i = 0; i < spec.options.length; i += 1) {
+      if (cursor >= tokens.length) {
+        break;
+      }
+      const option = spec.options[i];
+      const isLastOption = i === spec.options.length - 1;
+      const rawValue = isLastOption ? tokens.slice(cursor).join(" ") : tokens[cursor];
+      cursor += isLastOption ? tokens.length - cursor : 1;
+      const parsed = this.parseTextOptionValue(option.type, rawValue);
+      if (parsed !== undefined) {
+        args[option.name] = parsed;
+      }
+    }
+    return args;
+  }
+
+  private parseTextOptionValue(type: CommandOptionType, raw: string): string | number | boolean | undefined {
+    const value = raw.trim();
+    if (!value) {
+      return undefined;
+    }
+    if (type === "number") {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    if (type === "boolean") {
+      const lowered = value.toLowerCase();
+      if (["1", "true", "yes", "on"].includes(lowered)) {
+        return true;
+      }
+      if (["0", "false", "no", "off"].includes(lowered)) {
+        return false;
+      }
+      return undefined;
+    }
+    return value;
   }
 }
 

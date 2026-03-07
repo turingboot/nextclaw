@@ -91,6 +91,10 @@ export abstract class InMemorySectionRepositoryBase {
     };
   }
 
+  invalidateCache(): void {
+    this.cache = undefined;
+  }
+
   private async loadSnapshot(): Promise<MarketplaceCatalogSnapshot> {
     const now = Date.now();
     if (this.cache && this.cache.expiresAt > now) {
@@ -217,27 +221,43 @@ export abstract class InMemorySectionRepositoryBase {
       };
     }
 
-    return (
-      section.recommendations.find((scene) => scene.id === sceneId) ?? {
-        id: sceneId,
-        title: sceneId,
-        itemIds: []
-      }
-    );
+    const sceneAliases = [sceneId, `${this.getResultType()}s-${sceneId}`];
+    const matched = section.recommendations.find((scene) => sceneAliases.includes(scene.id));
+    if (matched) {
+      return matched;
+    }
+
+    return {
+      id: sceneId,
+      title: sceneId,
+      itemIds: []
+    };
   }
 
   private toSummary(item: MarketplaceItem): MarketplaceItemSummary {
-    return {
+    const base = {
       id: item.id,
       slug: item.slug,
-      type: item.type,
       name: item.name,
       summary: item.summary,
       summaryI18n: item.summaryI18n,
       tags: item.tags,
       author: item.author,
-      install: item.install,
       updatedAt: item.updatedAt
+    };
+
+    if (item.type === "plugin") {
+      return {
+        ...base,
+        type: "plugin",
+        install: item.install
+      };
+    }
+
+    return {
+      ...base,
+      type: "skill",
+      install: item.install
     };
   }
 }

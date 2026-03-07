@@ -86,7 +86,8 @@
 ## 9. Skills 能力
 
 - `nextclaw skills install <slug>`
-- `nextclaw clawhub install <slug>`
+- `nextclaw skills publish <dir>`
+- `nextclaw skills update <dir>`
 - 内置 skills 模板注入（init 时种子）
 
 ## 10. 当前已知生效边界

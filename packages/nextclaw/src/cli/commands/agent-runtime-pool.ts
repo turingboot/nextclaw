@@ -1,5 +1,7 @@
 import {
   NativeAgentEngine,
+  CommandRegistry,
+  type CommandOption,
   type AgentEngine,
   type AgentEngineFactory,
   type AgentEngineFactoryContext,
@@ -168,6 +170,14 @@ export class GatewayAgentRuntimePool {
       metadata: params.metadata,
       agentId: params.agentId
     });
+    const commandResult = await this.executeDirectCommand(params.content, {
+      channel: message.channel,
+      chatId: message.chatId,
+      sessionKey: route.sessionKey
+    });
+    if (commandResult) {
+      return commandResult;
+    }
     const runtime = this.resolveRuntime(route.agentId);
     return runtime.engine.processDirect({
       content: params.content,
@@ -179,6 +189,55 @@ export class GatewayAgentRuntimePool {
       onAssistantDelta: params.onAssistantDelta,
       onSessionEvent: params.onSessionEvent
     });
+  }
+
+  private async executeDirectCommand(
+    rawContent: string,
+    ctx: { channel: string; chatId: string; sessionKey: string }
+  ): Promise<string | null> {
+    const trimmed = rawContent.trim();
+    if (!trimmed.startsWith("/")) {
+      return null;
+    }
+    const registry = new CommandRegistry(this.options.config, this.options.sessionManager);
+    const executeText = (
+      registry as CommandRegistry & {
+        executeText?: (input: string, execCtx: {
+          channel: string;
+          chatId: string;
+          senderId: string;
+          sessionKey: string;
+        }) => Promise<{ content: string } | null>;
+      }
+    ).executeText;
+    if (typeof executeText === "function") {
+      const result = await executeText.call(registry, rawContent, {
+        channel: ctx.channel,
+        chatId: ctx.chatId,
+        senderId: "user",
+        sessionKey: ctx.sessionKey
+      });
+      return result?.content ?? null;
+    }
+    const commandRaw = trimmed.slice(1).trim();
+    if (!commandRaw) {
+      return null;
+    }
+    const [nameToken, ...restTokens] = commandRaw.split(/\s+/);
+    const commandName = nameToken.trim().toLowerCase();
+    if (!commandName) {
+      return null;
+    }
+    const commandTail = restTokens.join(" ").trim();
+    const specs = registry.listSlashCommands();
+    const args = parseCommandArgsFromText(commandName, commandTail, specs);
+    const result = await registry.execute(commandName, args, {
+      channel: ctx.channel,
+      chatId: ctx.chatId,
+      senderId: "user",
+      sessionKey: ctx.sessionKey
+    });
+    return result?.content ?? null;
   }
 
   supportsTurnAbort(params: {
@@ -379,4 +438,59 @@ export class GatewayAgentRuntimePool {
     }
     this.runtimes = nextRuntimes;
   }
+}
+
+function parseCommandArgsFromText(
+  commandName: string,
+  rawTail: string,
+  specs: Array<{ name: string; options?: CommandOption[] }>
+): Record<string, unknown> {
+  if (!rawTail) {
+    return {};
+  }
+  const command = specs.find((item) => item.name.trim().toLowerCase() === commandName);
+  const options = command?.options;
+  if (!options || options.length === 0) {
+    return {};
+  }
+
+  const tokens = rawTail.split(/\s+/).filter(Boolean);
+  const args: Record<string, unknown> = {};
+  let cursor = 0;
+  for (let i = 0; i < options.length; i += 1) {
+    if (cursor >= tokens.length) {
+      break;
+    }
+    const option = options[i];
+    const isLastOption = i === options.length - 1;
+    const rawValue = isLastOption ? tokens.slice(cursor).join(" ") : tokens[cursor];
+    cursor += isLastOption ? tokens.length - cursor : 1;
+    const parsedValue = parseCommandOptionValue(option.type, rawValue);
+    if (parsedValue !== undefined) {
+      args[option.name] = parsedValue;
+    }
+  }
+  return args;
+}
+
+function parseCommandOptionValue(type: CommandOption["type"], rawValue: string): string | number | boolean | undefined {
+  const value = rawValue.trim();
+  if (!value) {
+    return undefined;
+  }
+  if (type === "number") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  if (type === "boolean") {
+    const lowered = value.toLowerCase();
+    if (["1", "true", "yes", "on"].includes(lowered)) {
+      return true;
+    }
+    if (["0", "false", "no", "off"].includes(lowered)) {
+      return false;
+    }
+    return undefined;
+  }
+  return value;
 }

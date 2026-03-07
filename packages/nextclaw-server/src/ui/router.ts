@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { readFile } from "node:fs/promises";
 import * as NextclawCore from "@nextclaw/core";
 import { buildPluginStatusReport } from "@nextclaw/openclaw-compat";
 import {
@@ -28,6 +27,7 @@ import type {
   ChatRunState,
   ChatRunView,
   ChatCapabilitiesView,
+  ChatCommandsView,
   ChatTurnRequest,
   ChatTurnStopRequest,
   ChatTurnStopResult,
@@ -932,111 +932,26 @@ function isSupportedMarketplaceSkillItem(
     return false;
   }
 
-  if (item.install.kind === "git") {
+  if (item.install.kind === "marketplace") {
     return true;
   }
 
   return item.install.kind === "builtin" && knownSkillNames.has(item.install.spec);
 }
 
-function splitMarkdownFrontmatter(raw: string): { metadataRaw?: string; bodyRaw: string } {
-  const normalized = raw.replace(/\r\n/g, "\n");
-  const match = normalized.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!match) {
-    return { bodyRaw: normalized };
-  }
-
-  return {
-    metadataRaw: match[1]?.trim() || undefined,
-    bodyRaw: match[2] ?? ""
-  };
-}
-
-async function loadLocalSkillMarkdown(options: UiRouterOptions, skillName: string): Promise<{ raw: string; source: "workspace" | "builtin" } | null> {
-  const config = loadConfigOrDefault(options.configPath);
-  const loader = createSkillsLoader(getWorkspacePathFromConfig(config));
-  if (!loader) {
-    return null;
-  }
-
-  const skillInfo = loader.listSkills(false).find((skill) => skill.name === skillName);
-  if (!skillInfo) {
-    return null;
-  }
-
-  try {
-    const raw = await readFile(skillInfo.path, "utf-8");
-    return {
-      raw,
-      source: skillInfo.source
-    };
-  } catch {
-    return null;
-  }
-}
-
-function parseGitSkillSpec(rawSpec: string): { owner: string; repo: string; skillPath: string } | null {
-  const spec = rawSpec.trim();
-  if (!spec) {
-    return null;
-  }
-
-  const segments = spec.split("/").filter(Boolean);
-  if (segments.length < 3) {
-    return null;
-  }
-
-  return {
-    owner: segments[0] ?? "",
-    repo: segments[1] ?? "",
-    skillPath: segments.slice(2).join("/")
-  };
-}
-
-async function fetchTextWithFallback(urls: string[]): Promise<{ text: string; url: string } | null> {
-  for (const url of urls) {
-    try {
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "text/plain, text/markdown, application/json"
-        }
-      });
-      if (!response.ok) {
-        continue;
-      }
-      const text = await response.text();
-      if (text.trim().length === 0) {
-        continue;
-      }
-      return { text, url };
-    } catch {
+function findUnsupportedSkillInstallKind(
+  items: Array<MarketplaceItemView | MarketplaceListView["items"][number]>
+): string | null {
+  for (const item of items) {
+    if (item.type !== "skill") {
       continue;
     }
+    const kind = item.install.kind as string;
+    if (kind !== "builtin" && kind !== "marketplace") {
+      return kind;
+    }
   }
-
   return null;
-}
-
-async function loadGitSkillMarkdownFromSpec(rawSpec: string): Promise<{ raw: string; sourceUrl: string } | null> {
-  const parsed = parseGitSkillSpec(rawSpec);
-  if (!parsed) {
-    return null;
-  }
-
-  const candidates = [
-    `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/main/${parsed.skillPath}/SKILL.md`,
-    `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/master/${parsed.skillPath}/SKILL.md`
-  ];
-  const result = await fetchTextWithFallback(candidates);
-  if (!result) {
-    return null;
-  }
-
-  return {
-    raw: result.text,
-    sourceUrl: result.url
-  };
 }
 
 async function loadPluginReadmeFromNpm(spec: string): Promise<{ readme: string; sourceUrl: string; metadataRaw?: string } | null> {
@@ -1076,43 +991,6 @@ async function loadPluginReadmeFromNpm(spec: string): Promise<{ readme: string; 
   } catch {
     return null;
   }
-}
-
-async function buildSkillContentView(options: UiRouterOptions, item: MarketplaceItemView): Promise<MarketplaceSkillContentView | null> {
-  const local = await loadLocalSkillMarkdown(options, item.install.spec);
-  if (local) {
-    const split = splitMarkdownFrontmatter(local.raw);
-    return {
-      type: "skill",
-      slug: item.slug,
-      name: item.name,
-      install: item.install,
-      source: local.source,
-      raw: local.raw,
-      metadataRaw: split.metadataRaw,
-      bodyRaw: split.bodyRaw
-    };
-  }
-
-  if (item.install.kind === "git") {
-    const remote = await loadGitSkillMarkdownFromSpec(item.install.spec);
-    if (remote) {
-      const split = splitMarkdownFrontmatter(remote.raw);
-      return {
-        type: "skill",
-        slug: item.slug,
-        name: item.name,
-        install: item.install,
-        source: "git",
-        raw: remote.raw,
-        metadataRaw: split.metadataRaw,
-        bodyRaw: split.bodyRaw,
-        sourceUrl: remote.sourceUrl
-      };
-    }
-  }
-
-  return null;
 }
 
 async function buildPluginContentView(item: MarketplaceItemView): Promise<MarketplacePluginContentView> {
@@ -1267,8 +1145,6 @@ async function installMarketplaceSkill(params: {
     kind: params.body.kind,
     skill: params.body.skill,
     installPath: params.body.installPath,
-    version: params.body.version,
-    registry: params.body.registry,
     force: params.body.force
   });
 
@@ -1553,10 +1429,18 @@ function registerSkillMarketplaceRoutes(app: Hono, options: UiRouterOptions, mar
       return c.json(err("MARKETPLACE_UNAVAILABLE", result.message), result.status as 500);
     }
 
+    const normalizedItems = result.data.items
+      .map((item) => normalizeMarketplaceItemForUi(sanitizeMarketplaceItem(item)));
+    const unsupportedKind = findUnsupportedSkillInstallKind(normalizedItems);
+    if (unsupportedKind) {
+      return c.json(
+        err("MARKETPLACE_CONTRACT_MISMATCH", `unsupported skill install kind from marketplace api: ${unsupportedKind}`),
+        502
+      );
+    }
+
     const knownSkillNames = collectKnownSkillNames(options);
-    const filteredItems = result.data.items
-      .map((item) => normalizeMarketplaceItemForUi(sanitizeMarketplaceItem(item)))
-      .filter((item) => isSupportedMarketplaceSkillItem(item, knownSkillNames));
+    const filteredItems = normalizedItems.filter((item) => isSupportedMarketplaceSkillItem(item, knownSkillNames));
 
     const pageSize = Math.min(100, toPositiveInt(query.pageSize, 20));
     const requestedPage = toPositiveInt(query.page, 1);
@@ -1587,6 +1471,13 @@ function registerSkillMarketplaceRoutes(app: Hono, options: UiRouterOptions, mar
 
     const knownSkillNames = collectKnownSkillNames(options);
     const sanitized = normalizeMarketplaceItemForUi(sanitizeMarketplaceItem(result.data));
+    const unsupportedKind = findUnsupportedSkillInstallKind([sanitized]);
+    if (unsupportedKind) {
+      return c.json(
+        err("MARKETPLACE_CONTRACT_MISMATCH", `unsupported skill install kind from marketplace api: ${unsupportedKind}`),
+        502
+      );
+    }
     if (!isSupportedMarketplaceSkillItem(sanitized, knownSkillNames)) {
       return c.json(err("NOT_FOUND", "marketplace item not supported by nextclaw"), 404);
     }
@@ -1607,16 +1498,26 @@ function registerSkillMarketplaceRoutes(app: Hono, options: UiRouterOptions, mar
 
     const knownSkillNames = collectKnownSkillNames(options);
     const sanitized = normalizeMarketplaceItemForUi(sanitizeMarketplaceItem(result.data));
+    const unsupportedKind = findUnsupportedSkillInstallKind([sanitized]);
+    if (unsupportedKind) {
+      return c.json(
+        err("MARKETPLACE_CONTRACT_MISMATCH", `unsupported skill install kind from marketplace api: ${unsupportedKind}`),
+        502
+      );
+    }
     if (!isSupportedMarketplaceSkillItem(sanitized, knownSkillNames)) {
       return c.json(err("NOT_FOUND", "marketplace item not supported by nextclaw"), 404);
     }
 
-    const content = await buildSkillContentView(options, sanitized);
-    if (!content) {
-      return c.json(err("NOT_FOUND", "skill markdown content not found"), 404);
+    const contentResult = await fetchMarketplaceData<MarketplaceSkillContentView>({
+      baseUrl: marketplaceBaseUrl,
+      path: `/api/v1/skills/items/${slug}/content`
+    });
+    if (!contentResult.ok) {
+      return c.json(err("MARKETPLACE_UNAVAILABLE", contentResult.message), contentResult.status as 500);
     }
 
-    return c.json(ok(content));
+    return c.json(ok(contentResult.data));
   });
 
   app.post("/api/marketplace/skills/install", async (c) => {
@@ -1910,6 +1811,34 @@ export function createUiRouter(options: UiRouterOptions): Hono {
       return c.json(ok(capabilities));
     } catch (error) {
       return c.json(err("CHAT_RUNTIME_FAILED", String(error)), 500);
+    }
+  });
+
+  app.get("/api/chat/commands", async (c) => {
+    try {
+      const config = loadConfigOrDefault(options.configPath);
+      const registry = new NextclawCore.CommandRegistry(config);
+      const commands = registry.listSlashCommands().map((command) => ({
+        name: command.name,
+        description: command.description,
+        ...(Array.isArray(command.options) && command.options.length > 0
+          ? {
+              options: command.options.map((option) => ({
+                name: option.name,
+                description: option.description,
+                type: option.type,
+                ...(option.required === true ? { required: true } : {})
+              }))
+            }
+          : {})
+      }));
+      const payload: ChatCommandsView = {
+        commands,
+        total: commands.length
+      };
+      return c.json(ok(payload));
+    } catch (error) {
+      return c.json(err("CHAT_COMMANDS_FAILED", String(error)), 500);
     }
   });
 

@@ -1,5 +1,17 @@
 # nextclaw-core
 
+## 0.7.2
+
+### Patch Changes
+
+- Switch skill distribution to marketplace-first flow and remove GitHub-based skill install paths.
+
+  This release includes:
+  - skill/plugin model clean split (skill: `builtin` + `marketplace` only)
+  - marketplace API migration from bundled JSON to D1-backed source
+  - CLI support for marketplace skill upload/update/install
+  - UI and server integration updates for marketplace data, install behavior, and user-facing error messaging
+
 ## 0.7.1
 
 ### Patch Changes

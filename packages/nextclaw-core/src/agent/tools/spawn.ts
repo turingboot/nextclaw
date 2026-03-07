@@ -4,6 +4,7 @@ import type { SubagentManager } from "../subagent.js";
 export class SpawnTool extends Tool {
   private channel = "cli";
   private chatId = "direct";
+  private sessionModel: string | undefined;
 
   constructor(private manager: SubagentManager) {
     super();
@@ -22,23 +23,28 @@ export class SpawnTool extends Tool {
       type: "object",
       properties: {
         task: { type: "string", description: "Task for the subagent" },
-        label: { type: "string", description: "Optional label" }
+        label: { type: "string", description: "Optional label" },
+        model: { type: "string", description: "Optional model override for this subagent run" }
       },
       required: ["task"]
     };
   }
 
-  setContext(channel: string, chatId: string): void {
+  setContext(channel: string, chatId: string, sessionModel?: string): void {
     this.channel = channel;
     this.chatId = chatId;
+    this.sessionModel = sessionModel;
   }
 
   async execute(params: Record<string, unknown>): Promise<string> {
     const task = String(params.task ?? "");
     const label = params.label ? String(params.label) : undefined;
+    const model = typeof params.model === "string" && params.model.trim().length > 0 ? params.model.trim() : undefined;
     return this.manager.spawn({
       task,
       label,
+      model,
+      sessionModel: this.sessionModel,
       originChannel: this.channel,
       originChatId: this.chatId
     });

@@ -83,23 +83,50 @@ program
   .option("--timeout <ms>", "Update command timeout in milliseconds")
   .action(async (opts) => runtime.update(opts));
 
-const registerClawHubInstall = (cmd: Command) => {
-  cmd
-    .command("install <slug>")
-    .description("Install a skill from ClawHub")
-    .option("--version <version>", "Skill version (default: latest)")
-    .option("--registry <url>", "ClawHub registry base URL")
-    .option("--workdir <dir>", "Workspace directory to install into")
-    .option("--dir <dir>", "Skills directory name (default: skills)")
-    .option("-f, --force", "Overwrite existing skill files", false)
-    .action(async (slug, opts) => runtime.skillsInstall({ slug, ...opts }));
-};
-
 const skills = program.command("skills").description("Manage skills");
-registerClawHubInstall(skills);
+skills
+  .command("install <slug>")
+  .description("Install a skill from NextClaw marketplace")
+  .option("--api-base <url>", "Marketplace API base URL")
+  .option("--workdir <dir>", "Workspace directory to install into")
+  .option("--dir <dir>", "Skills directory name (default: skills)")
+  .option("-f, --force", "Overwrite existing skill files", false)
+  .action(async (slug, opts) => runtime.skillsInstall({ slug, ...opts, apiBaseUrl: opts.apiBase }));
 
-const clawhub = program.command("clawhub").description("Install skills from ClawHub");
-registerClawHubInstall(clawhub);
+const withRepeatableTag = (value: string, previous: string[] = []) => [...previous, value];
+
+skills
+  .command("publish <dir>")
+  .description("Upload or create a skill in marketplace")
+  .option("--slug <slug>", "Skill slug (default: directory name)")
+  .option("--name <name>", "Skill display name")
+  .option("--summary <summary>", "Skill summary")
+  .option("--description <description>", "Skill description")
+  .option("--author <author>", "Skill author")
+  .option("--tag <tag>", "Skill tag (repeatable)", withRepeatableTag, [])
+  .option("--source-repo <url>", "Source repository URL")
+  .option("--homepage <url>", "Homepage URL")
+  .option("--published-at <datetime>", "Published time (ISO datetime)")
+  .option("--updated-at <datetime>", "Updated time (ISO datetime)")
+  .option("--api-base <url>", "Marketplace API base URL")
+  .option("--token <token>", "Marketplace admin token")
+  .action(async (dir, opts) => runtime.skillsPublish({ dir, ...opts, apiBaseUrl: opts.apiBase }));
+
+skills
+  .command("update <dir>")
+  .description("Update an existing skill in marketplace")
+  .option("--slug <slug>", "Skill slug (default: directory name)")
+  .option("--name <name>", "Skill display name")
+  .option("--summary <summary>", "Skill summary")
+  .option("--description <description>", "Skill description")
+  .option("--author <author>", "Skill author")
+  .option("--tag <tag>", "Skill tag (repeatable)", withRepeatableTag, [])
+  .option("--source-repo <url>", "Source repository URL")
+  .option("--homepage <url>", "Homepage URL")
+  .option("--updated-at <datetime>", "Updated time (ISO datetime)")
+  .option("--api-base <url>", "Marketplace API base URL")
+  .option("--token <token>", "Marketplace admin token")
+  .action(async (dir, opts) => runtime.skillsUpdate({ dir, ...opts, apiBaseUrl: opts.apiBase }));
 
 const plugins = program.command("plugins").description("Manage OpenClaw-compatible plugins");
 

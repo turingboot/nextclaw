@@ -536,7 +536,7 @@ export class AgentLoop {
     }
     const spawnTool = this.tools.get("spawn");
     if (spawnTool instanceof SpawnTool) {
-      spawnTool.setContext(msg.channel, msg.chatId);
+      spawnTool.setContext(msg.channel, msg.chatId, runtimeModel);
     }
     const cronTool = this.tools.get("cron");
     if (cronTool instanceof CronTool) {
@@ -719,7 +719,7 @@ export class AgentLoop {
     }
     const spawnTool = this.tools.get("spawn");
     if (spawnTool instanceof SpawnTool) {
-      spawnTool.setContext(originChannel, originChatId);
+      spawnTool.setContext(originChannel, originChatId, runtimeModel);
     }
     const cronTool = this.tools.get("cron");
     if (cronTool instanceof CronTool) {

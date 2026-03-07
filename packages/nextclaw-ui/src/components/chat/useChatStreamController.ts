@@ -178,7 +178,7 @@ type ExecuteStreamRunParams = {
     onReady: (event: { runId?: string; stopSupported?: boolean; stopReason?: string; sessionKey: string }) => void;
     onDelta: (event: { delta: string }) => void;
     onSessionEvent: (event: { data: SessionEventView }) => void;
-  }) => Promise<{ sessionKey: string }>;
+  }) => Promise<{ sessionKey: string; reply: string }>;
   setters: StreamSetters;
 };
 
@@ -226,6 +226,7 @@ async function executeStreamRun(params: ExecuteStreamRunParams): Promise<void> {
   let streamText = '';
   try {
     let hasAssistantSessionEvent = false;
+    let hasUserSessionEvent = false;
     const streamTimestamp = new Date().toISOString();
     setters.setStreamingAssistantTimestamp(streamTimestamp);
 
@@ -269,6 +270,7 @@ async function executeStreamRun(params: ExecuteStreamRunParams): Promise<void> {
           return;
         }
         if (event.data.message?.role === 'user') {
+          hasUserSessionEvent = true;
           setters.setOptimisticUserEvent(null);
         }
         upsertStreamingEvent(setters.setStreamingSessionEvents, event.data);
@@ -288,7 +290,13 @@ async function executeStreamRun(params: ExecuteStreamRunParams): Promise<void> {
       setSelectedSessionKey(result.sessionKey);
     }
 
-    const localAssistantText = !hasAssistantSessionEvent ? streamText.trim() : '';
+    const finalReply = typeof result.reply === 'string' ? result.reply.trim() : '';
+    const localAssistantText = !hasAssistantSessionEvent ? (streamText.trim() || finalReply) : '';
+    const isSlashCommandMessage = typeof sourceMessage === 'string' && sourceMessage.trim().startsWith('/');
+    const shouldKeepLocalUserCommand =
+      !hasUserSessionEvent &&
+      optimisticUserEvent?.message?.role === 'user' &&
+      isSlashCommandMessage;
     await refetchIfSessionVisible({
       selectedSessionKeyRef,
       currentSessionKey: sourceSessionKey,
@@ -297,7 +305,14 @@ async function executeStreamRun(params: ExecuteStreamRunParams): Promise<void> {
       refetchHistory
     });
 
-    setters.setStreamingSessionEvents(localAssistantText ? [buildLocalAssistantEvent(localAssistantText)] : []);
+    const localEvents: SessionEventView[] = [];
+    if (shouldKeepLocalUserCommand && optimisticUserEvent) {
+      localEvents.push(optimisticUserEvent);
+    }
+    if (localAssistantText) {
+      localEvents.push(buildLocalAssistantEvent(localAssistantText));
+    }
+    setters.setStreamingSessionEvents(localEvents);
 
     setters.setStreamingAssistantText('');
     setters.setStreamingAssistantTimestamp(null);

@@ -109,6 +109,33 @@ describe("chat turn route", () => {
     });
   });
 
+  it("returns slash command catalog", async () => {
+    const configPath = createTempConfigPath();
+    saveConfig(ConfigSchema.parse({}), configPath);
+    const app = createUiRouter({
+      configPath,
+      publish: () => {}
+    });
+
+    const response = await app.request("http://localhost/api/chat/commands", {
+      method: "GET"
+    });
+    expect(response.status).toBe(200);
+    const payload = await response.json() as {
+      ok: boolean;
+      data: {
+        commands: Array<{ name: string }>;
+        total: number;
+      };
+    };
+    expect(payload.ok).toBe(true);
+    expect(payload.data.total).toBeGreaterThan(0);
+    const names = payload.data.commands.map((command) => command.name);
+    expect(names).toContain("help");
+    expect(names).toContain("model");
+    expect(names).toContain("new");
+  });
+
   it("returns 400 when message is missing", async () => {
     const configPath = createTempConfigPath();
     saveConfig(ConfigSchema.parse({}), configPath);

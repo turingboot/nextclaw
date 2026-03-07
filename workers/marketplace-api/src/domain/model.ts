@@ -4,20 +4,29 @@ export type MarketplaceItemType = (typeof MARKETPLACE_ITEM_TYPES)[number];
 
 export type MarketplaceSort = "relevance" | "updated";
 
-export type MarketplaceInstallKind = "npm" | "clawhub" | "git" | "builtin";
+export type MarketplacePluginInstallKind = "npm";
+export type MarketplaceSkillInstallKind = "builtin" | "marketplace";
+export type MarketplaceInstallKind = MarketplacePluginInstallKind | MarketplaceSkillInstallKind;
 
-export type MarketplaceInstallSpec = {
-  kind: MarketplaceInstallKind;
+export type MarketplacePluginInstallSpec = {
+  kind: MarketplacePluginInstallKind;
   spec: string;
   command: string;
 };
 
+export type MarketplaceSkillInstallSpec = {
+  kind: MarketplaceSkillInstallKind;
+  spec: string;
+  command: string;
+};
+
+export type MarketplaceInstallSpec = MarketplacePluginInstallSpec | MarketplaceSkillInstallSpec;
+
 export type LocalizedTextMap = Record<string, string>;
 
-export type MarketplaceItem = {
+type MarketplaceItemBase = {
   id: string;
   slug: string;
-  type: MarketplaceItemType;
   name: string;
   summary: string;
   summaryI18n: LocalizedTextMap;
@@ -27,10 +36,21 @@ export type MarketplaceItem = {
   author: string;
   sourceRepo?: string;
   homepage?: string;
-  install: MarketplaceInstallSpec;
   publishedAt: string;
   updatedAt: string;
 };
+
+export type MarketplacePluginItem = MarketplaceItemBase & {
+  type: "plugin";
+  install: MarketplacePluginInstallSpec;
+};
+
+export type MarketplaceSkillItem = MarketplaceItemBase & {
+  type: "skill";
+  install: MarketplaceSkillInstallSpec;
+};
+
+export type MarketplaceItem = MarketplacePluginItem | MarketplaceSkillItem;
 
 export type MarketplaceRecommendationScene = {
   id: string;
@@ -59,18 +79,28 @@ export type MarketplaceListQuery = {
   sort: MarketplaceSort;
 };
 
-export type MarketplaceItemSummary = {
+type MarketplaceItemSummaryBase = {
   id: string;
   slug: string;
-  type: MarketplaceItemType;
   name: string;
   summary: string;
   summaryI18n: LocalizedTextMap;
   tags: string[];
   author: string;
-  install: MarketplaceInstallSpec;
   updatedAt: string;
 };
+
+export type MarketplacePluginItemSummary = MarketplaceItemSummaryBase & {
+  type: "plugin";
+  install: MarketplacePluginInstallSpec;
+};
+
+export type MarketplaceSkillItemSummary = MarketplaceItemSummaryBase & {
+  type: "skill";
+  install: MarketplaceSkillInstallSpec;
+};
+
+export type MarketplaceItemSummary = MarketplacePluginItemSummary | MarketplaceSkillItemSummary;
 
 export type MarketplaceListResult = {
   total: number;

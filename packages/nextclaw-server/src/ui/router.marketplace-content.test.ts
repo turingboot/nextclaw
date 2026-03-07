@@ -46,7 +46,35 @@ describe("marketplace content routes", () => {
       configPath
     );
 
-    const fetchMock = vi.fn(async () => {
+    const fetchMock = vi.fn(async (target: Request | string) => {
+      const url = typeof target === "string" ? target : target.url;
+      if (url.includes("/api/v1/skills/items/weather/content")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              type: "skill",
+              slug: "weather",
+              name: "Weather",
+              install: {
+                kind: "marketplace",
+                spec: "weather",
+                command: "nextclaw skills install weather"
+              },
+              source: "marketplace",
+              raw: `---\nname: weather\ndescription: Local weather skill\n---\n\n# Weather Skill\n\nUse this skill for weather lookups.\n`,
+              metadataRaw: "name: weather\\ndescription: Local weather skill",
+              bodyRaw: "# Weather Skill\\n\\nUse this skill for weather lookups.\\n"
+            }
+          }),
+          {
+            status: 200,
+            headers: {
+              "content-type": "application/json"
+            }
+          }
+        );
+      }
       return new Response(
         JSON.stringify({
           ok: true,
@@ -63,7 +91,7 @@ describe("marketplace content routes", () => {
             tags: ["skill"],
             author: "NextClaw",
             install: {
-              kind: "builtin",
+              kind: "marketplace",
               spec: "weather",
               command: "nextclaw skills install weather"
             },
@@ -202,6 +230,85 @@ describe("marketplace content routes", () => {
       return typeof target === "string" ? target : target.url;
     });
     expect(urls.some((url) => url.includes("registry.npmjs.org"))).toBe(true);
+  });
+
+  it("returns contract mismatch when marketplace skill install kind is unsupported", async () => {
+    const workspaceDir = createTempDir("nextclaw-ui-skill-list-contract-");
+    const configPath = join(workspaceDir, "config.json");
+
+    saveConfig(
+      ConfigSchema.parse({
+        agents: {
+          defaults: {
+            workspace: workspaceDir
+          }
+        }
+      }),
+      configPath
+    );
+
+    const fetchMock = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            total: 1,
+            page: 1,
+            pageSize: 50,
+            totalPages: 1,
+            sort: "relevance",
+            items: [
+              {
+                id: "skill-pdf-anthropic",
+                slug: "pdf",
+                type: "skill",
+                name: "PDF Toolkit",
+                summary: "PDF summary",
+                tags: ["skill", "pdf"],
+                author: "Anthropic",
+                install: {
+                  kind: "git",
+                  spec: "anthropics/skills/skills/pdf",
+                  command: "npx skild install anthropics/skills/skills/pdf --target agents --local --skill pdf"
+                },
+                updatedAt: "2026-02-27T23:05:50.000Z",
+                publishedAt: "2025-06-01T10:00:00.000Z"
+              }
+            ]
+          }
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json"
+          }
+        }
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const app = createUiRouter({
+      configPath,
+      publish: () => {},
+      marketplace: {
+        apiBaseUrl: "http://marketplace.example"
+      }
+    });
+
+    const response = await app.request("http://localhost/api/marketplace/skills/items?page=1&pageSize=10");
+    expect(response.status).toBe(502);
+
+    const payload = await response.json() as {
+      ok: boolean;
+      error: {
+        code: string;
+        message: string;
+      };
+    };
+    expect(payload.ok).toBe(false);
+    expect(payload.error.code).toBe("MARKETPLACE_CONTRACT_MISMATCH");
+    expect(payload.error.message).toContain("unsupported skill install kind");
+    expect(payload.error.message).toContain("git");
   });
 
   it("normalizes locale-family summary fields for marketplace list responses", async () => {

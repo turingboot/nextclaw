@@ -333,6 +333,24 @@ export type ChatCapabilitiesView = {
   stopReason?: string;
 };
 
+export type ChatCommandOptionView = {
+  name: string;
+  description: string;
+  type: "string" | "boolean" | "number";
+  required?: boolean;
+};
+
+export type ChatCommandView = {
+  name: string;
+  description: string;
+  options?: ChatCommandOptionView[];
+};
+
+export type ChatCommandsView = {
+  commands: ChatCommandView[];
+  total: number;
+};
+
 export type ChatTurnStopRequest = {
   runId: string;
   sessionKey?: string;
@@ -544,7 +562,9 @@ export type MarketplaceItemType = "plugin" | "skill";
 
 export type MarketplaceSort = "relevance" | "updated";
 
-export type MarketplaceInstallKind = "npm" | "clawhub" | "git" | "builtin";
+export type MarketplacePluginInstallKind = "npm";
+export type MarketplaceSkillInstallKind = "builtin" | "marketplace";
+export type MarketplaceInstallKind = MarketplacePluginInstallKind | MarketplaceSkillInstallKind;
 
 export type MarketplaceInstallSpec = {
   kind: MarketplaceInstallKind;
@@ -580,7 +600,7 @@ export type MarketplaceSkillContentView = {
   slug: string;
   name: string;
   install: MarketplaceInstallSpec;
-  source: "workspace" | "builtin" | "git" | "remote";
+  source: "builtin" | "marketplace" | "remote";
   raw: string;
   metadataRaw?: string;
   bodyRaw: string;
@@ -642,11 +662,9 @@ export type MarketplaceInstalledView = {
 
 export type MarketplaceInstallSkillParams = {
   slug: string;
-  kind?: MarketplaceInstallKind;
+  kind?: MarketplaceSkillInstallKind;
   skill?: string;
   installPath?: string;
-  version?: string;
-  registry?: string;
   force?: boolean;
 };
 
@@ -658,11 +676,9 @@ export type MarketplacePluginInstallRequest = {
 export type MarketplaceSkillInstallRequest = {
   type?: "skill";
   spec: string;
-  kind?: MarketplaceInstallKind;
+  kind?: MarketplaceSkillInstallKind;
   skill?: string;
   installPath?: string;
-  version?: string;
-  registry?: string;
   force?: boolean;
 };
 

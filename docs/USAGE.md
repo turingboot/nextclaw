@@ -444,8 +444,9 @@ Created under the workspace:
 | `nextclaw cron remove <jobId>` | Remove a job |
 | `nextclaw cron enable <jobId>` | Enable a job (use `--disable` to disable) |
 | `nextclaw cron run <jobId>` | Run a job once (optionally with `--force` if disabled) |
-| `nextclaw skills install <slug>` | Install a skill from ClawHub |
-| `nextclaw clawhub install <slug>` | Same as `skills install` |
+| `nextclaw skills install <slug>` | Install a skill from NextClaw marketplace |
+| `nextclaw skills publish <dir>` | Upload/create a skill to marketplace |
+| `nextclaw skills update <dir>` | Update an existing marketplace skill |
 | `nextclaw config get <path>` | Get config value by path (use `--json` for structured output) |
 | `nextclaw config set <path> <value>` | Set config value by path (use `--json` to parse value as JSON) |
 | `nextclaw config unset <path>` | Remove config value by path |

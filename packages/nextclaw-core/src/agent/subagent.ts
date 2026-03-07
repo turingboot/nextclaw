@@ -7,6 +7,7 @@ import { ReadFileTool, WriteFileTool, ListDirTool } from "./tools/filesystem.js"
 import { ExecTool } from "./tools/shell.js";
 import { WebSearchTool, WebFetchTool } from "./tools/web.js";
 import { InputBudgetPruner } from "./input-budget-pruner.js";
+import { resolveSubagentModel } from "./subagent-model.js";
 
 export class SubagentManager {
   private inputBudgetPruner = new InputBudgetPruner();
@@ -71,11 +72,19 @@ export class SubagentManager {
   async spawn(params: {
     task: string;
     label?: string;
+    model?: string;
+    sessionModel?: string;
     originChannel?: string;
     originChatId?: string;
   }): Promise<string> {
     const taskId = randomUUID().slice(0, 8);
     const displayLabel = params.label ?? `${params.task.slice(0, 30)}${params.task.length > 30 ? "..." : ""}`;
+    const model = resolveSubagentModel({
+      spawnModel: params.model,
+      sessionModel: params.sessionModel,
+      runtimeDefaultModel: this.options.model,
+      providerDefaultModel: this.options.providerManager.get().getDefaultModel()
+    });
     const origin = {
       channel: params.originChannel ?? "cli",
       chatId: params.originChatId ?? "direct"
@@ -95,6 +104,7 @@ export class SubagentManager {
       taskId,
       task: params.task,
       label: displayLabel,
+      model,
       origin
     });
     this.runningTasks.set(taskId, background);
@@ -115,6 +125,7 @@ export class SubagentManager {
     taskId: string;
     task: string;
     label: string;
+    model: string;
     origin: { channel: string; chatId: string };
   }): Promise<void> {
     try {
@@ -162,7 +173,7 @@ export class SubagentManager {
         const response = await this.options.providerManager.chat({
           messages,
           tools: tools.getDefinitions(),
-          model: this.options.model,
+          model: params.model,
           maxTokens: this.options.maxTokens
         });
 

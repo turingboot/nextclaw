@@ -1,44 +1,25 @@
 # Marketplace Worker Deploy & Sync
 
-适用范围：`workers/marketplace-api` 只读 API 服务。
+适用范围：`workers/marketplace-api`（D1-backed marketplace API）。
 
 ## 部署原则
 
-- `workers/marketplace-api/data/plugins-catalog.json` 与 `workers/marketplace-api/data/skills-catalog.json` 作为 GitHub 数据源（source of truth）。
-- 默认通过 GitHub Actions 自动同步到线上 Worker。
-- 手动部署作为兜底流程（Actions 异常或紧急修复时使用）。
+- Marketplace 数据唯一来源是 Cloudflare D1（不再使用仓库内 JSON catalog）。
+- 发布闭环包含：D1 migration -> build/lint/tsc -> worker deploy -> 线上 smoke。
+- 手动部署作为兜底流程（CI 异常或紧急修复时使用）。
 
-## GitHub Actions 自动同步
+## 前置准备
 
-workflow：`.github/workflows/marketplace-catalog-sync.yml`
-
-触发条件：
-
-- `master/main` 分支 push 且涉及：
-  - `workers/marketplace-api/data/plugins-catalog.json`
-  - `workers/marketplace-api/data/skills-catalog.json`
-  - `workers/marketplace-api/src/**`
-  - `workers/marketplace-api/wrangler.toml`
-  - `workers/marketplace-api/package.json`
-  - `workers/marketplace-api/scripts/**`
-
-执行内容：
-
-1. `validate:catalog`
-2. `build`
-3. `lint`
-4. `tsc`
-5. `wrangler deploy`
-6. 线上 smoke check
-
-必需 Secrets：
-
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
+1. `wrangler.toml` 已配置 `MARKETPLACE_DB`（真实 `database_id`）。
+2. 已配置 Cloudflare 凭证：
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+3. 可选：配置 `MARKETPLACE_ADMIN_TOKEN`（开启 admin 写接口鉴权）。
 
 ## 部署前检查
 
 ```bash
+pnpm -C workers/marketplace-api db:migrate:remote
 pnpm -C workers/marketplace-api build
 pnpm -C workers/marketplace-api lint
 pnpm -C workers/marketplace-api tsc
@@ -49,10 +30,6 @@ pnpm -C workers/marketplace-api tsc
 ```bash
 pnpm -C workers/marketplace-api run deploy
 ```
-
-## 凭证要求
-
-使用本地 `wrangler` 登录态或环境变量（如 `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`）。
 
 ## 冒烟检查
 
@@ -65,6 +42,8 @@ curl -sS 'https://marketplace-api.nextclaw.io/api/v1/skills/items?page=1&pageSiz
 ```
 
 预期：
-- `/health` 返回 `ok: true`
-- `/api/v1/plugins/items` 返回 `ok: true` 且 `data.items` 非空
-- `/api/v1/skills/items` 返回 `ok: true` 且 `data.items` 非空
+- `/health` 返回 `ok: true` 且 `storage: "d1"`
+- `/api/v1/plugins/items` 返回 `ok: true`
+- `/api/v1/skills/items` 返回 `ok: true`
+- `/api/v1/skills/items` 的 skill `install.kind` 只允许 `builtin | marketplace`（若出现 `git` 说明仍是旧 worker）
+- `/api/v1/skills/items` 中可见历史迁移条目（至少包含 `pdf/docx/pptx/xlsx/bird/cloudflare-deploy`）

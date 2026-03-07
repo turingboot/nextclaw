@@ -27,6 +27,9 @@
   - `/commit`：进行提交操作（提交信息需使用英文）
   - `/validate`：运行项目验证，至少包含 `build`、`lint`、`tsc`，必要时冒烟测试
   - `/release-frontend`：前端一键发布（仅 UI 变更场景）
+  - `nextclaw skills install`：从 NextClaw marketplace 安装 skill
+  - `nextclaw skills publish`：上传/创建 marketplace skill（upsert）
+  - `nextclaw skills update`：更新已有 marketplace skill
 
 ## 规则/Rule 机制
 

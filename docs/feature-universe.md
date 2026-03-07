@@ -96,12 +96,13 @@
 | `nextclaw plugins disable <id>` | 在配置中禁用 |
 | `nextclaw plugins doctor` | 插件加载诊断 |
 
-### 3.8 Skills / ClawHub
+### 3.8 Skills / Marketplace
 
 | 命令 | 说明 |
 |------|------|
-| `nextclaw skills install <slug>` | 从 ClawHub 安装 skill |
-| `nextclaw clawhub install <slug>` | 同上 |
+| `nextclaw skills install <slug>` | 从 marketplace 安装 skill |
+| `nextclaw skills publish <dir>` | 上传/创建 marketplace skill |
+| `nextclaw skills update <dir>` | 更新已有 marketplace skill |
 
 ---
 
@@ -224,7 +225,7 @@ Agent 主循环中注册的默认工具（`nextclaw-core` `agent/loop.ts` + `age
 
 - **init 生成**：AGENTS.md、SOUL.md、USER.md、IDENTITY.md、TOOLS.md、USAGE.md、BOOT.md/BOOTSTRAP.md、HEARTBEAT.md、memory/MEMORY.md、skills/。
 - **Context**：bootstrap 文件、memory 片段、skills（always + 按需）注入系统提示。
-- **Skills**：从 ClawHub 安装或工作区 `skills/` 放置，由 ContextBuilder 加载并参与提示。
+- **Skills**：从 marketplace 安装或工作区 `skills/` 放置，由 ContextBuilder 加载并参与提示。
 
 ---
 

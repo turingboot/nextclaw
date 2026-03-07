@@ -1,26 +1,43 @@
-# Marketplace API Worker (Read-only)
+# Marketplace API Worker (D1-backed)
 
-Cloudflare Worker + Hono 的只读 Marketplace API，用于插件与 Skill 的列表、分页搜索、详情与推荐查询。
+Cloudflare Worker + Hono 的 Marketplace API，数据唯一来源为 Cloudflare D1（不再依赖仓库内 JSON catalog）。
 
-## API 路由（已按类型彻底拆分）
+## API 路由
 
-- `GET /api/v1/plugins/items`
-- `GET /api/v1/plugins/items/:slug`
-- `GET /api/v1/plugins/recommendations`
-- `GET /api/v1/skills/items`
-- `GET /api/v1/skills/items/:slug`
-- `GET /api/v1/skills/recommendations`
+- 读接口（公开）：
+  - `GET /api/v1/plugins/items`
+  - `GET /api/v1/plugins/items/:slug`
+  - `GET /api/v1/plugins/recommendations`
+  - `GET /api/v1/skills/items`
+  - `GET /api/v1/skills/items/:slug`
+  - `GET /api/v1/skills/items/:slug/content`
+  - `GET /api/v1/skills/items/:slug/files`
+  - `GET /api/v1/skills/recommendations`
+- 管理接口（写）：
+  - `POST /api/v1/admin/skills/upsert`
 
 说明：
 
-- 不再提供共享路由（如 `/api/v1/items`、`/api/v1/recommendations`）。
-- `plugins` 与 `skills` 在数据文件、查询路由、推荐场景层面完全独立。
+- plugin 与 skill 完全拆分。
+- skill install kind 只允许 `builtin` / `marketplace`。
+- plugin install kind 只允许 `npm`。
 
 ## 本地开发
 
 ```bash
 pnpm -C workers/marketplace-api install
 pnpm -C workers/marketplace-api dev
+```
+
+## D1 初始化
+
+1. 在 `wrangler.toml` 配置 `MARKETPLACE_DB` 绑定（`database_id` 改成你的真实 D1 id）。
+2. 执行 migration（会包含 `0002_seed_legacy_skills_20260227.sql`，用于把历史 skills-catalog 全量迁移到 D1）：
+
+```bash
+pnpm -C workers/marketplace-api db:migrate:local
+# 或
+pnpm -C workers/marketplace-api db:migrate:remote
 ```
 
 ## 质量检查
@@ -31,42 +48,26 @@ pnpm -C workers/marketplace-api lint
 pnpm -C workers/marketplace-api tsc
 ```
 
-## 部署与同步
-
-### GitHub Actions 自动同步（推荐）
-
-- 数据源固定为仓库文件：
-  - `workers/marketplace-api/data/plugins-catalog.json`
-  - `workers/marketplace-api/data/skills-catalog.json`
-- 当上述 catalog 文件或 `workers/marketplace-api` 相关代码变更并合入 `master/main` 后，
-  `Marketplace Catalog Sync` workflow 会自动执行：
-  - catalog 校验
-  - build/lint/tsc
-  - deploy 到 Cloudflare Worker
-  - 线上 smoke check
-
-需要在仓库 Secrets 配置：
-
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
-
-### 手动部署（兜底）
+## 部署
 
 ```bash
 pnpm -C workers/marketplace-api run deploy
 ```
 
-## 凭证
+## 部署后快速验收
+
+```bash
+curl -sS https://marketplace-api.nextclaw.io/health
+curl -sS 'https://marketplace-api.nextclaw.io/api/v1/skills/items?page=1&pageSize=50'
+```
+
+预期：
+- `/health` 返回 `storage: "d1"`。
+- `skills/items` 里应包含历史技能（例如 `pdf/docx/pptx/xlsx/bird/cloudflare-deploy`）。
+- `skills/items` 的 skill `install.kind` 只会是 `builtin` 或 `marketplace`（不应再出现 `git`）。
+
+## 凭证与变量
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
-
-或使用本地 wrangler 登录态。
-
-## 数据来源
-
-- 当前数据文件：
-  - `workers/marketplace-api/data/plugins-catalog.json`
-  - `workers/marketplace-api/data/skills-catalog.json`
-- 数据结构：插件与技能分别使用独立 catalog（各自包含 `items` 与 `recommendations`）
-- 当前模式：数据随 Worker 代码一起发布（GitHub Actions 自动同步，手动部署兜底）
+- `MARKETPLACE_ADMIN_TOKEN`（可选；设置后 admin 写接口要求 `Authorization: Bearer <token>`）

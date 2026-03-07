@@ -824,7 +824,7 @@ export function MarketplacePage(props: MarketplacePageProps = {}) {
   };
 
   return (
-    <PageLayout>
+    <PageLayout className="flex h-full min-h-0 flex-col pb-0">
       <PageHeader title={t(copyKeys.pageTitle)} description={t(copyKeys.pageDescription)} />
 
       <Tabs
@@ -849,7 +849,7 @@ export function MarketplacePage(props: MarketplacePageProps = {}) {
         }}
       />
 
-      <section>
+      <section className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-[14px] font-semibold text-gray-900">
             {scope === 'installed' ? t(copyKeys.sectionInstalled) : t(copyKeys.sectionCatalog)}
@@ -868,52 +868,56 @@ export function MarketplacePage(props: MarketplacePageProps = {}) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
-          {scope === 'all' && allItems.map((item) => (
-            <MarketplaceListCard
-              key={item.id}
-              item={item}
-              record={findInstalledRecordForItem(item, installedRecordLookup)}
-              localeFallbacks={localeFallbacks}
-              installState={installState}
-              manageState={manageState}
-              onOpen={() => void openItemDetail(item, findInstalledRecordForItem(item, installedRecordLookup))}
-              onInstall={handleInstall}
-              onManage={handleManage}
-            />
-          ))}
+        <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar pr-1">
+          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
+            {scope === 'all' && allItems.map((item) => (
+              <MarketplaceListCard
+                key={item.id}
+                item={item}
+                record={findInstalledRecordForItem(item, installedRecordLookup)}
+                localeFallbacks={localeFallbacks}
+                installState={installState}
+                manageState={manageState}
+                onOpen={() => void openItemDetail(item, findInstalledRecordForItem(item, installedRecordLookup))}
+                onInstall={handleInstall}
+                onManage={handleManage}
+              />
+            ))}
 
-          {scope === 'installed' && installedEntries.map((entry) => (
-            <MarketplaceListCard
-              key={entry.key}
-              item={entry.item}
-              record={entry.record}
-              localeFallbacks={localeFallbacks}
-              installState={installState}
-              manageState={manageState}
-              onOpen={() => void openItemDetail(entry.item, entry.record)}
-              onInstall={handleInstall}
-              onManage={handleManage}
-            />
-          ))}
+            {scope === 'installed' && installedEntries.map((entry) => (
+              <MarketplaceListCard
+                key={entry.key}
+                item={entry.item}
+                record={entry.record}
+                localeFallbacks={localeFallbacks}
+                installState={installState}
+                manageState={manageState}
+                onOpen={() => void openItemDetail(entry.item, entry.record)}
+                onInstall={handleInstall}
+                onManage={handleManage}
+              />
+            ))}
+          </div>
+
+          {scope === 'all' && !itemsQuery.isLoading && !itemsQuery.isError && allItems.length === 0 && (
+            <div className="text-[13px] text-gray-500 py-8 text-center">{t(copyKeys.emptyData)}</div>
+          )}
+          {scope === 'installed' && !installedQuery.isLoading && !installedQuery.isError && installedEntries.length === 0 && (
+            <div className="text-[13px] text-gray-500 py-8 text-center">{t(copyKeys.emptyInstalled)}</div>
+          )}
         </div>
-
-        {scope === 'all' && !itemsQuery.isLoading && !itemsQuery.isError && allItems.length === 0 && (
-          <div className="text-[13px] text-gray-500 py-8 text-center">{t(copyKeys.emptyData)}</div>
-        )}
-        {scope === 'installed' && !installedQuery.isLoading && !installedQuery.isError && installedEntries.length === 0 && (
-          <div className="text-[13px] text-gray-500 py-8 text-center">{t(copyKeys.emptyInstalled)}</div>
-        )}
       </section>
 
       {scope === 'all' && (
-        <PaginationBar
-          page={page}
-          totalPages={totalPages}
-          busy={itemsQuery.isFetching}
-          onPrev={() => setPage((current) => Math.max(1, current - 1))}
-          onNext={() => setPage((current) => (totalPages > 0 ? Math.min(totalPages, current + 1) : current + 1))}
-        />
+        <div className="shrink-0">
+          <PaginationBar
+            page={page}
+            totalPages={totalPages}
+            busy={itemsQuery.isFetching}
+            onPrev={() => setPage((current) => Math.max(1, current - 1))}
+            onNext={() => setPage((current) => (totalPages > 0 ? Math.min(totalPages, current + 1) : current + 1))}
+          />
+        </div>
       )}
       <ConfirmDialog />
     </PageLayout>

@@ -7,9 +7,8 @@ import {
   stopPluginChannelGateways
 } from "@nextclaw/openclaw-compat";
 import { startUiServer, type UiServerEvent } from "@nextclaw/server";
-import { appendFileSync, closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { tmpdir } from "node:os";
+import { appendFileSync, closeSync, cpSync, existsSync, mkdirSync, openSync, rmSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
@@ -33,7 +32,6 @@ import {
   resolvePublicIp,
   waitForExit,
   writeServiceState,
-  findExecutableOnPath,
   type ServiceState
 } from "../utils.js";
 import {
@@ -94,6 +92,55 @@ function createSkillsLoader(workspace: string): SkillsLoaderInstance | null {
     return null;
   }
   return new ctor(workspace);
+}
+
+function containsAbsoluteFsPath(line: string): boolean {
+  const normalized = line.trim();
+  if (!normalized) {
+    return false;
+  }
+
+  const lowered = normalized.toLowerCase();
+  if (lowered.includes("http://") || lowered.includes("https://")) {
+    return false;
+  }
+
+  if (/^[A-Za-z]:\\/.test(normalized)) {
+    return true;
+  }
+
+  return /(?:^|\s)(?:~\/|\/[^\s]+)/.test(normalized);
+}
+
+export function pickUserFacingCommandSummary(output: string, fallback: string): string {
+  const lines = output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) {
+    return fallback;
+  }
+
+  const visibleLines = lines.filter((line) => {
+    if (/^(path|install path|source path|destination|location)\s*:/i.test(line)) {
+      return false;
+    }
+    if (containsAbsoluteFsPath(line)) {
+      return false;
+    }
+    return true;
+  });
+
+  if (visibleLines.length === 0) {
+    return fallback;
+  }
+
+  const preferred = [...visibleLines].reverse().find((line) =>
+    /\b(installed|enabled|disabled|uninstalled|published|updated|already installed|removed)\b/i.test(line)
+  );
+
+  return preferred ?? visibleLines[visibleLines.length - 1] ?? fallback;
 }
 
 export class ServiceCommands {
@@ -1102,17 +1149,15 @@ export class ServiceCommands {
 
   private async installMarketplacePlugin(spec: string): Promise<{ message: string; output?: string }> {
     const output = await this.runCliSubcommand(["plugins", "install", spec]);
-    const summary = this.pickLastOutputLine(output) ?? `Installed plugin: ${spec}`;
-    return { message: summary, output };
+    const summary = pickUserFacingCommandSummary(output, `Installed plugin: ${spec}`);
+    return { message: summary };
   }
 
   private async installMarketplaceSkill(params: {
     slug: string;
-    kind?: "npm" | "clawhub" | "git" | "builtin";
+    kind?: "marketplace" | "builtin";
     skill?: string;
     installPath?: string;
-    version?: string;
-    registry?: string;
     force?: boolean;
   }): Promise<{ message: string; output?: string }> {
     if (params.kind === "builtin") {
@@ -1123,25 +1168,19 @@ export class ServiceCommands {
       return result;
     }
 
-    if (params.kind === "git") {
-      return await this.installGitMarketplaceSkill(params);
+    if (params.kind && params.kind !== "marketplace") {
+      throw new Error(`Unsupported marketplace skill kind: ${params.kind}`);
     }
 
     const args = ["skills", "install", params.slug];
-    if (params.version) {
-      args.push("--version", params.version);
-    }
-    if (params.registry) {
-      args.push("--registry", params.registry);
-    }
     if (params.force) {
       args.push("--force");
     }
 
     try {
       const output = await this.runCliSubcommand(args);
-      const summary = this.pickLastOutputLine(output) ?? `Installed skill: ${params.slug}`;
-      return { message: summary, output };
+      const summary = pickUserFacingCommandSummary(output, `Installed skill: ${params.slug}`);
+      return { message: summary };
     } catch (error) {
       const fallback = this.installBuiltinMarketplaceSkill(params.slug, params.force);
       if (!fallback) {
@@ -1151,333 +1190,22 @@ export class ServiceCommands {
     }
   }
 
-  private async installGitMarketplaceSkill(params: {
-    slug: string;
-    skill?: string;
-    installPath?: string;
-    registry?: string;
-    force?: boolean;
-  }): Promise<{ message: string; output?: string }> {
-    const source = params.slug.trim();
-    if (!source) {
-      throw new Error("Git skill source is required");
-    }
-
-    const workspace = getWorkspacePath(loadConfig().agents.defaults.workspace);
-    const skillName = this.resolveGitSkillName(params.skill, source);
-    const destination = this.resolveSkillInstallPath(workspace, params.installPath, skillName);
-    const destinationSkillFile = join(destination, "SKILL.md");
-
-    if (existsSync(destinationSkillFile) && !params.force) {
-      return {
-        message: `${skillName} is already installed`,
-        output: destination
-      };
-    }
-    if (existsSync(destination) && !params.force) {
-      throw new Error(`Skill install path already exists: ${destination} (use force to overwrite)`);
-    }
-
-    if (existsSync(destination) && params.force) {
-      rmSync(destination, { recursive: true, force: true });
-    }
-
-    const materialized = await this.materializeMarketplaceGitSkillSource({ source, skillName });
-    try {
-      const installSkillFile = join(materialized.skillDir, "SKILL.md");
-      if (!existsSync(installSkillFile)) {
-        throw new Error(`git skill source does not contain SKILL.md for ${skillName}`);
-      }
-
-      mkdirSync(dirname(destination), { recursive: true });
-      cpSync(materialized.skillDir, destination, { recursive: true, force: true });
-      return {
-        message: `Installed skill: ${skillName}`,
-        output: [
-          `Source: ${source}`,
-          `Materialized skill: ${materialized.skillDir}`,
-          `Workspace target: ${destination}`,
-          materialized.commandOutput
-        ].filter(Boolean).join("\n")
-      };
-    } finally {
-      rmSync(materialized.tempRoot, { recursive: true, force: true });
-    }
-  }
-
-  private async materializeMarketplaceGitSkillSource(params: {
-    source: string;
-    skillName: string;
-  }): Promise<{ tempRoot: string; skillDir: string; commandOutput: string }> {
-    const parsed = this.parseMarketplaceGitSkillSource(params.source);
-    const gitPath = this.resolveGitExecutablePath();
-    const fallbackNotes: string[] = [];
-
-    if (gitPath) {
-      try {
-        return await this.materializeMarketplaceGitSkillViaGit({ gitPath, parsed });
-      } catch (error) {
-        fallbackNotes.push(`Git fast path failed: ${String(error)}`);
-      }
-    } else {
-      fallbackNotes.push("Git fast path unavailable: git executable not found");
-    }
-
-    const httpResult = await this.materializeMarketplaceGitSkillViaGithubApi(parsed);
-    return {
-      ...httpResult,
-      commandOutput: [...fallbackNotes, httpResult.commandOutput].filter(Boolean).join("\n")
-    };
-  }
-
-  private resolveGitExecutablePath(): string | null {
-    return findExecutableOnPath("git");
-  }
-
-  private async materializeMarketplaceGitSkillViaGit(params: {
-    gitPath: string;
-    parsed: {
-      owner: string;
-      repo: string;
-      repoUrl: string;
-      skillPath: string;
-      ref?: string;
-    };
-  }): Promise<{ tempRoot: string; skillDir: string; commandOutput: string }> {
-    const tempRoot = mkdtempSync(join(tmpdir(), "nextclaw-marketplace-skill-"));
-    const repoDir = join(tempRoot, "repo");
-    try {
-      const cloneArgs = ["clone", "--depth", "1", "--filter=blob:none", "--sparse"];
-      if (params.parsed.ref) {
-        cloneArgs.push("--branch", params.parsed.ref);
-      }
-      cloneArgs.push(params.parsed.repoUrl, repoDir);
-      const cloneResult = await this.runCommand(params.gitPath, cloneArgs, {
-        cwd: tempRoot,
-        timeoutMs: 180_000
-      });
-      const sparseResult = await this.runCommand(params.gitPath, ["-C", repoDir, "sparse-checkout", "set", params.parsed.skillPath], {
-        cwd: tempRoot,
-        timeoutMs: 60_000
-      });
-      const skillDir = join(repoDir, params.parsed.skillPath);
-      return {
-        tempRoot,
-        skillDir,
-        commandOutput: [
-          "Installer path: git-sparse",
-          `Git repository: ${params.parsed.repoUrl}`,
-          `Git path: ${params.parsed.skillPath}`,
-          this.mergeCommandOutput(cloneResult.stdout, cloneResult.stderr),
-          this.mergeCommandOutput(sparseResult.stdout, sparseResult.stderr)
-        ].filter(Boolean).join("\n")
-      };
-    } catch (error) {
-      rmSync(tempRoot, { recursive: true, force: true });
-      throw error;
-    }
-  }
-
-  private async materializeMarketplaceGitSkillViaGithubApi(parsed: {
-    owner: string;
-    repo: string;
-    repoUrl: string;
-    skillPath: string;
-    ref?: string;
-  }): Promise<{ tempRoot: string; skillDir: string; commandOutput: string }> {
-    const tempRoot = mkdtempSync(join(tmpdir(), "nextclaw-marketplace-skill-"));
-    const skillDir = join(tempRoot, "skill");
-    const downloadedFiles: string[] = [];
-    try {
-      mkdirSync(skillDir, { recursive: true });
-      await this.downloadGithubDirectoryToPath({
-        parsed,
-        remotePath: parsed.skillPath,
-        localDir: skillDir,
-        relativePrefix: "",
-        downloadedFiles
-      });
-      return {
-        tempRoot,
-        skillDir,
-        commandOutput: [
-          "Installer path: github-http",
-          `Git repository: ${parsed.repoUrl}`,
-          `Git path: ${parsed.skillPath}`,
-          `Downloaded files: ${downloadedFiles.length}`
-        ].join("\n")
-      };
-    } catch (error) {
-      rmSync(tempRoot, { recursive: true, force: true });
-      throw error;
-    }
-  }
-
-  private async downloadGithubDirectoryToPath(params: {
-    parsed: {
-      owner: string;
-      repo: string;
-      repoUrl: string;
-      skillPath: string;
-      ref?: string;
-    };
-    remotePath: string;
-    localDir: string;
-    relativePrefix: string;
-    downloadedFiles: string[];
-  }): Promise<void> {
-    const encodedPath = params.remotePath
-      .split("/")
-      .filter(Boolean)
-      .map((segment) => encodeURIComponent(segment))
-      .join("/");
-    const apiUrl = new URL(`https://api.github.com/repos/${params.parsed.owner}/${params.parsed.repo}/contents/${encodedPath}`);
-    if (params.parsed.ref) {
-      apiUrl.searchParams.set("ref", params.parsed.ref);
-    }
-
-    const payload = await this.fetchJsonWithHeaders<unknown>(apiUrl.toString(), {
-      Accept: "application/vnd.github+json",
-      "User-Agent": `${APP_NAME}/${getPackageVersion()}`
-    });
-    if (!Array.isArray(payload)) {
-      throw new Error(`GitHub path is not a directory: ${params.remotePath}`);
-    }
-
-    for (const entry of payload) {
-      if (!entry || typeof entry !== "object") {
-        continue;
-      }
-      const item = entry as {
-        type?: string;
-        name?: string;
-        path?: string;
-        download_url?: string | null;
-      };
-      const itemName = typeof item.name === "string" ? item.name.trim() : "";
-      const itemPath = typeof item.path === "string" ? item.path.trim() : "";
-      if (!itemName || !itemPath) {
-        continue;
-      }
-      if (item.type === "dir") {
-        const childLocalDir = join(params.localDir, itemName);
-        mkdirSync(childLocalDir, { recursive: true });
-        await this.downloadGithubDirectoryToPath({
-          parsed: params.parsed,
-          remotePath: itemPath,
-          localDir: childLocalDir,
-          relativePrefix: params.relativePrefix ? `${params.relativePrefix}/${itemName}` : itemName,
-          downloadedFiles: params.downloadedFiles
-        });
-        continue;
-      }
-      if (item.type !== "file") {
-        throw new Error(`Unsupported GitHub skill entry type: ${item.type ?? "unknown"}`);
-      }
-      if (!item.download_url) {
-        throw new Error(`GitHub skill file missing download_url: ${itemPath}`);
-      }
-      const content = await this.fetchBinaryWithHeaders(item.download_url, {
-        "User-Agent": `${APP_NAME}/${getPackageVersion()}`
-      });
-      const localFile = join(params.localDir, itemName);
-      writeFileSync(localFile, content);
-      params.downloadedFiles.push(params.relativePrefix ? `${params.relativePrefix}/${itemName}` : itemName);
-    }
-  }
-
-  private async fetchJsonWithHeaders<T>(url: string, headers: Record<string, string>): Promise<T> {
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} when fetching ${url}`);
-    }
-    return await response.json() as T;
-  }
-
-  private async fetchBinaryWithHeaders(url: string, headers: Record<string, string>): Promise<Buffer> {
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} when downloading ${url}`);
-    }
-    const bytes = await response.arrayBuffer();
-    return Buffer.from(bytes);
-  }
-
-  private parseMarketplaceGitSkillSource(source: string): {
-    owner: string;
-    repo: string;
-    repoUrl: string;
-    skillPath: string;
-    ref?: string;
-  } {
-    const trimmed = source.trim();
-    if (!trimmed) {
-      throw new Error("Git skill source is required");
-    }
-
-    if (trimmed.includes("://")) {
-      const parsedUrl = new URL(trimmed);
-      if (parsedUrl.hostname !== "github.com") {
-        throw new Error(`Unsupported git skill source host: ${parsedUrl.hostname}`);
-      }
-      const parts = parsedUrl.pathname.split("/").filter(Boolean);
-      if (parts.length < 5 || (parts[2] !== "tree" && parts[2] !== "blob")) {
-        throw new Error(`Unsupported GitHub skill source URL: ${source}`);
-      }
-      const [owner, repoRaw, , ref, ...pathParts] = parts;
-      const repo = repoRaw.replace(/\.git$/i, "");
-      if (!owner || !repo || !ref || pathParts.length === 0) {
-        throw new Error(`Unsupported GitHub skill source URL: ${source}`);
-      }
-      return {
-        owner,
-        repo,
-        repoUrl: `https://github.com/${owner}/${repo}.git`,
-        skillPath: pathParts.join("/"),
-        ref
-      };
-    }
-
-    const parts = trimmed.split("/").filter(Boolean);
-    if (parts.length < 3) {
-      throw new Error(`Unsupported git skill source: ${source}`);
-    }
-
-    const owner = parts[0] ?? "";
-    const repoWithOptionalRef = parts[1] ?? "";
-    const pathParts = parts.slice(2);
-    const atIndex = repoWithOptionalRef.indexOf("@");
-    const repo = (atIndex >= 0 ? repoWithOptionalRef.slice(0, atIndex) : repoWithOptionalRef).replace(/\.git$/i, "");
-    const ref = atIndex >= 0 ? repoWithOptionalRef.slice(atIndex + 1) : undefined;
-    if (!owner || !repo || pathParts.length === 0) {
-      throw new Error(`Unsupported git skill source: ${source}`);
-    }
-
-    return {
-      owner,
-      repo,
-      repoUrl: `https://github.com/${owner}/${repo}.git`,
-      skillPath: pathParts.join("/"),
-      ref: ref && ref.trim().length > 0 ? ref.trim() : undefined
-    };
-  }
-
   private async enableMarketplacePlugin(id: string): Promise<{ message: string; output?: string }> {
     const output = await this.runCliSubcommand(["plugins", "enable", id]);
-    const summary = this.pickLastOutputLine(output) ?? `Enabled plugin: ${id}`;
-    return { message: summary, output };
+    const summary = pickUserFacingCommandSummary(output, `Enabled plugin: ${id}`);
+    return { message: summary };
   }
 
   private async disableMarketplacePlugin(id: string): Promise<{ message: string; output?: string }> {
     const output = await this.runCliSubcommand(["plugins", "disable", id]);
-    const summary = this.pickLastOutputLine(output) ?? `Disabled plugin: ${id}`;
-    return { message: summary, output };
+    const summary = pickUserFacingCommandSummary(output, `Disabled plugin: ${id}`);
+    return { message: summary };
   }
 
   private async uninstallMarketplacePlugin(id: string): Promise<{ message: string; output?: string }> {
     const output = await this.runCliSubcommand(["plugins", "uninstall", id, "--force"]);
-    const summary = this.pickLastOutputLine(output) ?? `Uninstalled plugin: ${id}`;
-    return { message: summary, output };
+    const summary = pickUserFacingCommandSummary(output, `Uninstalled plugin: ${id}`);
+    return { message: summary };
   }
 
   private async uninstallMarketplaceSkill(slug: string): Promise<{ message: string; output?: string }> {
@@ -1491,8 +1219,7 @@ export class ServiceCommands {
     rmSync(targetDir, { recursive: true, force: true });
 
     return {
-      message: `Uninstalled skill: ${slug}`,
-      output: `Removed ${targetDir}`
+      message: `Uninstalled skill: ${slug}`
     };
   }
 
@@ -1506,8 +1233,7 @@ export class ServiceCommands {
 
     if (existsSync(destinationSkillFile) && !force) {
       return {
-        message: `${slug} is already installed`,
-        output: destination
+        message: `${slug} is already installed`
       };
     }
 
@@ -1517,8 +1243,7 @@ export class ServiceCommands {
     if (!builtin) {
       if (existsSync(destinationSkillFile)) {
         return {
-          message: `${slug} is already installed`,
-          output: destination
+          message: `${slug} is already installed`
         };
       }
       return null;
@@ -1527,47 +1252,8 @@ export class ServiceCommands {
     mkdirSync(join(workspace, "skills"), { recursive: true });
     cpSync(dirname(builtin.path), destination, { recursive: true, force: true });
     return {
-      message: `Installed skill: ${slug}`,
-      output: `Copied builtin skill to ${destination}`
+      message: `Installed skill: ${slug}`
     };
-  }
-
-  private resolveGitSkillName(skill: string | undefined, source: string): string {
-    const fromRequest = typeof skill === "string" ? skill.trim() : "";
-    if (fromRequest) {
-      return this.validateSkillName(fromRequest);
-    }
-
-    const normalizedSource = source.replace(/[?#].*$/, "").replace(/\/+$/, "");
-    const parts = normalizedSource.split("/").filter(Boolean);
-    const inferred = parts.length > 0 ? parts[parts.length - 1] : "";
-    if (!inferred) {
-      throw new Error("Git skill install requires a specific skill name");
-    }
-    return this.validateSkillName(inferred);
-  }
-
-  private validateSkillName(skillName: string): string {
-    if (!/^[A-Za-z0-9._-]+$/.test(skillName)) {
-      throw new Error(`Invalid skill name: ${skillName}`);
-    }
-    return skillName;
-  }
-
-  private resolveSkillInstallPath(workspace: string, installPath: string | undefined, skillName: string): string {
-    const requested = typeof installPath === "string" && installPath.trim().length > 0
-      ? installPath.trim()
-      : join("skills", skillName);
-    if (isAbsolute(requested)) {
-      throw new Error("installPath must be relative to workspace");
-    }
-
-    const destination = resolve(workspace, requested);
-    const rel = relative(workspace, destination);
-    if (rel.startsWith("..") || isAbsolute(rel)) {
-      throw new Error("installPath escapes workspace");
-    }
-    return destination;
   }
 
   private mergeCommandOutput(stdout: string, stderr: string): string {
@@ -1580,27 +1266,6 @@ export class ServiceCommands {
       cwd: process.cwd(),
       timeoutMs
     }).then((result) => this.mergeCommandOutput(result.stdout, result.stderr));
-  }
-
-  private async runCommandWithFallback(
-    commandCandidates: string[],
-    args: string[],
-    options: { cwd?: string; timeoutMs?: number } = {}
-  ): Promise<{ stdout: string; stderr: string }> {
-    let lastError: Error | null = null;
-    for (const command of commandCandidates) {
-      try {
-        return await this.runCommand(command, args, options);
-      } catch (error) {
-        const message = String(error);
-        lastError = error instanceof Error ? error : new Error(message);
-        if (message.startsWith("failed to start command:")) {
-          continue;
-        }
-        throw error;
-      }
-    }
-    throw lastError ?? new Error("failed to start command");
   }
 
   private runCommand(
@@ -1649,11 +1314,4 @@ export class ServiceCommands {
     });
   }
 
-  private pickLastOutputLine(output: string): string | null {
-    const lines = output
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
-    return lines.length > 0 ? lines[lines.length - 1] : null;
-  }
 }

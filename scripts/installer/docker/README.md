@@ -26,7 +26,7 @@ pnpm installer:verify:e2e
 - 镜像回退（首镜像故意不可用）
 - 下载后 `node/npm/npx` 可执行
 - 本地打包的 `nextclaw` 在容器内可完成 `init -> start -> stop`
-- `plugins install` / `clawhub install` 路径不会出现 `npm/npx not found`
+- `plugins install` / `skills install` 路径不会出现 `npm/npx not found`
 
 ## 可选环境变量
 

@@ -7,3 +7,8 @@ enabled = true
 
 [vars]
 MARKETPLACE_CACHE_TTL_SECONDS = "120"
+
+[[d1_databases]]
+binding = "MARKETPLACE_DB"
+database_name = "nextclaw-marketplace"
+database_id = "252a64a3-94a7-4d34-89ab-945754f39f98"

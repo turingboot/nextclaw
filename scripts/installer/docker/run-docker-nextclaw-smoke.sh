@@ -58,8 +58,8 @@ curl -sSf http://127.0.0.1:19091/ >/tmp/ui.html
 set +e
 node "$CLI" plugins install @types/node >/tmp/plugins.log 2>&1
 PLUGIN_CODE=$?
-node "$CLI" clawhub install definitely-not-exist-skill --workdir /tmp/app --dir skills >/tmp/clawhub.log 2>&1
-CLAWHUB_CODE=$?
+node "$CLI" skills install definitely-not-exist-skill --api-base http://127.0.0.1:65535 --workdir /tmp/app --dir skills >/tmp/skills.log 2>&1
+SKILLS_CODE=$?
 set -e
 
 if grep -Eqi '(npm|npx).*(not found|ENOENT)|command not found' /tmp/plugins.log; then
@@ -67,9 +67,9 @@ if grep -Eqi '(npm|npx).*(not found|ENOENT)|command not found' /tmp/plugins.log;
   sed -n '1,120p' /tmp/plugins.log
   exit 1
 fi
-if grep -Eqi '(npm|npx).*(not found|ENOENT)|command not found' /tmp/clawhub.log; then
-  echo "[smoke-nextclaw] clawhub install path missing npm/npx"
-  sed -n '1,120p' /tmp/clawhub.log
+if grep -Eqi '(npm|npx).*(not found|ENOENT)|command not found' /tmp/skills.log; then
+  echo "[smoke-nextclaw] skills install path missing npm/npx"
+  sed -n '1,120p' /tmp/skills.log
   exit 1
 fi
 
@@ -77,7 +77,7 @@ node "$CLI" stop >/tmp/stop.log 2>&1
 
 echo "[smoke-nextclaw] init/start/stop ok"
 echo "[smoke-nextclaw] plugins install exit code: ${PLUGIN_CODE}"
-echo "[smoke-nextclaw] clawhub install exit code: ${CLAWHUB_CODE}"
+echo "[smoke-nextclaw] skills install exit code: ${SKILLS_CODE}"
 sed -n '1,40p' /tmp/start.log
 INNER
 
