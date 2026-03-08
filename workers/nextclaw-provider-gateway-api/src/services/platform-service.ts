@@ -165,7 +165,8 @@ export async function chargeUsage(
   usage: UsageCounters,
   requestId: string
 ): Promise<ChargeResult> {
-  const existingLedger = await getLedgerByRequestId(env.NEXTCLAW_PLATFORM_DB, userId, requestId);
+  const db = env.NEXTCLAW_PLATFORM_DB;
+  const existingLedger = await getLedgerByRequestId(db, userId, requestId);
   if (existingLedger) {
     return {
       ok: true,
@@ -174,50 +175,15 @@ export async function chargeUsage(
         freePartUsd: roundUsd(existingLedger.free_amount_usd),
         paidPartUsd: roundUsd(existingLedger.paid_amount_usd)
       },
-      snapshot: (await readBillingSnapshot(env.NEXTCLAW_PLATFORM_DB, userId)) ?? {
-        user: {
-          id: userId,
-          email: "",
-          password_hash: "",
-          password_salt: "",
-          role: "user",
-          free_limit_usd: 0,
-          free_used_usd: 0,
-          paid_balance_usd: 0,
-          created_at: new Date(0).toISOString(),
-          updated_at: new Date(0).toISOString()
-        },
-        globalFreeLimitUsd: 0,
-        globalFreeUsedUsd: 0
-      }
+      snapshot: (await readBillingSnapshot(db, userId)) ?? buildEmptyBillingSnapshot(userId)
     };
   }
 
   const totalCostUsd = roundUsd(calculateCost(modelSpec, usage) + getRequestFlatUsdPerRequest(env));
-
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const snapshot = await readBillingSnapshot(env.NEXTCLAW_PLATFORM_DB, userId);
+    const snapshot = await readBillingSnapshot(db, userId);
     if (!snapshot) {
-      return {
-        ok: false,
-        reason: "insufficient_quota",
-        snapshot: {
-          user: {
-            id: userId,
-            email: "",
-            password_hash: "",
-            password_salt: "",
-            role: "user",
-            free_limit_usd: 0,
-            free_used_usd: 0,
-            paid_balance_usd: 0,
-            created_at: new Date(0).toISOString(),
-            updated_at: new Date(0).toISOString()
-          },
-          globalFreeLimitUsd: 0,
-          globalFreeUsedUsd: 0
-        }
-      };
+      return buildInsufficientQuotaResult(userId);
     }
 
     const split = computeChargeSplit(snapshot, totalCostUsd);
@@ -230,89 +196,23 @@ export async function chargeUsage(
     }
 
     const now = new Date().toISOString();
-    const updateUser = await env.NEXTCLAW_PLATFORM_DB.prepare(
-      `UPDATE users
-          SET free_used_usd = free_used_usd + ?,
-              paid_balance_usd = paid_balance_usd - ?,
-              updated_at = ?
-        WHERE id = ?
-          AND free_used_usd + ? <= free_limit_usd
-          AND paid_balance_usd >= ?`
-    )
-      .bind(
-        split.freePartUsd,
-        split.paidPartUsd,
-        now,
-        userId,
-        split.freePartUsd,
-        split.paidPartUsd
-      )
-      .run();
-
-    if (!updateUser.success || (updateUser.meta.changes ?? 0) !== 1) {
+    const userReserved = await reserveUserQuota(db, userId, split, now);
+    if (!userReserved) {
       continue;
     }
 
     if (split.freePartUsd > 0) {
-      const updateGlobal = await env.NEXTCLAW_PLATFORM_DB.prepare(
-        `UPDATE platform_settings
-            SET value = CAST(value AS REAL) + ?,
-                updated_at = ?
-          WHERE key = 'global_free_used_usd'
-            AND CAST(value AS REAL) + ? <= ?`
-      )
-        .bind(split.freePartUsd, now, split.freePartUsd, snapshot.globalFreeLimitUsd)
-        .run();
-
-      if (!updateGlobal.success || (updateGlobal.meta.changes ?? 0) !== 1) {
-        await env.NEXTCLAW_PLATFORM_DB.prepare(
-          `UPDATE users
-              SET free_used_usd = MAX(0, free_used_usd - ?),
-                  paid_balance_usd = paid_balance_usd + ?,
-                  updated_at = ?
-            WHERE id = ?`
-        )
-          .bind(split.freePartUsd, split.paidPartUsd, now, userId)
-          .run();
+      const globalReserved = await reserveGlobalFreeQuota(db, split.freePartUsd, snapshot.globalFreeLimitUsd, now);
+      if (!globalReserved) {
+        await rollbackUserQuota(db, userId, split, now);
         continue;
       }
     }
 
-    try {
-      await appendLedger(env.NEXTCLAW_PLATFORM_DB, {
-        id: crypto.randomUUID(),
-        userId,
-        kind: resolveUsageLedgerKind(split),
-        amountUsd: -roundUsd(split.totalCostUsd),
-        freeAmountUsd: roundUsd(split.freePartUsd),
-        paidAmountUsd: roundUsd(split.paidPartUsd),
-        model: modelSpec.id,
-        promptTokens: usage.promptTokens,
-        completionTokens: usage.completionTokens,
-        requestId,
-        note: null
-      });
-    } catch {
-      await env.NEXTCLAW_PLATFORM_DB.prepare(
-        `UPDATE users
-            SET free_used_usd = MAX(0, free_used_usd - ?),
-                paid_balance_usd = paid_balance_usd + ?,
-                updated_at = ?
-          WHERE id = ?`
-      )
-        .bind(split.freePartUsd, split.paidPartUsd, now, userId)
-        .run();
-
-      if (split.freePartUsd > 0) {
-        await env.NEXTCLAW_PLATFORM_DB.prepare(
-          `UPDATE platform_settings
-              SET value = MAX(0, CAST(value AS REAL) - ?),
-                  updated_at = ?
-            WHERE key = 'global_free_used_usd'`
-        )
-          .bind(split.freePartUsd, now)
-          .run();
-      }
+    const ledgerWritten = await writeUsageLedger(db, userId, split, modelSpec, usage, requestId);
+    if (!ledgerWritten) {
+      await rollbackUserQuota(db, userId, split, now);
+      await rollbackGlobalFreeQuota(db, split.freePartUsd, now);
       continue;
     }
 
@@ -323,28 +223,9 @@ export async function chargeUsage(
     };
   }
 
-  const snapshot = await readBillingSnapshot(env.NEXTCLAW_PLATFORM_DB, userId);
+  const snapshot = await readBillingSnapshot(db, userId);
   if (!snapshot) {
-    return {
-      ok: false,
-      reason: "insufficient_quota",
-      snapshot: {
-        user: {
-          id: userId,
-          email: "",
-          password_hash: "",
-          password_salt: "",
-          role: "user",
-          free_limit_usd: 0,
-          free_used_usd: 0,
-          paid_balance_usd: 0,
-          created_at: new Date(0).toISOString(),
-          updated_at: new Date(0).toISOString()
-        },
-        globalFreeLimitUsd: 0,
-        globalFreeUsedUsd: 0
-      }
-    };
+    return buildInsufficientQuotaResult(userId);
   }
 
   return {
@@ -352,6 +233,121 @@ export async function chargeUsage(
     reason: "insufficient_quota",
     snapshot
   };
+}
+
+function buildEmptyBillingSnapshot(userId: string): BillingSnapshot {
+  const epoch = new Date(0).toISOString();
+  return {
+    user: {
+      id: userId,
+      email: "",
+      password_hash: "",
+      password_salt: "",
+      role: "user",
+      free_limit_usd: 0,
+      free_used_usd: 0,
+      paid_balance_usd: 0,
+      created_at: epoch,
+      updated_at: epoch
+    },
+    globalFreeLimitUsd: 0,
+    globalFreeUsedUsd: 0
+  };
+}
+
+function buildInsufficientQuotaResult(userId: string): ChargeResult {
+  return {
+    ok: false,
+    reason: "insufficient_quota",
+    snapshot: buildEmptyBillingSnapshot(userId)
+  };
+}
+
+async function reserveUserQuota(db: D1Database, userId: string, split: ChargeSplit, now: string): Promise<boolean> {
+  const updateUser = await db.prepare(
+    `UPDATE users
+        SET free_used_usd = free_used_usd + ?,
+            paid_balance_usd = paid_balance_usd - ?,
+            updated_at = ?
+      WHERE id = ?
+        AND free_used_usd + ? <= free_limit_usd
+        AND paid_balance_usd >= ?`
+  )
+    .bind(split.freePartUsd, split.paidPartUsd, now, userId, split.freePartUsd, split.paidPartUsd)
+    .run();
+  return updateUser.success && (updateUser.meta.changes ?? 0) === 1;
+}
+
+async function reserveGlobalFreeQuota(
+  db: D1Database,
+  freePartUsd: number,
+  globalFreeLimitUsd: number,
+  now: string
+): Promise<boolean> {
+  const updateGlobal = await db.prepare(
+    `UPDATE platform_settings
+        SET value = CAST(value AS REAL) + ?,
+            updated_at = ?
+      WHERE key = 'global_free_used_usd'
+        AND CAST(value AS REAL) + ? <= ?`
+  )
+    .bind(freePartUsd, now, freePartUsd, globalFreeLimitUsd)
+    .run();
+  return updateGlobal.success && (updateGlobal.meta.changes ?? 0) === 1;
+}
+
+async function rollbackUserQuota(db: D1Database, userId: string, split: ChargeSplit, now: string): Promise<void> {
+  await db.prepare(
+    `UPDATE users
+        SET free_used_usd = MAX(0, free_used_usd - ?),
+            paid_balance_usd = paid_balance_usd + ?,
+            updated_at = ?
+      WHERE id = ?`
+  )
+    .bind(split.freePartUsd, split.paidPartUsd, now, userId)
+    .run();
+}
+
+async function rollbackGlobalFreeQuota(db: D1Database, freePartUsd: number, now: string): Promise<void> {
+  if (freePartUsd <= 0) {
+    return;
+  }
+  await db.prepare(
+    `UPDATE platform_settings
+        SET value = MAX(0, CAST(value AS REAL) - ?),
+            updated_at = ?
+      WHERE key = 'global_free_used_usd'`
+  )
+    .bind(freePartUsd, now)
+    .run();
+}
+
+async function writeUsageLedger(
+  db: D1Database,
+  userId: string,
+  split: ChargeSplit,
+  modelSpec: SupportedModelSpec,
+  usage: UsageCounters,
+  requestId: string
+): Promise<boolean> {
+  try {
+    await appendLedger(db, {
+      id: crypto.randomUUID(),
+      userId,
+      kind: resolveUsageLedgerKind(split),
+      amountUsd: -roundUsd(split.totalCostUsd),
+      freeAmountUsd: roundUsd(split.freePartUsd),
+      paidAmountUsd: roundUsd(split.paidPartUsd),
+      model: modelSpec.id,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      requestId,
+      note: null
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function resolveUsageLedgerKind(split: ChargeSplit): string {
