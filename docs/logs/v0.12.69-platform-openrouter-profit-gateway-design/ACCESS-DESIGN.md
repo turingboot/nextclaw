@@ -1,4 +1,4 @@
-# 平台访问文档（OpenRouter 型中转）
+# 平台接入方案（OpenRouter 型中转）
 
 本文档面向接入方，约定“只接 NextClaw，不直连上游厂商”。
 
@@ -45,7 +45,7 @@
 
 ```json
 {
-  "model": "nextclaw/gpt-4o",
+  "model": "openai/gpt-4o",
   "messages": [
     { "role": "user", "content": "你好，请给我一段总结。" }
   ],
