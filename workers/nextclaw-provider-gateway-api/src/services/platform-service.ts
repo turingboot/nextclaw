@@ -1,0 +1,389 @@
+import {
+  type BillingSnapshot,
+  type ChargeResult,
+  type ChargeSplit,
+  type Env,
+  type SupportedModelSpec,
+  type UsageCounters,
+  type UserRow
+} from "../types/platform";
+import {
+  appendLedger,
+  getLedgerByRequestId,
+  getUserById,
+  readBillingSnapshot
+} from "../repositories/platform-repository";
+import {
+  extractUsageCounters,
+  getGlobalFreeLimit,
+  getRequestFlatUsdPerRequest,
+  isRecord,
+  jsonErrorResponse,
+  openaiLikeUnauthorized,
+  openaiLikeUnavailable,
+  parseBearerToken,
+  readAuthSecret,
+  roundUsd,
+  verifySessionToken
+} from "../utils/platform-utils";
+
+const bootstrapReady = new WeakMap<D1Database, Promise<void>>();
+
+export async function ensurePlatformBootstrap(env: Env): Promise<void> {
+  const existing = bootstrapReady.get(env.NEXTCLAW_PLATFORM_DB);
+  if (existing) {
+    await existing;
+    return;
+  }
+
+  const task = (async () => {
+    const now = new Date().toISOString();
+    await env.NEXTCLAW_PLATFORM_DB.batch([
+      env.NEXTCLAW_PLATFORM_DB.prepare(
+        "INSERT OR IGNORE INTO platform_settings (key, value, updated_at) VALUES ('global_free_limit_usd', ?, ?)"
+      ).bind(String(getGlobalFreeLimit(env)), now),
+      env.NEXTCLAW_PLATFORM_DB.prepare(
+        "INSERT OR IGNORE INTO platform_settings (key, value, updated_at) VALUES ('global_free_used_usd', '0', ?)"
+      ).bind(now)
+    ]);
+  })();
+
+  bootstrapReady.set(env.NEXTCLAW_PLATFORM_DB, task);
+  await task;
+}
+
+export async function requireAuthUser(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<
+  | { ok: true; user: UserRow }
+  | { ok: false; response: Response }
+> {
+  const token = parseBearerToken(c.req.header("authorization"));
+  if (!token) {
+    return {
+      ok: false,
+      response: openaiLikeUnauthorized("Missing bearer token.")
+    };
+  }
+
+  const secret = readAuthSecret(c.env);
+  if (!secret) {
+    return {
+      ok: false,
+      response: openaiLikeUnavailable("Auth secret is not configured.")
+    };
+  }
+
+  const payload = await verifySessionToken(token, secret);
+  if (!payload) {
+    return {
+      ok: false,
+      response: openaiLikeUnauthorized("Invalid or expired token.")
+    };
+  }
+
+  const user = await getUserById(c.env.NEXTCLAW_PLATFORM_DB, payload.sub);
+  if (!user) {
+    return {
+      ok: false,
+      response: openaiLikeUnauthorized("Token subject no longer exists.")
+    };
+  }
+
+  return { ok: true, user };
+}
+
+export async function requireAdminUser(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<
+  | { ok: true; user: UserRow }
+  | { ok: false; response: Response }
+> {
+  const auth = await requireAuthUser(c);
+  if (!auth.ok) {
+    return auth;
+  }
+  if (auth.user.role !== "admin") {
+    return {
+      ok: false,
+      response: jsonErrorResponse(403, "FORBIDDEN", "Admin permission required.")
+    };
+  }
+  return auth;
+}
+
+export async function chargeFromStream(params: {
+  env: Env;
+  userId: string;
+  modelSpec: SupportedModelSpec;
+  stream: ReadableStream;
+  fallback: UsageCounters;
+  requestId: string;
+}): Promise<void> {
+  const decoder = new TextDecoder();
+  const reader = params.stream.getReader();
+  let buffer = "";
+  let usage: UsageCounters | null = null;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) {
+      break;
+    }
+    if (!value) {
+      continue;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line.startsWith("data:")) {
+        continue;
+      }
+      const data = line.slice("data:".length).trim();
+      if (data.length === 0 || data === "[DONE]") {
+        continue;
+      }
+
+      try {
+        const chunk = JSON.parse(data) as Record<string, unknown>;
+        if (isRecord(chunk.usage)) {
+          usage = extractUsageCounters(chunk, usage ?? params.fallback);
+        }
+      } catch {
+        // ignore malformed chunk
+      }
+    }
+  }
+
+  await chargeUsage(params.env, params.userId, params.modelSpec, usage ?? params.fallback, params.requestId);
+}
+
+export async function chargeUsage(
+  env: Env,
+  userId: string,
+  modelSpec: SupportedModelSpec,
+  usage: UsageCounters,
+  requestId: string
+): Promise<ChargeResult> {
+  const existingLedger = await getLedgerByRequestId(env.NEXTCLAW_PLATFORM_DB, userId, requestId);
+  if (existingLedger) {
+    return {
+      ok: true,
+      split: {
+        totalCostUsd: roundUsd(Math.abs(existingLedger.amount_usd)),
+        freePartUsd: roundUsd(existingLedger.free_amount_usd),
+        paidPartUsd: roundUsd(existingLedger.paid_amount_usd)
+      },
+      snapshot: (await readBillingSnapshot(env.NEXTCLAW_PLATFORM_DB, userId)) ?? {
+        user: {
+          id: userId,
+          email: "",
+          password_hash: "",
+          password_salt: "",
+          role: "user",
+          free_limit_usd: 0,
+          free_used_usd: 0,
+          paid_balance_usd: 0,
+          created_at: new Date(0).toISOString(),
+          updated_at: new Date(0).toISOString()
+        },
+        globalFreeLimitUsd: 0,
+        globalFreeUsedUsd: 0
+      }
+    };
+  }
+
+  const totalCostUsd = roundUsd(calculateCost(modelSpec, usage) + getRequestFlatUsdPerRequest(env));
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const snapshot = await readBillingSnapshot(env.NEXTCLAW_PLATFORM_DB, userId);
+    if (!snapshot) {
+      return {
+        ok: false,
+        reason: "insufficient_quota",
+        snapshot: {
+          user: {
+            id: userId,
+            email: "",
+            password_hash: "",
+            password_salt: "",
+            role: "user",
+            free_limit_usd: 0,
+            free_used_usd: 0,
+            paid_balance_usd: 0,
+            created_at: new Date(0).toISOString(),
+            updated_at: new Date(0).toISOString()
+          },
+          globalFreeLimitUsd: 0,
+          globalFreeUsedUsd: 0
+        }
+      };
+    }
+
+    const split = computeChargeSplit(snapshot, totalCostUsd);
+    if (!split) {
+      return {
+        ok: false,
+        reason: "insufficient_quota",
+        snapshot
+      };
+    }
+
+    const now = new Date().toISOString();
+    const updateUser = await env.NEXTCLAW_PLATFORM_DB.prepare(
+      `UPDATE users
+          SET free_used_usd = free_used_usd + ?,
+              paid_balance_usd = paid_balance_usd - ?,
+              updated_at = ?
+        WHERE id = ?
+          AND free_used_usd + ? <= free_limit_usd
+          AND paid_balance_usd >= ?`
+    )
+      .bind(
+        split.freePartUsd,
+        split.paidPartUsd,
+        now,
+        userId,
+        split.freePartUsd,
+        split.paidPartUsd
+      )
+      .run();
+
+    if (!updateUser.success || (updateUser.meta.changes ?? 0) !== 1) {
+      continue;
+    }
+
+    if (split.freePartUsd > 0) {
+      const updateGlobal = await env.NEXTCLAW_PLATFORM_DB.prepare(
+        `UPDATE platform_settings
+            SET value = CAST(value AS REAL) + ?,
+                updated_at = ?
+          WHERE key = 'global_free_used_usd'
+            AND CAST(value AS REAL) + ? <= ?`
+      )
+        .bind(split.freePartUsd, now, split.freePartUsd, snapshot.globalFreeLimitUsd)
+        .run();
+
+      if (!updateGlobal.success || (updateGlobal.meta.changes ?? 0) !== 1) {
+        await env.NEXTCLAW_PLATFORM_DB.prepare(
+          `UPDATE users
+              SET free_used_usd = MAX(0, free_used_usd - ?),
+                  paid_balance_usd = paid_balance_usd + ?,
+                  updated_at = ?
+            WHERE id = ?`
+        )
+          .bind(split.freePartUsd, split.paidPartUsd, now, userId)
+          .run();
+        continue;
+      }
+    }
+
+    try {
+      await appendLedger(env.NEXTCLAW_PLATFORM_DB, {
+        id: crypto.randomUUID(),
+        userId,
+        kind: resolveUsageLedgerKind(split),
+        amountUsd: -roundUsd(split.totalCostUsd),
+        freeAmountUsd: roundUsd(split.freePartUsd),
+        paidAmountUsd: roundUsd(split.paidPartUsd),
+        model: modelSpec.id,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        requestId,
+        note: null
+      });
+    } catch {
+      await env.NEXTCLAW_PLATFORM_DB.prepare(
+        `UPDATE users
+            SET free_used_usd = MAX(0, free_used_usd - ?),
+                paid_balance_usd = paid_balance_usd + ?,
+                updated_at = ?
+          WHERE id = ?`
+      )
+        .bind(split.freePartUsd, split.paidPartUsd, now, userId)
+        .run();
+
+      if (split.freePartUsd > 0) {
+        await env.NEXTCLAW_PLATFORM_DB.prepare(
+          `UPDATE platform_settings
+              SET value = MAX(0, CAST(value AS REAL) - ?),
+                  updated_at = ?
+            WHERE key = 'global_free_used_usd'`
+        )
+          .bind(split.freePartUsd, now)
+          .run();
+      }
+      continue;
+    }
+
+    return {
+      ok: true,
+      split,
+      snapshot
+    };
+  }
+
+  const snapshot = await readBillingSnapshot(env.NEXTCLAW_PLATFORM_DB, userId);
+  if (!snapshot) {
+    return {
+      ok: false,
+      reason: "insufficient_quota",
+      snapshot: {
+        user: {
+          id: userId,
+          email: "",
+          password_hash: "",
+          password_salt: "",
+          role: "user",
+          free_limit_usd: 0,
+          free_used_usd: 0,
+          paid_balance_usd: 0,
+          created_at: new Date(0).toISOString(),
+          updated_at: new Date(0).toISOString()
+        },
+        globalFreeLimitUsd: 0,
+        globalFreeUsedUsd: 0
+      }
+    };
+  }
+
+  return {
+    ok: false,
+    reason: "insufficient_quota",
+    snapshot
+  };
+}
+
+export function resolveUsageLedgerKind(split: ChargeSplit): string {
+  if (split.freePartUsd > 0 && split.paidPartUsd > 0) {
+    return "usage_mixed";
+  }
+  if (split.freePartUsd > 0) {
+    return "usage_free";
+  }
+  return "usage_paid";
+}
+
+export function computeChargeSplit(snapshot: BillingSnapshot, totalCostUsd: number): ChargeSplit | null {
+  const freeRemainingUser = Math.max(0, snapshot.user.free_limit_usd - snapshot.user.free_used_usd);
+  const freeRemainingGlobal = Math.max(0, snapshot.globalFreeLimitUsd - snapshot.globalFreeUsedUsd);
+  const freeAvailable = Math.min(freeRemainingUser, freeRemainingGlobal);
+
+  const freePartUsd = Math.min(totalCostUsd, freeAvailable);
+  const paidPartUsd = roundUsd(totalCostUsd - freePartUsd);
+
+  if (paidPartUsd > snapshot.user.paid_balance_usd + 1e-9) {
+    return null;
+  }
+
+  return {
+    totalCostUsd: roundUsd(totalCostUsd),
+    freePartUsd: roundUsd(freePartUsd),
+    paidPartUsd: roundUsd(Math.max(0, paidPartUsd))
+  };
+}
+
+function calculateCost(modelSpec: SupportedModelSpec, usage: UsageCounters): number {
+  return (usage.promptTokens / 1_000_000) * modelSpec.inputUsdPer1M +
+    (usage.completionTokens / 1_000_000) * modelSpec.outputUsdPer1M;
+}
