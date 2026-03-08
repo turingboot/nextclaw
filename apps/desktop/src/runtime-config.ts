@@ -17,8 +17,8 @@ export class RuntimeConfigResolver {
 
     const appPath = app.getAppPath();
     const candidates = [
-      resolve(appPath, "node_modules", "nextclaw", "dist", "cli", "index.js"),
       resolve(appPath, "..", "app.asar.unpacked", "node_modules", "nextclaw", "dist", "cli", "index.js"),
+      resolve(appPath, "node_modules", "nextclaw", "dist", "cli", "index.js"),
       resolve(appPath, "..", "..", "packages", "nextclaw", "dist", "cli", "index.js")
     ];
 

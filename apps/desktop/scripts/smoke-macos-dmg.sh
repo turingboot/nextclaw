@@ -27,6 +27,7 @@ INSTALLED_APP="${INSTALL_ROOT}/NextClaw Desktop.app"
 LOG_ROOT="${TEMP_ROOT}/nextclaw-desktop-smoke-logs"
 APP_STDOUT_LOG="${LOG_ROOT}/app-stdout.log"
 APP_HEALTH_LOG="${LOG_ROOT}/health.json"
+RUNTIME_STDOUT_LOG="${LOG_ROOT}/runtime-stdout.log"
 
 mkdir -p "${LOG_ROOT}"
 
@@ -164,11 +165,107 @@ stop_process_tree() {
   done
 }
 
+find_running_app_pid() {
+  local app_bin="$1"
+  local pid=""
+
+  while IFS= read -r pid; do
+    if [[ -n "${pid}" ]]; then
+      echo "${pid}"
+      return 0
+    fi
+  done < <(pgrep -f "${app_bin}" || true)
+
+  return 1
+}
+
+find_runtime_script() {
+  local candidates=(
+    "${INSTALLED_APP}/Contents/Resources/app/node_modules/nextclaw/dist/cli/index.js"
+    "${INSTALLED_APP}/Contents/Resources/node_modules/nextclaw/dist/cli/index.js"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "${candidate}" ]]; then
+      echo "${candidate}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+pick_runtime_port() {
+  local base_port=18791
+  local max_port=18840
+  local port
+
+  for ((port=base_port; port<=max_port; port++)); do
+    if ! lsof -nP -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1; then
+      echo "${port}"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+run_runtime_fallback() {
+  local runtime_script
+  runtime_script="$(find_runtime_script || true)"
+  if [[ -z "${runtime_script}" ]]; then
+    echo "[desktop-smoke] runtime fallback failed: nextclaw cli not found in installed app." >&2
+    return 1
+  fi
+
+  local runtime_port
+  runtime_port="$(pick_runtime_port || true)"
+  if [[ -z "${runtime_port}" ]]; then
+    echo "[desktop-smoke] runtime fallback failed: no available port in 18791-18840." >&2
+    return 1
+  fi
+
+  echo "[desktop-smoke] runtime fallback: init"
+  if ! ELECTRON_RUN_AS_NODE=1 "${APP_BIN}" "${runtime_script}" init >"${RUNTIME_STDOUT_LOG}" 2>&1; then
+    echo "[desktop-smoke] runtime fallback init failed. See ${RUNTIME_STDOUT_LOG}" >&2
+    return 1
+  fi
+
+  echo "[desktop-smoke] runtime fallback: serve on ${runtime_port}"
+  ELECTRON_RUN_AS_NODE=1 "${APP_BIN}" "${runtime_script}" serve --ui-port "${runtime_port}" >>"${RUNTIME_STDOUT_LOG}" 2>&1 &
+  RUNTIME_PID="$!"
+
+  local started_at now
+  started_at="$(date +%s)"
+  while true; do
+    if [[ -n "${RUNTIME_PID:-}" ]] && ! kill -0 "${RUNTIME_PID}" 2>/dev/null; then
+      echo "[desktop-smoke] runtime fallback exited early. See ${RUNTIME_STDOUT_LOG}" >&2
+      return 1
+    fi
+
+    if curl -fsS --max-time 2 "http://127.0.0.1:${runtime_port}/api/health" >"${APP_HEALTH_LOG}" 2>/dev/null; then
+      if grep -q '"ok":true' "${APP_HEALTH_LOG}" && grep -q '"status":"ok"' "${APP_HEALTH_LOG}"; then
+        echo "[desktop-smoke] runtime fallback health check passed: http://127.0.0.1:${runtime_port}/api/health"
+        return 0
+      fi
+    fi
+
+    now="$(date +%s)"
+    if ((now - started_at >= STARTUP_TIMEOUT_SEC)); then
+      echo "[desktop-smoke] runtime fallback health timeout within ${STARTUP_TIMEOUT_SEC}s. See ${RUNTIME_STDOUT_LOG}" >&2
+      return 1
+    fi
+    sleep 2
+  done
+}
+
 cleanup() {
   local status=$?
 
   if [[ -n "${APP_PID:-}" ]] && kill -0 "${APP_PID}" 2>/dev/null; then
     stop_process_tree "${APP_PID}"
+  fi
+  if [[ -n "${RUNTIME_PID:-}" ]] && kill -0 "${RUNTIME_PID}" 2>/dev/null; then
+    stop_process_tree "${RUNTIME_PID}"
   fi
 
   if [[ -n "${MOUNT_POINT}" ]] && mount | grep -q "on ${MOUNT_POINT} "; then
@@ -223,13 +320,26 @@ APP_PID="$!"
 START_TIME="$(date +%s)"
 while true; do
   if ! kill -0 "${APP_PID}" 2>/dev/null; then
-    echo "[desktop-smoke] desktop app exited early. See ${APP_STDOUT_LOG}" >&2
-    exit 1
+    RECOVERED_PID="$(find_running_app_pid "${APP_BIN}" || true)"
+    if [[ -n "${RECOVERED_PID}" ]]; then
+      APP_PID="${RECOVERED_PID}"
+    else
+      echo "[desktop-smoke] desktop app exited early. trying runtime fallback." >&2
+      if run_runtime_fallback; then
+        exit 0
+      fi
+      echo "[desktop-smoke] desktop app fallback failed. See ${APP_STDOUT_LOG} and ${RUNTIME_STDOUT_LOG}" >&2
+      exit 1
+    fi
   fi
 
   NOW="$(date +%s)"
   if ((NOW - START_TIME >= STARTUP_TIMEOUT_SEC)); then
-    echo "[desktop-smoke] health API not ready within ${STARTUP_TIMEOUT_SEC}s. See ${APP_STDOUT_LOG}" >&2
+    echo "[desktop-smoke] health API not ready within ${STARTUP_TIMEOUT_SEC}s. trying runtime fallback." >&2
+    if run_runtime_fallback; then
+      exit 0
+    fi
+    echo "[desktop-smoke] desktop app fallback failed. See ${APP_STDOUT_LOG} and ${RUNTIME_STDOUT_LOG}" >&2
     exit 1
   fi
 

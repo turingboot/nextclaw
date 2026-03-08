@@ -21,6 +21,7 @@ function run(command, args, options = {}) {
   if (result.status !== 0) {
     throw new Error(`Command failed: ${command} ${args.join(" ")}`);
   }
+  return result;
 }
 
 function readArtifacts() {
