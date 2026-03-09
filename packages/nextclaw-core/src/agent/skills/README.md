@@ -22,7 +22,6 @@ The skill format and metadata structure follow OpenClaw's conventions to maintai
 | `summarize` | Summarize URLs, files, and YouTube videos |
 | `tmux` | Remote-control tmux sessions |
 | `skill-creator` | Create new skills |
-| `mvp-view-logic-decoupling` | Apply presenter-manager-store MVP decoupling with Zustand |
 | `nextclaw-skill-resource-hub` | Curate NextClaw, OpenClaw, and community skill resources |
 | `qq-group-speaker-distinction` | Keep one QQ group session while preserving per-message speaker identity |
 | `qq-url-guard` | Avoid QQ outbound URL-like text blocks (e.g. xx.xx / USER.md / markdown links) |

@@ -364,8 +364,3 @@ export class StreamRunController {
     }
   };
 }
-
-export async function executeStreamRun(params: ExecuteStreamRunParams): Promise<void> {
-  const controller = new StreamRunController(params);
-  await controller.execute();
-}
