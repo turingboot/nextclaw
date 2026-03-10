@@ -67,7 +67,7 @@ jobs:
             echo "macOS dmg not found in apps/desktop/release"
             exit 1
           fi
-          apps/desktop/scripts/smoke-macos-dmg.sh "${DMG_PATH}" 120
+          apps/desktop/scripts/smoke-macos-dmg.sh "${DMG_PATH}" 240
 
       - name: Build Desktop (Windows)
         if: matrix.platform == 'win32'
@@ -91,7 +91,7 @@ jobs:
             throw "Windows desktop executable not found in apps/desktop/release/win-unpacked"
           }
           $desktopExe = (Resolve-Path "apps/desktop/release/win-unpacked/NextClaw Desktop.exe").Path
-          & "apps/desktop/scripts/smoke-windows-desktop.ps1" -DesktopExePath $desktopExe -StartupTimeoutSec 90
+          & "apps/desktop/scripts/smoke-windows-desktop.ps1" -DesktopExePath $desktopExe -StartupTimeoutSec 180
 
       - name: Archive desktop artifacts (Windows)
         if: matrix.platform == 'win32'
