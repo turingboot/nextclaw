@@ -58,7 +58,7 @@
       "package.json"
     ],
     "npmRebuild": false,
-    "asar": true,
+    "asar": false,
     "afterPack": "./scripts/electron-after-pack.cjs",
     "mac": {
       "icon": "build/icons/icon.icns",

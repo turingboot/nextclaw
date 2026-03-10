@@ -126,7 +126,6 @@ jobs:
           if-no-files-found: warn
           path: |
             ${{ runner.temp }}/nextclaw-desktop-smoke-home/logs/**
-            ${{ runner.temp }}/nextclaw-desktop-smoke-logs/**
             ~\AppData\Roaming\NextClaw Desktop\logs\**
 
       - name: Upload desktop artifacts (macOS)
