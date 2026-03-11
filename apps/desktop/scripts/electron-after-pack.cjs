@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 
 const ARCH_MAP = {
   0: "ia32",
@@ -169,21 +170,41 @@ module.exports = async (context) => {
   }
 
   const nodeModulesRoots = resolveNodeModulesRoots(appOutDir);
-  if (nodeModulesRoots.length === 0) {
-    return;
-  }
-
   const removedPaths = [];
-  for (const nodeModulesRoot of nodeModulesRoots) {
-    pruneBundledRuntimeEnginePackages(nodeModulesRoot, removedPaths);
-    pruneCodexBinaryPackages(nodeModulesRoot, platform, arch, removedPaths);
-    pruneSharpBinaryPackages(nodeModulesRoot, platform, arch, removedPaths);
-    pruneClaudeRipgrepVendors(nodeModulesRoot, platform, arch, removedPaths);
+  if (nodeModulesRoots.length > 0) {
+    for (const nodeModulesRoot of nodeModulesRoots) {
+      pruneBundledRuntimeEnginePackages(nodeModulesRoot, removedPaths);
+      pruneCodexBinaryPackages(nodeModulesRoot, platform, arch, removedPaths);
+      pruneSharpBinaryPackages(nodeModulesRoot, platform, arch, removedPaths);
+      pruneClaudeRipgrepVendors(nodeModulesRoot, platform, arch, removedPaths);
+    }
   }
 
   if (removedPaths.length > 0) {
     console.log(
       `[desktop-after-pack] pruned ${removedPaths.length} platform-mismatched binary directories for ${platform}-${arch}.`
     );
+  }
+
+  // In unsigned macOS mode (no Developer ID cert), re-sign app bundle ad-hoc.
+  // This avoids invalid bundle-signature state that Gatekeeper reports as "damaged".
+  if (platform === "darwin") {
+    const appName = `${context.packager.appInfo.productFilename}.app`;
+    const appBundlePath = path.join(appOutDir, appName);
+    if (existsDir(appBundlePath)) {
+      const result = spawnSync(
+        "codesign",
+        ["--force", "--deep", "--sign", "-", appBundlePath],
+        { stdio: "pipe", encoding: "utf8" }
+      );
+      if (result.status !== 0) {
+        throw new Error(
+          `[desktop-after-pack] ad-hoc codesign failed for ${appBundlePath}\n${result.stdout ?? ""}\n${result.stderr ?? ""}`
+        );
+      }
+      console.log(`[desktop-after-pack] ad-hoc codesigned ${appBundlePath}`);
+    } else {
+      console.warn(`[desktop-after-pack] skip ad-hoc codesign, app bundle not found at ${appBundlePath}`);
+    }
   }
 };
