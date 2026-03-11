@@ -65,41 +65,36 @@ export type NcpFailedEnvelope = {
   metadata?: Record<string, unknown>;
 };
 
-// ---------------------------------------------------------------------------
-// Transport acknowledgment
-// ---------------------------------------------------------------------------
-
-/**
- * Minimal acknowledgment returned by `NcpEndpoint.send`.
- *
- * A returned receipt confirms the endpoint accepted the request.
- * Failures are signalled by throwing `NcpErrorException` — the receipt
- * always represents a successful handoff.
- */
-export type NcpSendReceipt = {
-  /** Identifier assigned to the outbound message. */
+/** Payload for message.accepted — acknowledges receipt of a request. */
+export type NcpMessageAcceptedPayload = {
   messageId: string;
-  /** Opaque identifier from the underlying transport layer, if available. */
+  correlationId?: string;
   transportId?: string;
 };
 
+/** Payload for message.abort — request cancellation of an in-flight message. */
+export type NcpMessageAbortPayload = {
+  messageId?: string;
+  correlationId?: string;
+};
+
 // ---------------------------------------------------------------------------
-// Endpoint event bus
+// Endpoint event bus (unified: request/response/stream/abort/ lifecycle)
 // ---------------------------------------------------------------------------
 
 /**
- * All events emitted on the endpoint's pub/sub surface.
- *
- * Subscribers receive these events via `NcpEndpoint.subscribe`.
- * Events are ordered within a session but not guaranteed to be ordered
- * across sessions on the same endpoint.
+ * All events on the endpoint: either peer may emit these; subscribers receive via `subscribe()`.
+ * Events are ordered within a session but not guaranteed across sessions.
  */
 export type NcpEndpointEvent =
   | { type: "endpoint.ready" }
+  | { type: "message.request"; payload: NcpRequestEnvelope }
+  | { type: "message.accepted"; payload: NcpMessageAcceptedPayload }
   | { type: "message.received"; payload: NcpResponseEnvelope }
   | { type: "message.delta"; payload: NcpDeltaEnvelope }
   | { type: "message.completed"; payload: NcpCompletedEnvelope }
   | { type: "message.failed"; payload: NcpFailedEnvelope }
+  | { type: "message.abort"; payload: NcpMessageAbortPayload }
   | { type: "endpoint.error"; payload: NcpError };
 
 /** Callback signature for `NcpEndpoint.subscribe`. */
@@ -112,52 +107,18 @@ export type NcpEndpointSubscriber = (event: NcpEndpointEvent) => void;
 /**
  * Core interface every NCP endpoint adapter must implement.
  *
- * An endpoint is a named, lifecycle-managed communication channel.
- * It can send messages to a remote participant and emit events back to
- * the local runtime via a pub/sub subscription model.
- *
- * @example
- * const endpoint: NcpEndpoint = new MyAgentEndpoint(options);
- * await endpoint.start();
- * endpoint.subscribe((event) => { ... });
- * const receipt = await endpoint.send(envelope);
+ * Single primitive: emit(event) to send, subscribe(listener) to receive.
+ * Request/response/stream are all event types (e.g. message.request, message.accepted, message.delta).
  */
 export interface NcpEndpoint {
-  /** Static capability declaration — available before `start()` is called. */
   readonly manifest: NcpEndpointManifest;
 
-  /**
-   * Initializes the endpoint (opens connections, authenticates, etc.).
-   * Must be called before `send`. Idempotent — safe to call more than once.
-   */
   start(): Promise<void>;
-
-  /**
-   * Gracefully shuts down the endpoint and releases resources.
-   * Idempotent — safe to call more than once.
-   */
   stop(): Promise<void>;
 
-  /**
-   * Sends a message to the remote participant.
-   *
-   * Throws `NcpErrorException` if the endpoint is not started or if the
-   * message is rejected by the transport. Never returns a "not accepted" receipt —
-   * a returned receipt always means the message was accepted.
-   */
-  send(envelope: NcpRequestEnvelope): Promise<NcpSendReceipt>;
+  /** Emit an event to the other peer(s). Subscribers receive it via subscribe(). */
+  emit(event: NcpEndpointEvent): void | Promise<void>;
 
-  /**
-   * Subscribes to endpoint events.
-   *
-   * @param listener - Called for every event emitted by this endpoint.
-   * @returns An unsubscribe function. Call it to stop receiving events.
-   *
-   * @example
-   * const unsubscribe = endpoint.subscribe((event) => {
-   *   if (event.type === "message.completed") handleReply(event.payload);
-   * });
-   * unsubscribe();
-   */
+  /** Subscribe to events. Returns unsubscribe function. */
   subscribe(listener: NcpEndpointSubscriber): () => void;
 }
