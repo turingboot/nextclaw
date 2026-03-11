@@ -10,6 +10,9 @@ hero:
       text: 快速开始
       link: /zh/guide/getting-started
     - theme: alt
+      text: 更新笔记
+      link: /zh/notes/
+    - theme: alt
       text: GitHub
       link: https://github.com/Peiiii/nextclaw
 

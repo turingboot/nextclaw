@@ -136,6 +136,16 @@ const enSidebar = [
   }
 ]
 
+const enNotesSidebar = [
+  {
+    text: 'Product Notes',
+    items: [
+      { text: 'Overview', link: '/en/notes/' },
+      { text: '2026-03-11: Bocha Search Integration + Runtime Alignment', link: '/en/notes/2026-03-11-search-provider-controls-and-runtime-alignment' }
+    ]
+  }
+]
+
 const zhSidebar = [
   {
     text: '开始使用',
@@ -194,6 +204,16 @@ const zhSidebar = [
   }
 ]
 
+const zhNotesSidebar = [
+  {
+    text: '产品更新笔记',
+    items: [
+      { text: '总览', link: '/zh/notes/' },
+      { text: '2026-03-11：集成博查搜索 + 运行时对齐', link: '/zh/notes/2026-03-11-search-provider-controls-and-runtime-alignment' }
+    ]
+  }
+]
+
 export default defineConfig({
   title: 'NextClaw',
   description: 'NextClaw documentation',
@@ -224,13 +244,15 @@ export default defineConfig({
         nav: [
           { text: 'Start Using', link: '/en/guide/getting-started' },
           { text: 'Features', link: '/en/guide/channels' },
+          { text: 'Notes', link: '/en/notes/' },
           { text: 'Learn & Resources', link: '/en/guide/tutorials' },
           { text: 'Reference', link: '/en/guide/commands' },
           { text: 'Advanced', link: '/en/guide/advanced' },
           { text: 'Project', link: '/en/guide/roadmap' },
         ],
         sidebar: {
-          '/en/guide/': enSidebar
+          '/en/guide/': enSidebar,
+          '/en/notes/': enNotesSidebar
         },
         outline: { level: [2, 3], label: 'On this page' },
         footer: {
@@ -249,13 +271,15 @@ export default defineConfig({
         nav: [
           { text: '开始使用', link: '/zh/guide/getting-started' },
           { text: '功能', link: '/zh/guide/channels' },
+          { text: '更新笔记', link: '/zh/notes/' },
           { text: '学习与资源', link: '/zh/guide/tutorials' },
           { text: '参考与排错', link: '/zh/guide/commands' },
           { text: '进阶', link: '/zh/guide/advanced' },
           { text: '项目', link: '/zh/guide/roadmap' },
         ],
         sidebar: {
-          '/zh/guide/': zhSidebar
+          '/zh/guide/': zhSidebar,
+          '/zh/notes/': zhNotesSidebar
         },
         outline: { level: [2, 3], label: '本页目录' },
         footer: {

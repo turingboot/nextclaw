@@ -10,6 +10,9 @@ hero:
       text: Get Started
       link: /en/guide/getting-started
     - theme: alt
+      text: Product Notes
+      link: /en/notes/
+    - theme: alt
       text: View on GitHub
       link: https://github.com/Peiiii/nextclaw
 
