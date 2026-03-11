@@ -20,13 +20,13 @@ export function getDataDir(): string {
 
 export function loadConfig(configPath?: string): Config {
   const path = configPath ?? getConfigPath();
-  let shouldPersist = false;
   if (existsSync(path)) {
     try {
       const raw = readFileSync(path, "utf-8");
       const data = JSON.parse(raw);
-      const migrated = migrateConfig(data);
+      const { config: migrated, changed: migratedChanged } = migrateConfig(data);
       const config = ConfigSchema.parse(migrated);
+      let shouldPersist = migratedChanged;
       if (ensureBuiltinNextclawKey(config)) {
         shouldPersist = true;
       }
@@ -53,26 +53,87 @@ export function saveConfig(config: Config, configPath?: string): void {
   writeFileSync(path, JSON.stringify(config, null, 2));
 }
 
-function migrateConfig(data: Record<string, unknown>): Record<string, unknown> {
+function migrateConfig(data: Record<string, unknown>): { config: Record<string, unknown>; changed: boolean } {
+  let changed = false;
   const tools = (data.tools ?? {}) as Record<string, unknown>;
   const execConfig = (tools.exec ?? {}) as Record<string, unknown>;
   if (execConfig.restrictToWorkspace !== undefined && tools.restrictToWorkspace === undefined) {
     tools.restrictToWorkspace = execConfig.restrictToWorkspace;
+    changed = true;
   }
   const providers = (data.providers ?? {}) as Record<string, unknown>;
   const nextclawProvider = (providers.nextclaw ?? {}) as Record<string, unknown>;
   const nextclawApiBase = typeof nextclawProvider.apiBase === "string" ? nextclawProvider.apiBase.trim() : "";
   if (nextclawApiBase === "https://api.nextclaw.io/v1") {
     nextclawProvider.apiBase = "https://ai-gateway-api.nextclaw.io/v1";
+    changed = true;
   }
-  return normalizeInlineSecretRefs({
+  const legacyWebSearch = (tools.web ?? {}) as Record<string, unknown>;
+  const legacyWebSearchConfig = (legacyWebSearch.search ?? {}) as Record<string, unknown>;
+  const rawSearch = (data.search ?? {}) as Record<string, unknown>;
+  const rawSearchProviders = (rawSearch.providers ?? {}) as Record<string, unknown>;
+  const braveSearch = (rawSearchProviders.brave ?? {}) as Record<string, unknown>;
+  const bochaSearch = (rawSearchProviders.bocha ?? {}) as Record<string, unknown>;
+
+  if (
+    typeof legacyWebSearchConfig.apiKey === "string" &&
+    legacyWebSearchConfig.apiKey.trim().length > 0 &&
+    typeof braveSearch.apiKey !== "string"
+  ) {
+    braveSearch.apiKey = legacyWebSearchConfig.apiKey;
+    changed = true;
+  }
+  if (
+    typeof legacyWebSearchConfig.maxResults === "number" &&
+    Number.isFinite(legacyWebSearchConfig.maxResults) &&
+    !("defaults" in rawSearch)
+  ) {
+    rawSearch.defaults = {
+      maxResults: legacyWebSearchConfig.maxResults
+    };
+    changed = true;
+  }
+  if (rawSearch.provider === undefined) {
+    rawSearch.provider = "bocha";
+    changed = true;
+  }
+  const rawEnabledProviders = Array.isArray(rawSearch.enabledProviders)
+    ? rawSearch.enabledProviders.filter((value): value is string => typeof value === "string")
+    : [];
+  const currentEnabledProviders = Array.isArray(rawSearch.enabledProviders)
+    ? rawSearch.enabledProviders.filter((value): value is string => typeof value === "string")
+    : [];
+  const normalizedEnabledProviders = Array.from(new Set(
+    rawEnabledProviders.filter((value) => value === "bocha" || value === "brave")
+  ));
+  if (
+    currentEnabledProviders.length !== normalizedEnabledProviders.length
+    || normalizedEnabledProviders.some((value, index) => currentEnabledProviders[index] !== value)
+  ) {
+    rawSearch.enabledProviders = normalizedEnabledProviders;
+    changed = true;
+  }
+
+  const normalized = normalizeInlineSecretRefs({
     ...data,
     tools,
+    search: {
+      ...rawSearch,
+      providers: {
+        ...rawSearchProviders,
+        bocha: bochaSearch,
+        brave: braveSearch
+      }
+    },
     providers: {
       ...providers,
       nextclaw: nextclawProvider
     }
   });
+  return {
+    config: normalized,
+    changed
+  };
 }
 
 function ensureBuiltinNextclawKey(config: Config): boolean {

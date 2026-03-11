@@ -265,7 +265,7 @@ export class ServiceCommands {
       config,
       cronService: cron,
       restrictToWorkspace: config.tools.restrictToWorkspace,
-      braveApiKey: config.tools.web.search.apiKey || undefined,
+      searchConfig: config.search,
       execConfig: config.tools.exec,
       contextConfig: config.agents.context,
       gatewayController,

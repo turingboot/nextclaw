@@ -18,10 +18,12 @@ import {
   isSensitiveConfigPath,
   type ProviderSpec,
   SessionManager,
-  getWorkspacePathFromConfig
+  getWorkspacePathFromConfig,
+  type SearchConfig
 } from "@nextclaw/core";
 import { findServerBuiltinProviderByName, listServerBuiltinProviders } from "./provider-overrides.js";
 import type {
+  BochaFreshnessValue,
   ConfigMetaView,
   RuntimeConfigUpdate,
   ConfigSchemaResponse,
@@ -30,6 +32,7 @@ import type {
   ProviderConnectionTestRequest,
   ProviderConnectionTestResult,
   ProviderConfigView,
+  SearchConfigUpdate,
   SecretsConfigUpdate,
   SecretsView,
   SessionsListView,
@@ -148,6 +151,7 @@ function clearSecretRefsByPrefix(config: Config, pathPrefix: string): void {
 type ChannelTutorialUrls = NonNullable<ConfigMetaView["channels"][number]["tutorialUrls"]>;
 
 const DOCS_BASE_URL = "https://docs.nextclaw.io";
+const BOCHA_OPEN_URL = "https://open.bocha.cn";
 const CHANNEL_TUTORIAL_URLS: Record<string, ChannelTutorialUrls> = {
   feishu: {
     default: `${DOCS_BASE_URL}/guide/tutorials/feishu`,
@@ -155,6 +159,23 @@ const CHANNEL_TUTORIAL_URLS: Record<string, ChannelTutorialUrls> = {
     zh: `${DOCS_BASE_URL}/zh/guide/tutorials/feishu`
   }
 };
+
+const SEARCH_PROVIDER_META: ConfigMetaView["search"] = [
+  {
+    name: "bocha",
+    displayName: "Bocha Search",
+    description: "China-friendly web search with AI-ready summaries.",
+    docsUrl: BOCHA_OPEN_URL,
+    isDefault: true,
+    supportsSummary: true
+  },
+  {
+    name: "brave",
+    displayName: "Brave Search",
+    description: "Brave web search API kept as an optional provider.",
+    supportsSummary: false
+  }
+];
 
 type ExecuteActionResult =
   | { ok: true; data: ConfigActionExecuteResult }
@@ -458,6 +479,7 @@ export function buildConfigView(config: Config): ConfigView {
   return {
     agents: config.agents,
     providers,
+    search: buildSearchView(config),
     channels: sanitizePublicConfigValue(
       config.channels as Record<string, Record<string, unknown>>,
       "channels",
@@ -474,6 +496,46 @@ export function buildConfigView(config: Config): ConfigView {
       providers: { ...config.secrets.providers },
       refs: { ...config.secrets.refs }
     } satisfies SecretsView
+  };
+}
+
+function toSearchProviderView(
+  config: Config,
+  providerName: "bocha" | "brave",
+  provider: SearchConfig["providers"]["bocha"] | SearchConfig["providers"]["brave"]
+): ConfigView["search"]["providers"]["bocha"] {
+  const apiKeyPath = `search.providers.${providerName}.apiKey`;
+  const apiKeyRefSet = hasSecretRef(config, apiKeyPath);
+  const masked = maskApiKey(provider.apiKey);
+  const base: ConfigView["search"]["providers"]["bocha"] = {
+    enabled: config.search.enabledProviders.includes(providerName),
+    apiKeySet: masked.apiKeySet || apiKeyRefSet,
+    apiKeyMasked: masked.apiKeyMasked ?? (apiKeyRefSet ? "****" : undefined),
+    baseUrl: provider.baseUrl
+  };
+  if ("docsUrl" in provider) {
+    base.docsUrl = provider.docsUrl;
+  }
+  if ("summary" in provider) {
+    base.summary = provider.summary;
+  }
+  if ("freshness" in provider) {
+    base.freshness = provider.freshness as BochaFreshnessValue;
+  }
+  return base;
+}
+
+function buildSearchView(config: Config): ConfigView["search"] {
+  return {
+    provider: config.search.provider,
+    enabledProviders: [...config.search.enabledProviders],
+    defaults: {
+      maxResults: config.search.defaults.maxResults
+    },
+    providers: {
+      bocha: toSearchProviderView(config, "bocha", config.search.providers.bocha),
+      brave: toSearchProviderView(config, "brave", config.search.providers.brave)
+    }
   };
 }
 
@@ -569,7 +631,7 @@ export function buildConfigMeta(config: Config): ConfigMetaView {
       tutorialUrls
     };
   });
-  return { providers, channels };
+  return { providers, search: SEARCH_PROVIDER_META, channels };
 }
 
 export function buildConfigSchemaView(_config: Config): ConfigSchemaResponse {
@@ -658,6 +720,77 @@ export function updateModel(
   const next = ConfigSchema.parse(config);
   saveConfig(next, configPath);
   return buildConfigView(next);
+}
+
+export function updateSearch(
+  configPath: string,
+  patch: SearchConfigUpdate
+): ConfigView["search"] {
+  const config = loadConfigOrDefault(configPath);
+
+  if (patch.provider === "bocha" || patch.provider === "brave") {
+    config.search.provider = patch.provider;
+  }
+  if (Array.isArray(patch.enabledProviders)) {
+    config.search.enabledProviders = Array.from(new Set(
+      patch.enabledProviders.filter((value): value is "bocha" | "brave" => value === "bocha" || value === "brave")
+    ));
+  }
+
+  if (patch.defaults && Object.prototype.hasOwnProperty.call(patch.defaults, "maxResults")) {
+    const nextMaxResults = patch.defaults.maxResults;
+    if (typeof nextMaxResults === "number" && Number.isFinite(nextMaxResults)) {
+      config.search.defaults.maxResults = Math.max(1, Math.min(50, Math.trunc(nextMaxResults)));
+    }
+  }
+
+  const bochaPatch = patch.providers?.bocha;
+  if (bochaPatch) {
+    if (Object.prototype.hasOwnProperty.call(bochaPatch, "apiKey")) {
+      config.search.providers.bocha.apiKey = bochaPatch.apiKey ?? "";
+      clearSecretRef(config, "search.providers.bocha.apiKey");
+    }
+    if (Object.prototype.hasOwnProperty.call(bochaPatch, "baseUrl")) {
+      config.search.providers.bocha.baseUrl = normalizeOptionalString(bochaPatch.baseUrl)
+        ?? "https://api.bocha.cn/v1/web-search";
+    }
+    if (Object.prototype.hasOwnProperty.call(bochaPatch, "docsUrl")) {
+      config.search.providers.bocha.docsUrl = normalizeOptionalString(bochaPatch.docsUrl) ?? BOCHA_OPEN_URL;
+    }
+    if (Object.prototype.hasOwnProperty.call(bochaPatch, "summary")) {
+      config.search.providers.bocha.summary = Boolean(bochaPatch.summary);
+    }
+    if (Object.prototype.hasOwnProperty.call(bochaPatch, "freshness")) {
+      const freshness = normalizeOptionalString(bochaPatch.freshness);
+      if (
+        freshness === "noLimit" ||
+        freshness === "oneDay" ||
+        freshness === "oneWeek" ||
+        freshness === "oneMonth" ||
+        freshness === "oneYear"
+      ) {
+        config.search.providers.bocha.freshness = freshness;
+      } else {
+        config.search.providers.bocha.freshness = "noLimit";
+      }
+    }
+  }
+
+  const bravePatch = patch.providers?.brave;
+  if (bravePatch) {
+    if (Object.prototype.hasOwnProperty.call(bravePatch, "apiKey")) {
+      config.search.providers.brave.apiKey = bravePatch.apiKey ?? "";
+      clearSecretRef(config, "search.providers.brave.apiKey");
+    }
+    if (Object.prototype.hasOwnProperty.call(bravePatch, "baseUrl")) {
+      config.search.providers.brave.baseUrl = normalizeOptionalString(bravePatch.baseUrl)
+        ?? "https://api.search.brave.com/res/v1/web/search";
+    }
+  }
+
+  const next = ConfigSchema.parse(config);
+  saveConfig(next, configPath);
+  return buildSearchView(next);
 }
 
 export function updateProvider(

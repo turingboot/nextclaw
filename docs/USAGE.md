@@ -789,15 +789,26 @@ After changing channel config, NextClaw hot-reloads channel runtime automaticall
 
 ## Tools
 
-### Web search (Brave)
+### Web search (Bocha default, Brave optional)
 
-Add a Brave Search API key to enable web search for the agent:
+Configure the active search provider under `search`. Bocha is the default and is recommended for mainland China users:
 
 ```json
 {
-  "tools": {
-    "web": {
-      "search": { "apiKey": "YOUR_BRAVE_KEY", "maxResults": 5 }
+  "search": {
+    "provider": "bocha",
+    "defaults": {
+      "maxResults": 10
+    },
+    "providers": {
+      "bocha": {
+        "apiKey": "YOUR_BOCHA_KEY",
+        "summary": true,
+        "freshness": "noLimit"
+      },
+      "brave": {
+        "apiKey": "YOUR_BRAVE_KEY"
+      }
     }
   }
 }

@@ -16,6 +16,7 @@ const queryClient = new QueryClient({
 
 const ModelConfigPage = lazy(async () => ({ default: (await import('@/components/config/ModelConfig')).ModelConfig }));
 const ChatPage = lazy(async () => ({ default: (await import('@/components/chat/ChatPage')).ChatPage }));
+const SearchConfigPage = lazy(async () => ({ default: (await import('@/components/config/SearchConfig')).SearchConfig }));
 const ProvidersListPage = lazy(async () => ({ default: (await import('@/components/config/ProvidersList')).ProvidersList }));
 const ChannelsListPage = lazy(async () => ({ default: (await import('@/components/config/ChannelsList')).ChannelsList }));
 const RuntimeConfigPage = lazy(async () => ({ default: (await import('@/components/config/RuntimeConfig')).RuntimeConfig }));
@@ -45,6 +46,7 @@ function AppContent() {
             <Route path="/skills" element={<LazyRoute><ChatPage view="skills" /></LazyRoute>} />
             <Route path="/cron" element={<LazyRoute><ChatPage view="cron" /></LazyRoute>} />
             <Route path="/model" element={<LazyRoute><ModelConfigPage /></LazyRoute>} />
+            <Route path="/search" element={<LazyRoute><SearchConfigPage /></LazyRoute>} />
             <Route path="/providers" element={<LazyRoute><ProvidersListPage /></LazyRoute>} />
             <Route path="/channels" element={<LazyRoute><ChannelsListPage /></LazyRoute>} />
             <Route path="/runtime" element={<LazyRoute><RuntimeConfigPage /></LazyRoute>} />

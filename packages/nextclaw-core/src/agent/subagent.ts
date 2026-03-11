@@ -8,6 +8,7 @@ import { ExecTool } from "./tools/shell.js";
 import { WebSearchTool, WebFetchTool } from "./tools/web.js";
 import { InputBudgetPruner } from "./input-budget-pruner.js";
 import { resolveSubagentModel } from "./subagent-model.js";
+import type { SearchConfig } from "../config/schema.js";
 
 export class SubagentManager {
   private inputBudgetPruner = new InputBudgetPruner();
@@ -35,18 +36,18 @@ export class SubagentManager {
       model?: string;
       maxTokens?: number;
       contextTokens?: number;
-      braveApiKey?: string | null;
+      searchConfig?: SearchConfig;
       execConfig?: { timeout: number };
       restrictToWorkspace?: boolean;
     }
   ) {}
 
   updateRuntimeOptions(options: {
-    model?: string;
-    maxTokens?: number;
-    contextTokens?: number;
-    braveApiKey?: string | null;
-    execConfig?: { timeout: number };
+      model?: string;
+      maxTokens?: number;
+      contextTokens?: number;
+      searchConfig?: SearchConfig;
+      execConfig?: { timeout: number };
     restrictToWorkspace?: boolean;
   }): void {
     if (Object.prototype.hasOwnProperty.call(options, "model")) {
@@ -58,8 +59,8 @@ export class SubagentManager {
     if (Object.prototype.hasOwnProperty.call(options, "contextTokens")) {
       this.options.contextTokens = options.contextTokens;
     }
-    if (Object.prototype.hasOwnProperty.call(options, "braveApiKey")) {
-      this.options.braveApiKey = options.braveApiKey;
+    if (Object.prototype.hasOwnProperty.call(options, "searchConfig")) {
+      this.options.searchConfig = options.searchConfig;
     }
     if (Object.prototype.hasOwnProperty.call(options, "execConfig")) {
       this.options.execConfig = options.execConfig;
@@ -149,7 +150,7 @@ export class SubagentManager {
           restrictToWorkspace: this.options.restrictToWorkspace ?? false
         })
       );
-      tools.register(new WebSearchTool(this.options.braveApiKey ?? undefined));
+      tools.register(new WebSearchTool(this.options.searchConfig));
       tools.register(new WebFetchTool());
 
       const systemPrompt = this.buildSubagentPrompt(params.task);

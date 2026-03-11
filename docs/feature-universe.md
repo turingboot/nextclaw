@@ -168,7 +168,7 @@ Agent 主循环中注册的默认工具（`nextclaw-core` `agent/loop.ts` + `age
 | edit_file | 编辑文件 |
 | list_dir | 列目录 |
 | exec | 执行 shell 命令（超时、可选 restrictToWorkspace） |
-| web_search | Brave 搜索（需 tools.web.search.apiKey） |
+| web_search | 可配置网页搜索（默认 Bocha，兼容 Brave） |
 | web_fetch | 抓取 URL 内容 |
 | message | 发送出站消息 |
 | spawn | 调用 subagent |

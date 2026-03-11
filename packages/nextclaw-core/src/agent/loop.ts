@@ -17,7 +17,7 @@ import { SubagentsTool } from "./tools/subagents.js";
 import { SubagentManager } from "./subagent.js";
 import { SessionManager, type Session, type SessionEvent } from "../session/manager.js";
 import type { CronService } from "../cron/service.js";
-import type { Config } from "../config/schema.js";
+import type { Config, SearchConfig } from "../config/schema.js";
 import { evaluateSilentReply } from "./silent-reply-policy.js";
 import { containsSilentReplyMarker } from "./tokens.js";
 import { ExtensionToolAdapter } from "../extensions/tool-adapter.js";
@@ -58,7 +58,7 @@ export class AgentLoop {
       model?: string | null;
       maxIterations?: number;
       contextTokens?: number;
-      braveApiKey?: string | null;
+      searchConfig?: SearchConfig;
       execConfig?: { timeout: number };
       cronService?: CronService | null;
       restrictToWorkspace?: boolean;
@@ -80,7 +80,7 @@ export class AgentLoop {
       bus: options.bus,
       model: options.model ?? options.providerManager.get().getDefaultModel(),
       contextTokens: options.contextTokens,
-      braveApiKey: options.braveApiKey ?? undefined,
+      searchConfig: options.searchConfig,
       execConfig: options.execConfig ?? { timeout: 60 },
       restrictToWorkspace: options.restrictToWorkspace ?? false
     });
@@ -105,7 +105,7 @@ export class AgentLoop {
       })
     );
 
-    this.tools.register(new WebSearchTool(this.options.braveApiKey ?? undefined));
+    this.tools.register(new WebSearchTool(this.options.searchConfig));
     this.tools.register(new WebFetchTool());
 
     const messageTool = new MessageTool((msg) => this.options.bus.publishOutbound(msg));
@@ -245,7 +245,7 @@ export class AgentLoop {
     this.options.maxIterations = config.agents.defaults.maxToolIterations;
     this.options.contextTokens = config.agents.defaults.contextTokens;
     this.options.contextConfig = config.agents.context;
-    this.options.braveApiKey = config.tools.web.search.apiKey || undefined;
+    this.options.searchConfig = config.search;
     this.options.execConfig = config.tools.exec;
     this.options.restrictToWorkspace = config.tools.restrictToWorkspace;
 
@@ -253,7 +253,7 @@ export class AgentLoop {
     this.subagents.updateRuntimeOptions({
       model: config.agents.defaults.model,
       contextTokens: config.agents.defaults.contextTokens,
-      braveApiKey: config.tools.web.search.apiKey || undefined,
+      searchConfig: config.search,
       execConfig: config.tools.exec,
       restrictToWorkspace: config.tools.restrictToWorkspace
     });

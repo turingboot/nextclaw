@@ -18,6 +18,7 @@ export type ConfigUiHints = Record<string, ConfigUiHint>;
 const GROUP_LABELS: Record<string, string> = {
   agents: "Agents",
   providers: "Providers",
+  search: "Search",
   channels: "Channels",
   tools: "Tools",
   secrets: "Secrets",
@@ -29,6 +30,7 @@ const GROUP_LABELS: Record<string, string> = {
 const GROUP_ORDER: Record<string, number> = {
   agents: 20,
   providers: 30,
+  search: 35,
   channels: 40,
   tools: 50,
   secrets: 53,
@@ -45,7 +47,9 @@ const FIELD_PLACEHOLDERS: Record<string, string> = {
   "providers.*.displayName": "Custom Relay A",
   "providers.*.apiBase": "https://api.example.com",
   "providers.*.models": "gpt-5.1",
-  "providers.minimax.apiBase": "CN: https://api.minimaxi.com/v1; Global: https://api.minimax.io/v1"
+  "providers.minimax.apiBase": "CN: https://api.minimaxi.com/v1; Global: https://api.minimax.io/v1",
+  "search.providers.bocha.baseUrl": "https://api.bocha.cn/v1/web-search",
+  "search.providers.brave.baseUrl": "https://api.search.brave.com/res/v1/web/search"
 };
 
 const READ_ONLY_FIELDS = new Set<string>(["ui.host"]);

@@ -106,12 +106,20 @@ const children = [];
 let shuttingDown = false;
 let requestedStop = false;
 let exitCode = 0;
+const developmentNodeOptions = [process.env.NODE_OPTIONS, "--conditions=development"]
+  .filter((value) => typeof value === "string" && value.trim().length > 0)
+  .join(" ");
+
+function shouldUseShell(command) {
+  return process.platform === "win32" && command.toLowerCase().endsWith(".cmd");
+}
 
 const spawnProcess = (label, cmd, args, cwd, extraEnv = {}) => {
   const child = spawn(cmd, args, {
     cwd,
     stdio: "inherit",
-    env: { ...process.env, ...extraEnv }
+    env: { ...process.env, ...extraEnv },
+    shell: shouldUseShell(cmd)
   });
 
   children.push(child);
@@ -149,7 +157,8 @@ spawnProcess(
     "--ui-port",
     String(backendPort)
   ],
-  backendDir
+  backendDir,
+  { NODE_OPTIONS: developmentNodeOptions }
 );
 
 spawnProcess(

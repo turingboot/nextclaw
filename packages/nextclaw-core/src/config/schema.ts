@@ -331,6 +331,38 @@ export const WebSearchConfigSchema = z.object({
   maxResults: z.number().int().default(5)
 });
 
+export const SearchProviderNameSchema = z.enum(["bocha", "brave"]);
+export const BochaSearchFreshnessSchema = z.enum(["noLimit", "oneDay", "oneWeek", "oneMonth", "oneYear"]);
+
+export const SearchDefaultsConfigSchema = z.object({
+  maxResults: z.number().int().min(1).max(50).default(5)
+});
+
+export const BochaSearchProviderConfigSchema = z.object({
+  apiKey: z.string().default(""),
+  baseUrl: z.string().default("https://api.bocha.cn/v1/web-search"),
+  summary: z.boolean().default(true),
+  freshness: BochaSearchFreshnessSchema.default("noLimit"),
+  docsUrl: z.string().default("https://open.bocha.cn")
+});
+
+export const BraveSearchProviderConfigSchema = z.object({
+  apiKey: z.string().default(""),
+  baseUrl: z.string().default("https://api.search.brave.com/res/v1/web/search")
+});
+
+export const SearchConfigSchema = z.object({
+  provider: SearchProviderNameSchema.default("bocha"),
+  enabledProviders: z.array(SearchProviderNameSchema).default(["bocha"]),
+  defaults: SearchDefaultsConfigSchema.default({}),
+  providers: z
+    .object({
+      bocha: BochaSearchProviderConfigSchema.default({}),
+      brave: BraveSearchProviderConfigSchema.default({})
+    })
+    .default({})
+});
+
 export const WebToolsConfigSchema = z.object({
   search: WebSearchConfigSchema.default({})
 });
@@ -395,6 +427,7 @@ export const ConfigSchema = z.object({
   agents: AgentsConfigSchema.default({}),
   channels: ChannelsConfigSchema.default({}),
   providers: ProvidersConfigSchema.default({}),
+  search: SearchConfigSchema.default({}),
   plugins: PluginsConfigSchema.default({}),
   bindings: z.array(AgentBindingSchema).default([]),
   session: SessionConfigSchema.default({}),
@@ -420,6 +453,8 @@ export type SecretRef = z.infer<typeof SecretRefSchema>;
 export type SecretSource = z.infer<typeof SecretSourceSchema>;
 export type SecretProviderConfig = z.infer<typeof SecretProviderSchema>;
 export type SecretsConfig = z.infer<typeof SecretsConfigSchema>;
+export type SearchConfig = z.infer<typeof SearchConfigSchema>;
+export type SearchProviderName = z.infer<typeof SearchProviderNameSchema>;
 
 export function getWorkspacePathFromConfig(config: Config): string {
   return expandHome(config.agents.defaults.workspace);

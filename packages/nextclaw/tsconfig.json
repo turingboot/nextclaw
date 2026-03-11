@@ -18,6 +18,9 @@
       ],
       "@nextclaw/openclaw-compat": [
         "../nextclaw-openclaw-compat/src/index.ts"
+      ],
+      "@nextclaw/channel-runtime": [
+        "../extensions/nextclaw-channel-runtime/src/index.ts"
       ]
     }
   },

@@ -74,6 +74,52 @@ export type ProviderConnectionTestResult = {
   hint?: string;
 };
 
+export type SearchProviderName = "bocha" | "brave";
+export type BochaFreshnessValue = "noLimit" | "oneDay" | "oneWeek" | "oneMonth" | "oneYear" | string;
+
+export type SearchProviderConfigView = {
+  enabled: boolean;
+  apiKeySet: boolean;
+  apiKeyMasked?: string;
+  baseUrl: string;
+  docsUrl?: string;
+  summary?: boolean;
+  freshness?: BochaFreshnessValue;
+};
+
+export type SearchConfigView = {
+  provider: SearchProviderName;
+  enabledProviders: SearchProviderName[];
+  defaults: {
+    maxResults: number;
+  };
+  providers: {
+    bocha: SearchProviderConfigView;
+    brave: SearchProviderConfigView;
+  };
+};
+
+export type SearchConfigUpdate = {
+  provider?: SearchProviderName;
+  enabledProviders?: SearchProviderName[];
+  defaults?: {
+    maxResults?: number;
+  };
+  providers?: {
+    bocha?: {
+      apiKey?: string | null;
+      baseUrl?: string | null;
+      docsUrl?: string | null;
+      summary?: boolean;
+      freshness?: BochaFreshnessValue | null;
+    };
+    brave?: {
+      apiKey?: string | null;
+      baseUrl?: string | null;
+    };
+  };
+};
+
 export type ProviderAuthStartResult = {
   provider: string;
   kind: "device_code";
@@ -445,6 +491,7 @@ export type ConfigView = {
     };
   };
   providers: Record<string, ProviderConfigView>;
+  search: SearchConfigView;
   channels: Record<string, Record<string, unknown>>;
   bindings?: AgentBindingView[];
   session?: SessionConfigView;
@@ -507,8 +554,18 @@ export type ChannelSpecView = {
   };
 };
 
+export type SearchProviderSpecView = {
+  name: SearchProviderName;
+  displayName: string;
+  description: string;
+  docsUrl?: string;
+  isDefault?: boolean;
+  supportsSummary?: boolean;
+};
+
 export type ConfigMetaView = {
   providers: ProviderSpecView[];
+  search: SearchProviderSpecView[];
   channels: ChannelSpecView[];
 };
 

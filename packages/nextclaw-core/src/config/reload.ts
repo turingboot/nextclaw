@@ -37,6 +37,7 @@ const RELOAD_RULES: ReloadRule[] = [
   { prefix: "agents.list", kind: "reload-agent" },
   { prefix: "bindings", kind: "reload-agent" },
   { prefix: "session", kind: "reload-agent" },
+  { prefix: "search", kind: "reload-agent" },
   { prefix: "tools", kind: "reload-agent" },
   { prefix: "secrets", kind: "none" },
   { prefix: "plugins", kind: "reload-plugins" },

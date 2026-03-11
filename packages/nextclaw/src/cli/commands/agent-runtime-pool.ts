@@ -19,6 +19,7 @@ import {
   type InboundMessage,
   type MessageBus,
   type ProviderManager,
+  type SearchConfig,
   type SessionManager
 } from "@nextclaw/core";
 
@@ -129,7 +130,7 @@ export class GatewayAgentRuntimePool {
       sessionManager: SessionManager;
       cronService?: CronService | null;
       restrictToWorkspace: boolean;
-      braveApiKey?: string;
+      searchConfig: SearchConfig;
       execConfig: { timeout: number };
       contextConfig: Config["agents"]["context"];
       gatewayController?: GatewayController;
@@ -151,7 +152,7 @@ export class GatewayAgentRuntimePool {
     this.options.contextConfig = config.agents.context;
     this.options.execConfig = config.tools.exec;
     this.options.restrictToWorkspace = config.tools.restrictToWorkspace;
-    this.options.braveApiKey = config.tools.web.search.apiKey || undefined;
+    this.options.searchConfig = config.search;
     this.routeResolver.updateConfig(config);
     this.rebuild(config);
   }
@@ -502,7 +503,7 @@ export class GatewayAgentRuntimePool {
         model: context.model,
         maxIterations: context.maxIterations,
         contextTokens: context.contextTokens,
-        braveApiKey: context.braveApiKey,
+        searchConfig: context.searchConfig,
         execConfig: context.execConfig,
         cronService: context.cronService,
         restrictToWorkspace: context.restrictToWorkspace,
@@ -544,7 +545,7 @@ export class GatewayAgentRuntimePool {
       sessionManager: this.options.sessionManager,
       cronService: this.options.cronService,
       restrictToWorkspace: this.options.restrictToWorkspace,
-      braveApiKey: this.options.braveApiKey,
+      searchConfig: this.options.searchConfig,
       execConfig: this.options.execConfig,
       contextConfig: this.options.contextConfig,
       gatewayController: this.options.gatewayController,

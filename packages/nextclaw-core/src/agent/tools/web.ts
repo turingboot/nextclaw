@@ -1,9 +1,148 @@
 import { fetch } from "undici";
 import { Tool } from "./base.js";
 import { APP_USER_AGENT } from "../../config/brand.js";
+import type { SearchConfig, SearchProviderName } from "../../config/schema.js";
+
+type SearchResultItem = {
+  title: string;
+  url: string;
+  summary: string;
+  siteName?: string;
+  publishedAt?: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function toNonEmptyString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function getStringByKeys(source: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const segments = key.split(".");
+    let current: unknown = source;
+    for (const segment of segments) {
+      if (!isRecord(current)) {
+        current = undefined;
+        break;
+      }
+      current = current[segment];
+    }
+    const value = toNonEmptyString(current);
+    if (value) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function normalizeBraveResults(payload: unknown): SearchResultItem[] {
+  if (!isRecord(payload) || !isRecord(payload.web) || !Array.isArray(payload.web.results)) {
+    return [];
+  }
+  const results: SearchResultItem[] = [];
+  for (const entry of payload.web.results) {
+    if (!isRecord(entry)) {
+      continue;
+    }
+    const title = getStringByKeys(entry, ["title"]);
+    const url = getStringByKeys(entry, ["url"]);
+    if (!title || !url) {
+      continue;
+    }
+    const item: SearchResultItem = {
+      title,
+      url,
+      summary: getStringByKeys(entry, ["description"]) ?? ""
+    };
+    const siteName = getStringByKeys(entry, ["profile.name"]);
+    const publishedAt = getStringByKeys(entry, ["page_age"]);
+    if (siteName) {
+      item.siteName = siteName;
+    }
+    if (publishedAt) {
+      item.publishedAt = publishedAt;
+    }
+    results.push(item);
+  }
+  return results;
+}
+
+function extractBochaItems(payload: unknown): unknown[] {
+  if (!isRecord(payload)) {
+    return [];
+  }
+  const directLists = [
+    payload.data,
+    payload.results,
+    payload.webPages,
+    isRecord(payload.data) ? payload.data.webPages : undefined,
+    isRecord(payload.data) ? payload.data.results : undefined
+  ];
+  for (const candidate of directLists) {
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
+    if (isRecord(candidate) && Array.isArray(candidate.value)) {
+      return candidate.value;
+    }
+  }
+  return [];
+}
+
+function normalizeBochaResults(payload: unknown): SearchResultItem[] {
+  const results: SearchResultItem[] = [];
+  for (const entry of extractBochaItems(payload)) {
+    if (!isRecord(entry)) {
+      continue;
+    }
+    const title = getStringByKeys(entry, ["name", "title"]);
+    const url = getStringByKeys(entry, ["url", "link"]);
+    if (!title || !url) {
+      continue;
+    }
+    const item: SearchResultItem = {
+      title,
+      url,
+      summary: getStringByKeys(entry, ["summary", "snippet", "description"]) ?? ""
+    };
+    const siteName = getStringByKeys(entry, ["siteName", "site", "displayUrl"]);
+    const publishedAt = getStringByKeys(entry, ["publishTime", "datePublished", "publishedAt"]);
+    if (siteName) {
+      item.siteName = siteName;
+    }
+    if (publishedAt) {
+      item.publishedAt = publishedAt;
+    }
+    results.push(item);
+  }
+  return results;
+}
+
+function formatResults(results: SearchResultItem[]): string {
+  return results
+    .map((item) => {
+      const meta = [item.siteName, item.publishedAt].filter(Boolean).join(" | ");
+      const lines = [`- ${item.title}`, `  ${item.url}`];
+      if (meta) {
+        lines.push(`  ${meta}`);
+      }
+      if (item.summary) {
+        lines.push(`  ${item.summary}`);
+      }
+      return lines.join("\n");
+    })
+    .join("\n\n");
+}
 
 export class WebSearchTool extends Tool {
-  constructor(private apiKey?: string | null, private maxResults = 5) {
+  constructor(private readonly config?: SearchConfig | null) {
     super();
   }
 
@@ -12,7 +151,7 @@ export class WebSearchTool extends Tool {
   }
 
   get description(): string {
-    return "Search the web using Brave Search API";
+    return "Search the web using the configured search provider";
   }
 
   get parameters(): Record<string, unknown> {
@@ -27,36 +166,82 @@ export class WebSearchTool extends Tool {
   }
 
   async execute(params: Record<string, unknown>): Promise<string> {
-    if (!this.apiKey) {
-      return "Error: Brave Search API key not configured";
-    }
     const query = String(params.query ?? "");
-    const maxResults = Number(params.maxResults ?? this.maxResults);
-    const url = new URL("https://api.search.brave.com/res/v1/web/search");
-    url.searchParams.set("q", query);
-    url.searchParams.set("count", String(maxResults));
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        "Accept": "application/json",
-        "X-Subscription-Token": this.apiKey
-      }
-    });
-    if (!response.ok) {
-      return `Error: Brave Search request failed (${response.status})`;
+    const provider = this.config?.provider ?? "bocha";
+    const enabledProviders = this.config?.enabledProviders ?? [];
+    const maxResults = Math.max(1, Math.min(50, Number(params.maxResults ?? this.config?.defaults.maxResults ?? 5)));
+    if (!enabledProviders.includes(provider)) {
+      return `Error: ${provider} search provider is not enabled`;
     }
-    const data = (await response.json()) as { web?: { results?: Array<Record<string, unknown>> } };
-    const results = data.web?.results ?? [];
+    let response: Response;
+    try {
+      response = await this.executeByProvider(provider, query, maxResults);
+    } catch (error) {
+      return error instanceof Error ? `Error: ${error.message}` : `Error: ${String(error)}`;
+    }
+    if (!response.ok) {
+      let details = "";
+      try {
+        const payload = await response.json() as Record<string, unknown>;
+        const message = typeof payload.message === "string"
+          ? payload.message
+          : typeof payload.msg === "string"
+            ? payload.msg
+            : "";
+        if (message) {
+          details = `: ${message}`;
+        }
+      } catch {
+        // ignore non-json error body
+      }
+      return `Error: ${provider} search request failed (${response.status})${details}`;
+    }
+    const payload = (await response.json()) as unknown;
+    const results = provider === "bocha" ? normalizeBochaResults(payload) : normalizeBraveResults(payload);
     if (!results.length) {
       return "No results found.";
     }
-    const lines = results.map((item) => {
-      const title = item.title ?? "";
-      const urlValue = item.url ?? "";
-      const description = item.description ?? "";
-      return `- ${title}\n  ${urlValue}\n  ${description}`;
+    return formatResults(results);
+  }
+
+  private async executeByProvider(
+    provider: SearchProviderName,
+    query: string,
+    maxResults: number
+  ): Promise<Response> {
+    if (provider === "bocha") {
+      const bocha = this.config?.providers.bocha;
+      if (!bocha?.apiKey) {
+        throw new Error("Bocha API key not configured");
+      }
+      return fetch(bocha.baseUrl, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Authorization": `Bearer ${bocha.apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          query,
+          summary: bocha.summary,
+          freshness: bocha.freshness,
+          count: maxResults
+        })
+      });
+    }
+    const brave = this.config?.providers.brave;
+    if (!brave?.apiKey) {
+      throw new Error("Brave API key not configured");
+    }
+    const url = new URL(brave.baseUrl);
+    url.searchParams.set("q", query);
+    url.searchParams.set("count", String(maxResults));
+    return fetch(url.toString(), {
+      headers: {
+        "Accept": "application/json",
+        "X-Subscription-Token": brave.apiKey
+      }
     });
-    return lines.join("\n\n");
   }
 }
 

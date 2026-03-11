@@ -9,6 +9,7 @@ import {
   loadConfigOrDefault,
   updateChannel,
   updateModel,
+  updateSearch,
   createCustomProvider,
   deleteCustomProvider,
   updateProvider,
@@ -65,6 +66,7 @@ import type {
   ProviderCreateResult,
   ProviderDeleteResult,
   ProviderConfigUpdate,
+  SearchConfigUpdate,
   SecretsConfigUpdate,
   RuntimeConfigUpdate,
   SessionPatchUpdate,
@@ -1725,6 +1727,16 @@ export function createUiRouter(options: UiRouterOptions): Hono {
     return c.json(ok({
       model: view.agents.defaults.model
     }));
+  });
+
+  app.put("/api/config/search", async (c) => {
+    const body = await readJson<Record<string, unknown>>(c.req.raw);
+    if (!body.ok) {
+      return c.json(err("INVALID_BODY", "invalid json body"), 400);
+    }
+    const result = updateSearch(options.configPath, body.data as SearchConfigUpdate);
+    options.publish({ type: "config.updated", payload: { path: "search" } });
+    return c.json(ok(result));
   });
 
   app.put("/api/config/providers/:provider", async (c) => {

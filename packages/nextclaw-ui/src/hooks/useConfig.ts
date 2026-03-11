@@ -5,6 +5,7 @@ import {
   fetchConfigMeta,
   fetchConfigSchema,
   updateModel,
+  updateSearch,
   createProvider,
   deleteProvider,
   updateProvider,
@@ -74,6 +75,22 @@ export function useUpdateModel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['config'] });
       toast.success(t('configSaved'));
+    },
+    onError: (error: Error) => {
+      toast.error(t('configSaveFailed') + ': ' + error.message);
+    }
+  });
+}
+
+export function useUpdateSearch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ data }: { data: Parameters<typeof updateSearch>[0] }) => updateSearch(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config'] });
+      queryClient.invalidateQueries({ queryKey: ['config-meta'] });
+      toast.success(t('configSavedApplied'));
     },
     onError: (error: Error) => {
       toast.error(t('configSaveFailed') + ': ' + error.message);

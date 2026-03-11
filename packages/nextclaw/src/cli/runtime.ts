@@ -697,7 +697,7 @@ export class CliRuntime {
         model: config.agents.defaults.model,
         maxIterations: config.agents.defaults.maxToolIterations,
         contextTokens: config.agents.defaults.contextTokens,
-        braveApiKey: config.tools.web.search.apiKey || undefined,
+        searchConfig: config.search,
         execConfig: config.tools.exec,
         restrictToWorkspace: config.tools.restrictToWorkspace,
         contextConfig: config.agents.context,

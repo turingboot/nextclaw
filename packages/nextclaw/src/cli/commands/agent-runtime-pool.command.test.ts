@@ -57,6 +57,7 @@ function createRuntimePool(params: { workspace: string; engine: AgentEngine }) {
     sessionManager,
     config,
     restrictToWorkspace: true,
+    searchConfig: config.search,
     execConfig: config.tools.exec,
     contextConfig: config.agents.context,
     extensionRegistry: {
@@ -215,6 +216,7 @@ describe("GatewayAgentRuntimePool slash commands", () => {
       sessionManager,
       config,
       restrictToWorkspace: true,
+      searchConfig: config.search,
       execConfig: config.tools.exec,
       contextConfig: config.agents.context,
       extensionRegistry: {

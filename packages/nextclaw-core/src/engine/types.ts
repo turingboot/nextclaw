@@ -1,5 +1,5 @@
 import type { SessionEvent } from "../session/manager.js";
-import type { Config } from "../config/schema.js";
+import type { Config, SearchConfig } from "../config/schema.js";
 import type { InboundMessage, OutboundMessage } from "../bus/events.js";
 import type { MessageBus } from "../bus/queue.js";
 import type { ProviderManager } from "../providers/provider_manager.js";
@@ -48,7 +48,7 @@ export type AgentEngineFactoryContext = {
   sessionManager: SessionManager;
   cronService?: CronService | null;
   restrictToWorkspace: boolean;
-  braveApiKey?: string;
+  searchConfig: SearchConfig;
   execConfig: { timeout: number };
   contextConfig: Config["agents"]["context"];
   gatewayController?: GatewayController;

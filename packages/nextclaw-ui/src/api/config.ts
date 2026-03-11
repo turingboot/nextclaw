@@ -14,6 +14,8 @@ import type {
   ProviderAuthPollRequest,
   ProviderAuthPollResult,
   ProviderAuthImportResult,
+  SearchConfigUpdate,
+  SearchConfigView,
   ProviderCreateRequest,
   ProviderCreateResult,
   ProviderDeleteResult,
@@ -85,6 +87,17 @@ export async function updateModel(data: {
   model: string;
 }): Promise<{ model: string }> {
   const response = await api.put<{ model: string }>('/api/config/model', data);
+  if (!response.ok) {
+    throw new Error(response.error.message);
+  }
+  return response.data;
+}
+
+// PUT /api/config/search
+export async function updateSearch(
+  data: SearchConfigUpdate
+): Promise<SearchConfigView> {
+  const response = await api.put<SearchConfigView>('/api/config/search', data);
   if (!response.ok) {
     throw new Error(response.error.message);
   }
