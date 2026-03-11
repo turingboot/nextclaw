@@ -2,6 +2,7 @@ import './style.css';
 import { createIcons, icons } from 'lucide';
 
 type Locale = 'en' | 'zh';
+type PageRoute = 'home' | 'download';
 
 type FeatureItem = {
   icon: string;
@@ -121,14 +122,21 @@ type LandingCopy = {
 declare global {
   interface Window {
     __NEXTCLAW_LOCALE__?: string;
+    __NEXTCLAW_ROUTE__?: string;
   }
 }
 
 const LOCALE_STORAGE_KEY = 'nextclaw.landing.locale';
 
-const ROUTES: Record<Locale, string> = {
-  en: '/en/',
-  zh: '/zh/'
+const ROUTES: Record<Locale, Record<PageRoute, string>> = {
+  en: {
+    home: '/en/',
+    download: '/en/download/'
+  },
+  zh: {
+    home: '/zh/',
+    download: '/zh/download/'
+  }
 };
 
 const LOCALE_OPTIONS: Array<{ value: Locale; label: string }> = [
@@ -643,6 +651,10 @@ function isLocale(value: string | null | undefined): value is Locale {
   return value === 'en' || value === 'zh';
 }
 
+function isPageRoute(value: string | null | undefined): value is PageRoute {
+  return value === 'home' || value === 'download';
+}
+
 function readSavedLocale(): Locale | null {
   try {
     const saved = localStorage.getItem(LOCALE_STORAGE_KEY);
@@ -679,19 +691,38 @@ function resolvePageLocale(): Locale {
   return /^zh\b/i.test(browserLang) ? 'zh' : 'en';
 }
 
+function resolvePageRoute(): PageRoute {
+  if (isPageRoute(window.__NEXTCLAW_ROUTE__)) {
+    return window.__NEXTCLAW_ROUTE__;
+  }
+
+  const [, maybeLocale, maybeRoute] = window.location.pathname.split('/');
+  if (isLocale(maybeLocale) && maybeRoute === 'download') {
+    return 'download';
+  }
+
+  return 'home';
+}
+
 class LandingPage {
   private readonly root: HTMLDivElement;
   private readonly locale: Locale;
+  private readonly route: PageRoute;
   private readonly copy: LandingCopy;
 
-  constructor(root: HTMLDivElement, locale: Locale) {
+  constructor(root: HTMLDivElement, locale: Locale, route: PageRoute) {
     this.root = root;
     this.locale = locale;
+    this.route = route;
     this.copy = COPY[locale];
   }
 
   render(): void {
     const docsLink = LINKS.docs[this.locale];
+    const homeRoute = ROUTES[this.locale].home;
+    const downloadRoute = ROUTES[this.locale].download;
+    const featuresLink = this.route === 'home' ? '#features' : `${homeRoute}#features`;
+    const communityLink = this.route === 'home' ? '#community' : `${homeRoute}#community`;
 
     this.root.innerHTML = `
       <div class="relative min-h-screen flex flex-col bg-gradient-radial overflow-hidden">
@@ -702,9 +733,9 @@ class LandingPage {
               <span class="font-semibold text-lg tracking-tight">NextClaw</span>
             </div>
             <nav class="hidden md:flex gap-8 text-sm font-medium">
-              <a href="#download" class="text-muted-foreground hover:text-foreground transition-colors">${this.copy.navDownload}</a>
-              <a href="#features" class="text-muted-foreground hover:text-foreground transition-colors">${this.copy.navFeatures}</a>
-              <a href="#community" class="text-muted-foreground hover:text-foreground transition-colors">${this.copy.navCommunity}</a>
+              <a href="${downloadRoute}" class="text-muted-foreground hover:text-foreground transition-colors">${this.copy.navDownload}</a>
+              <a href="${featuresLink}" class="text-muted-foreground hover:text-foreground transition-colors">${this.copy.navFeatures}</a>
+              <a href="${communityLink}" class="text-muted-foreground hover:text-foreground transition-colors">${this.copy.navCommunity}</a>
               <a href="${docsLink}" target="_blank" rel="noopener noreferrer" class="text-muted-foreground hover:text-foreground transition-colors">${this.copy.navDocs}</a>
             </nav>
             <div class="flex items-center gap-2">
@@ -730,9 +761,9 @@ class LandingPage {
           <!-- Mobile menu -->
           <div id="mobile-menu" class="hidden md:hidden border-t border-border/40 bg-background/95 backdrop-blur-sm">
             <nav class="container mx-auto px-6 py-4 flex flex-col gap-4 text-sm font-medium">
-              <a href="#download" class="text-muted-foreground hover:text-foreground transition-colors py-2">${this.copy.navDownload}</a>
-              <a href="#features" class="text-muted-foreground hover:text-foreground transition-colors py-2">${this.copy.navFeatures}</a>
-              <a href="#community" class="text-muted-foreground hover:text-foreground transition-colors py-2">${this.copy.navCommunity}</a>
+              <a href="${downloadRoute}" class="text-muted-foreground hover:text-foreground transition-colors py-2">${this.copy.navDownload}</a>
+              <a href="${featuresLink}" class="text-muted-foreground hover:text-foreground transition-colors py-2">${this.copy.navFeatures}</a>
+              <a href="${communityLink}" class="text-muted-foreground hover:text-foreground transition-colors py-2">${this.copy.navCommunity}</a>
               <a href="${docsLink}" target="_blank" rel="noopener noreferrer" class="text-muted-foreground hover:text-foreground transition-colors py-2">${this.copy.navDocs}</a>
             </nav>
           </div>
@@ -740,13 +771,16 @@ class LandingPage {
 
         <main class="flex-1 flex flex-col items-center justify-center text-center px-6 pt-32 pb-20 z-10">
           <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight max-w-6xl mb-6 animate-slide-up opacity-0" style="animation-delay: 0.2s">
-            <span class="hero-brand">${this.copy.heroTitleLine1}</span>${this.copy.heroTitleLine2 ? `<br /><span class="text-gradient">${this.copy.heroTitleLine2}</span>` : ''}
+            ${this.route === 'download'
+              ? `<span class="hero-brand">${this.copy.downloadTitle}</span>`
+              : `<span class="hero-brand">${this.copy.heroTitleLine1}</span>${this.copy.heroTitleLine2 ? `<br /><span class="text-gradient">${this.copy.heroTitleLine2}</span>` : ''}`}
           </h1>
 
           <p class="text-lg md:text-xl text-muted-foreground max-w-4xl mx-auto mb-10 animate-slide-up opacity-0" style="animation-delay: 0.3s">
-            ${this.copy.heroDescription}
+            ${this.route === 'download' ? this.copy.downloadSubtitle : this.copy.heroDescription}
           </p>
 
+          ${this.route === 'download' ? `
           <section id="download" class="w-full max-w-5xl mx-auto mb-10 text-left animate-slide-up opacity-0" style="animation-delay: 0.35s">
             <div class="glass-card rounded-3xl p-6 md:p-8 border border-primary/20 shadow-2xl">
               <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -828,7 +862,9 @@ class LandingPage {
               </div>
             </div>
           </section>
+          ` : ''}
 
+          ${this.route === 'home' ? `
           <div class="w-full max-w-2xl mx-auto mb-10 text-left animate-slide-up opacity-0" style="animation-delay: 0.4s">
             <div class="rounded-2xl overflow-hidden bg-[#332c28] shadow-2xl border border-white/5">
               <div class="flex items-center justify-between px-4 py-3 bg-[#2c2522]">
@@ -853,7 +889,7 @@ class LandingPage {
           </div>
 
           <div class="flex flex-col sm:flex-row flex-wrap justify-center gap-4 mb-6 animate-slide-up opacity-0" style="animation-delay: 0.5s">
-            <a href="#download" class="inline-flex items-center justify-center gap-2 h-14 w-64 rounded-full font-semibold bg-foreground text-background hover:bg-foreground/90 transition-all hover:scale-105 shadow-xl focus:ring-2 focus:ring-foreground focus:outline-none text-lg">
+            <a href="${downloadRoute}" class="inline-flex items-center justify-center gap-2 h-14 w-64 rounded-full font-semibold bg-foreground text-background hover:bg-foreground/90 transition-all hover:scale-105 shadow-xl focus:ring-2 focus:ring-foreground focus:outline-none text-lg">
               <i data-lucide="download" class="w-5 h-5"></i>
               ${this.copy.heroDownloadButton}
             </a>
@@ -903,8 +939,10 @@ class LandingPage {
               </div>
             </div>
           </div>
+          ` : ''}
         </main>
 
+        ${this.route === 'home' ? `
         <section class="py-20 px-6 z-10 w-full max-w-5xl mx-auto">
           <div class="text-center mb-12">
             <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-4">${this.copy.deployTitle}</h2>
@@ -1069,6 +1107,7 @@ class LandingPage {
             </a>
           </div>
         </section>
+        ` : ''}
 
         <footer class="w-full border-t border-border/40 py-10 z-10 bg-background/50 backdrop-blur-sm mt-auto">
           <div class="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
@@ -1114,6 +1153,12 @@ class LandingPage {
       windowsX64Zip: document.querySelector<HTMLAnchorElement>('[data-download-link="windowsX64Zip"]')
     };
 
+    if (!linkNodes.macArm64Dmg || !linkNodes.windowsX64Zip || !releasePrimary || !releaseSecondary) {
+      return;
+    }
+    const macDownloadLink = linkNodes.macArm64Dmg;
+    const windowsDownloadLink = linkNodes.windowsX64Zip;
+
     const cardNodes: Record<DownloadAssetKey, HTMLElement | null> = {
       macArm64Dmg: document.querySelector<HTMLElement>('[data-download-card="macArm64Dmg"]'),
       windowsX64Zip: document.querySelector<HTMLElement>('[data-download-card="windowsX64Zip"]')
@@ -1130,8 +1175,8 @@ class LandingPage {
       if (releaseSecondary) {
         releaseSecondary.href = release.url;
       }
-      linkNodes.macArm64Dmg?.setAttribute('href', release.assets.macArm64Dmg);
-      linkNodes.windowsX64Zip?.setAttribute('href', release.assets.windowsX64Zip);
+      macDownloadLink.setAttribute('href', release.assets.macArm64Dmg);
+      windowsDownloadLink.setAttribute('href', release.assets.windowsX64Zip);
     };
 
     const recommended = detectRecommendedDesktopAsset();
@@ -1206,7 +1251,7 @@ class LandingPage {
         return;
       }
       persistLocale(next);
-      window.location.href = ROUTES[next];
+      window.location.href = ROUTES[next][this.route];
     });
   }
 
@@ -1308,5 +1353,6 @@ if (!root) {
 }
 
 const locale = resolvePageLocale();
+const route = resolvePageRoute();
 persistLocale(locale);
-new LandingPage(root, locale).render();
+new LandingPage(root, locale, route).render();

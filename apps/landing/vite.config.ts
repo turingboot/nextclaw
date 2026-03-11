@@ -12,6 +12,8 @@ export default defineConfig({
                 root: resolve(__dirname, 'index.html'),
                 en: resolve(__dirname, 'en/index.html'),
                 zh: resolve(__dirname, 'zh/index.html'),
+                enDownload: resolve(__dirname, 'en/download/index.html'),
+                zhDownload: resolve(__dirname, 'zh/download/index.html'),
             },
         },
     },
