@@ -164,7 +164,7 @@ export class ChatRoutesController {
     }
   };
 
-  readonly streamTurn = async (c: Context) => {
+  readonly streamTurn = async (c: Context): Promise<Response> => {
     const chatRuntime = this.options.chatRuntime;
     if (!chatRuntime) {
       return c.json(err("NOT_AVAILABLE", "chat runtime unavailable"), 503);
@@ -432,7 +432,7 @@ export class ChatRoutesController {
     }
   };
 
-  readonly streamRun = async (c: Context) => {
+  readonly streamRun = async (c: Context): Promise<Response> => {
     const chatRuntime = this.options.chatRuntime;
     const streamRun = chatRuntime?.streamRun;
     const getRun = chatRuntime?.getRun;
