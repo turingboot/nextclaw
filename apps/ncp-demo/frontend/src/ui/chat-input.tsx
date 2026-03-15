@@ -2,7 +2,7 @@ type ChatInputProps = {
   value: string;
   placeholder?: string;
   isSending: boolean;
-  canSend: boolean;
+  sendDisabled: boolean;
   onChange: (value: string) => void;
   onSend: () => void;
 };
@@ -11,7 +11,7 @@ export function ChatInput({
   value,
   placeholder = "Ask anything.",
   isSending,
-  canSend,
+  sendDisabled,
   onChange,
   onSend,
 }: ChatInputProps) {
@@ -28,7 +28,7 @@ export function ChatInput({
           }
         }}
       />
-      <button onClick={onSend} disabled={!canSend || value.trim().length === 0}>
+      <button onClick={onSend} disabled={sendDisabled || value.trim().length === 0}>
         {isSending ? "running..." : "send"}
       </button>
     </footer>

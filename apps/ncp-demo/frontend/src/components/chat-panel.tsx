@@ -9,9 +9,8 @@ type ChatPanelProps = {
   error: NcpError | null;
   draft: string;
   isSending: boolean;
-  canSend: boolean;
-  lastRunId: string | null;
-  hasActiveRun: boolean;
+  activeRunId: string | null;
+  isRunning: boolean;
   onDraftChange: (value: string) => void;
   onSend: () => void;
   onAbort: () => void;
@@ -23,9 +22,8 @@ export function ChatPanel({
   error,
   draft,
   isSending,
-  canSend,
-  lastRunId,
-  hasActiveRun,
+  activeRunId,
+  isRunning,
   onDraftChange,
   onSend,
   onAbort,
@@ -35,8 +33,8 @@ export function ChatPanel({
     <main className="panel chat-panel">
       <ChatHeader
         title="NCP Agent Demo"
-        streamRunDisabled={!lastRunId}
-        abortDisabled={!hasActiveRun}
+        streamRunDisabled={!activeRunId}
+        abortDisabled={!isRunning}
         onStreamRun={onStreamRun}
         onAbort={onAbort}
       />
@@ -46,7 +44,7 @@ export function ChatPanel({
         value={draft}
         placeholder="Ask anything. Demo will call get_current_time tool first."
         isSending={isSending}
-        canSend={canSend}
+        sendDisabled={isSending || isRunning}
         onChange={onDraftChange}
         onSend={onSend}
       />

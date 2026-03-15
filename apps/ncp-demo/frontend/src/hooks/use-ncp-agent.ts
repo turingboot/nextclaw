@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { NcpHttpAgentClientEndpoint } from "@nextclaw/ncp-http-agent-client";
 import { DefaultNcpAgentConversationStateManager } from "@nextclaw/ncp-toolkit";
-import { type NcpAgentConversationSnapshot, type NcpMessage } from "@nextclaw/ncp";
-import type { SessionSummary } from "../lib/session";
-import { refreshSessions } from "../lib/session";
+import {
+  type NcpAgentClientEndpoint,
+  type NcpAgentConversationSnapshot,
+  type NcpMessage,
+} from "@nextclaw/ncp";
 
-export function useNcpAgent(sessionId: string) {
+export function useNcpAgent(sessionId: string, client: NcpAgentClientEndpoint) {
   const managerRef = useRef<DefaultNcpAgentConversationStateManager>();
   if (!managerRef.current) {
     managerRef.current = new DefaultNcpAgentConversationStateManager();
@@ -13,15 +14,7 @@ export function useNcpAgent(sessionId: string) {
   const [snapshot, setSnapshot] = useState<NcpAgentConversationSnapshot>(
     () => managerRef.current!.getSnapshot(),
   );
-  const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [isSending, setIsSending] = useState(false);
-
-  const clientRef = useRef<NcpHttpAgentClientEndpoint>();
-  if (!clientRef.current) {
-    clientRef.current = new NcpHttpAgentClientEndpoint({
-      baseUrl: window.location.origin,
-    });
-  }
 
   useEffect(() => {
     const manager = managerRef.current;
@@ -35,13 +28,8 @@ export function useNcpAgent(sessionId: string) {
   }, []);
 
   useEffect(() => {
-    void refreshSessions(setSessions);
-  }, []);
-
-  useEffect(() => {
     const manager = managerRef.current;
-    const client = clientRef.current;
-    if (!manager || !client) return;
+    if (!manager) return;
 
     const unsubscribeClient = client.subscribe((event) => {
       void manager.dispatch(event);
@@ -51,18 +39,17 @@ export function useNcpAgent(sessionId: string) {
       unsubscribeClient();
       void client.stop();
     };
-  }, []);
+  }, [client]);
 
   const visibleMessages: readonly NcpMessage[] = snapshot.streamingMessage
     ? [...snapshot.messages, snapshot.streamingMessage]
     : snapshot.messages;
 
-  const lastRunId = snapshot.activeRun?.runId ?? null;
-  const canSend = !isSending && !snapshot.activeRun;
+  const activeRunId = snapshot.activeRun?.runId ?? null;
+  const isRunning = !!snapshot.activeRun;
 
   const send = async (content: string) => {
-    const client = clientRef.current;
-    if (!client || !content.trim() || !canSend) {
+    if (!content.trim() || isSending || isRunning) {
       return;
     }
     setIsSending(true);
@@ -80,40 +67,32 @@ export function useNcpAgent(sessionId: string) {
       });
     } finally {
       setIsSending(false);
-      await refreshSessions(setSessions);
     }
   };
 
   const abort = async () => {
-    const client = clientRef.current;
     const runId = snapshot.activeRun?.runId;
-    if (!client || !runId) {
+    if (!runId) {
       return;
     }
     await client.abort({ runId });
-    await refreshSessions(setSessions);
   };
 
   const streamRun = async () => {
-    const client = clientRef.current;
-    if (!client || !lastRunId) {
+    if (!activeRunId) {
       return;
     }
-    await client.stream({ sessionId, runId: lastRunId });
+    await client.stream({ sessionId, runId: activeRunId });
   };
-
-  const refresh = () => void refreshSessions(setSessions);
 
   return {
     snapshot,
     visibleMessages,
-    lastRunId,
-    canSend,
+    activeRunId,
+    isRunning,
     isSending,
-    sessions,
     send,
     abort,
     streamRun,
-    refresh,
   };
 }
