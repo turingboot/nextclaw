@@ -1,6 +1,6 @@
 export type {
-  NcpAgentBackendController,
-  NcpAgentBackendStreamOptions,
-  NcpAgentBackendSendOptions,
+  NcpAgentRunApi,
+  NcpAgentRunStreamOptions,
+  NcpAgentRunSendOptions,
   NcpAgentStreamProvider,
 } from "./controller.js";

@@ -4,25 +4,24 @@ import type {
   NcpRequestEnvelope,
   NcpStreamRequestPayload,
 } from "../types/events.js";
-import type { NcpSessionApi } from "../types/session.js";
 
-export type NcpAgentBackendSendOptions = {
+export type NcpAgentRunSendOptions = {
   signal?: AbortSignal;
 };
 
-export type NcpAgentBackendStreamOptions = {
+export type NcpAgentRunStreamOptions = {
   signal?: AbortSignal;
 };
 
-export interface NcpAgentBackendController extends NcpSessionApi {
+export interface NcpAgentRunApi {
   send(
     envelope: NcpRequestEnvelope,
-    options?: NcpAgentBackendSendOptions,
+    options?: NcpAgentRunSendOptions,
   ): AsyncIterable<NcpEndpointEvent>;
 
   stream(
     payload: NcpStreamRequestPayload,
-    options?: NcpAgentBackendStreamOptions,
+    options?: NcpAgentRunStreamOptions,
   ): AsyncIterable<NcpEndpointEvent>;
 
   abort(payload: NcpMessageAbortPayload): Promise<void>;
