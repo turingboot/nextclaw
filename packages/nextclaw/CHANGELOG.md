@@ -1,5 +1,11 @@
 # nextclaw
 
+## 0.9.27
+
+### Patch Changes
+
+- Fix marketplace skill installation against the latest marketplace API by supporting inline `contentBase64` file payloads and keeping legacy blob download fallback.
+
 ## 0.9.26
 
 ### Patch Changes

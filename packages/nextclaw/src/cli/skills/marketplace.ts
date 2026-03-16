@@ -17,6 +17,7 @@ type MarketplaceSkillInstallKind = "builtin" | "marketplace";
 type MarketplaceSkillFileManifestEntry = {
   path: string;
   downloadPath?: string;
+  contentBase64?: string;
 };
 
 export type MarketplaceSkillInstallOptions = {
@@ -102,7 +103,9 @@ export async function installMarketplaceSkill(options: MarketplaceSkillInstallOp
     }
 
     mkdirSync(dirname(targetPath), { recursive: true });
-    const bytes = await fetchMarketplaceSkillFileBlob(apiBase, slug, file);
+    const bytes = file.contentBase64
+      ? decodeMarketplaceFileContent(file.path, file.contentBase64)
+      : await fetchMarketplaceSkillFileBlob(apiBase, slug, file);
     writeFileSync(targetPath, bytes);
   }
 
@@ -277,6 +280,9 @@ async function fetchMarketplaceSkillFiles(
     if (typeof entry.downloadPath === "string" && entry.downloadPath.trim().length > 0) {
       normalized.downloadPath = entry.downloadPath.trim();
     }
+    if (typeof entry.contentBase64 === "string" && entry.contentBase64.trim().length > 0) {
+      normalized.contentBase64 = entry.contentBase64.trim();
+    }
     return normalized;
   });
 
@@ -301,6 +307,14 @@ async function fetchMarketplaceSkillFileBlob(
 
   const arrayBuffer = await response.arrayBuffer();
   return Buffer.from(arrayBuffer);
+}
+
+function decodeMarketplaceFileContent(path: string, contentBase64: string): Buffer {
+  const normalized = contentBase64.replace(/\s+/g, "");
+  if (!normalized || normalized.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(normalized)) {
+    throw new Error(`Invalid marketplace file contentBase64 for path: ${path}`);
+  }
+  return Buffer.from(normalized, "base64");
 }
 
 function resolveSkillFileDownloadUrl(apiBase: string, slug: string, file: MarketplaceSkillFileManifestEntry): string {
