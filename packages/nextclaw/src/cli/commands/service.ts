@@ -12,6 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
+import { createServer as createNetServer } from "node:net";
 import { fileURLToPath } from "node:url";
 import chokidar from "chokidar";
 import { GatewayControllerImpl } from "../gateway/controller.js";
@@ -49,6 +50,7 @@ import {
   parseSessionKey
 } from "../restart-sentinel.js";
 import { GatewayAgentRuntimePool } from "./agent-runtime-pool.js";
+import { createUiNcpAgent } from "./ncp/create-ui-ncp-agent.js";
 import { UiChatRunCoordinator } from "./ui-chat-run-coordinator.js";
 
 const {
@@ -403,7 +405,7 @@ export class ServiceCommands {
       console.log("Warning: No channels enabled");
     }
 
-    this.startUiIfEnabled(uiConfig, uiStaticDir, cron, runtimePool, sessionManager);
+    await this.startUiIfEnabled(uiConfig, uiStaticDir, cron, runtimePool, sessionManager, providerManager);
 
     const cronStatus = cron.status();
     if (cronStatus.jobs > 0) {
@@ -679,6 +681,18 @@ export class ServiceCommands {
       console.log("Warning: UI frontend not found in package assets.");
     }
 
+    const healthUrl = `${apiUrl}/health`;
+    const portPreflight = await this.checkUiPortPreflight({
+      host: uiConfig.host,
+      port: uiConfig.port,
+      healthUrl
+    });
+    if (!portPreflight.ok) {
+      console.error(`Error: Cannot start ${APP_NAME} because UI port ${uiConfig.port} is already occupied.`);
+      console.error(portPreflight.message);
+      return;
+    }
+
     const logPath = resolveServiceLogPath();
     const logDir = resolve(logPath, "..");
     mkdirSync(logDir, { recursive: true });
@@ -709,14 +723,13 @@ export class ServiceCommands {
       this.printStartupFailureDiagnostics({
         uiUrl,
         apiUrl,
-        healthUrl: `${apiUrl}/health`,
+        healthUrl,
         logPath,
         lastProbeError: null
       });
       return;
     }
 
-    const healthUrl = `${apiUrl}/health`;
     this.appendStartupStage(logPath, `health probe started: ${healthUrl} (phase=quick, timeoutMs=${quickPhaseTimeoutMs})`);
     let readiness = await this.waitForBackgroundServiceReady({
       pid: child.pid,
@@ -901,6 +914,68 @@ export class ServiceCommands {
     console.error(lines.join("\n"));
   }
 
+  private async checkUiPortPreflight(params: {
+    host: string;
+    port: number;
+    healthUrl: string;
+  }): Promise<{ ok: true } | { ok: false; message: string }> {
+    const availability = await this.checkPortAvailability({
+      host: params.host,
+      port: params.port
+    });
+    if (availability.available) {
+      return { ok: true };
+    }
+
+    const probe = await this.probeHealthEndpoint(params.healthUrl);
+    const lines = [
+      `Port probe: ${availability.detail}`
+    ];
+    if (probe.healthy) {
+      lines.push(
+        `Health probe: ${params.healthUrl} is already healthy. Another process is already serving this UI/API port.`
+      );
+    } else if (probe.error) {
+      lines.push(`Health probe: ${probe.error}`);
+      lines.push(
+        "The port is occupied by a process that does not answer as a healthy NextClaw HTTP server."
+      );
+    }
+    lines.push(
+      `Fix: free port ${params.port} or start NextClaw with another port via --ui-port <port>.`
+    );
+    lines.push(
+      `Inspect locally with: ss -ltnp | grep ${params.port} || lsof -iTCP:${params.port} -sTCP:LISTEN -n -P`
+    );
+    return {
+      ok: false,
+      message: lines.join("\n")
+    };
+  }
+
+  private async checkPortAvailability(params: {
+    host: string;
+    port: number;
+  }): Promise<{ available: boolean; detail: string }> {
+    return await new Promise((resolve) => {
+      const server = createNetServer();
+      server.once("error", (error) => {
+        resolve({
+          available: false,
+          detail: `bind failed on ${params.host}:${params.port} (${String(error)})`
+        });
+      });
+      server.listen(params.port, params.host, () => {
+        server.close(() => {
+          resolve({
+            available: true,
+            detail: `bind ok on ${params.host}:${params.port}`
+          });
+        });
+      });
+    });
+  }
+
   private getHeaderValue(
     headers: Record<string, string | string[] | undefined>,
     key: string
@@ -1065,6 +1140,15 @@ export class ServiceCommands {
     const publicBase = `http://${publicIp}:${port}`;
     console.log(`Public UI (if firewall/NAT allows): ${publicBase}`);
     console.log(`Public API (if firewall/NAT allows): ${publicBase}/api`);
+    console.log(
+      `Public deploy note: NextClaw serves plain HTTP on ${port}.`
+    );
+    console.log(
+      `For https:// or standard 80/443 access, terminate TLS in Nginx/Caddy and proxy to http://127.0.0.1:${port}.`
+    );
+    console.log(
+      `If a reverse proxy returns 502, verify its upstream is http://127.0.0.1:${port} (not https://, not a stale port, and not a stopped process).`
+    );
   }
 
   private printServiceControlHints(): void {
@@ -1073,13 +1157,14 @@ export class ServiceCommands {
     console.log(`  - If you need to stop the service, run: ${APP_NAME} stop`);
   }
 
-  private startUiIfEnabled(
+  private async startUiIfEnabled(
     uiConfig: Config["ui"],
     uiStaticDir: string | null,
     cronService: NextclawCore.CronService,
     runtimePool: GatewayAgentRuntimePool,
-    sessionManager: SessionManager
-  ): void {
+    sessionManager: SessionManager,
+    providerManager: NextclawCore.ProviderManager
+  ): Promise<void> {
     if (!uiConfig.enabled) {
       return;
     }
@@ -1184,6 +1269,10 @@ export class ServiceCommands {
         publishUiEvent?.({ type: "run.updated", payload: { run } });
       }
     });
+    const ncpAgent = await createUiNcpAgent({
+      providerManager,
+      sessionManager
+    });
 
     const uiServer = startUiServer({
       host: uiConfig.host,
@@ -1203,6 +1292,7 @@ export class ServiceCommands {
           uninstallSkill: (slug) => this.uninstallMarketplaceSkill(slug)
         }
       },
+      ncpAgent,
       chatRuntime: {
         listSessionTypes: async () => {
           const options = runtimePool.listAvailableEngineKinds().map((value) => ({

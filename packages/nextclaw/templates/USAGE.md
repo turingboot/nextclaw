@@ -23,6 +23,7 @@ When NextClaw AI needs to operate the product itself (version/status/doctor/chan
 
 - [AI Self-Management Contract](#ai-self-management-contract)
 - [Quick Start](#quick-start)
+- [Public Server Deployment](#public-server-deployment)
 - [Configuration](#configuration)
 - [Input context budget](#input-context-budget)
 - [Multi-agent routing & session isolation](#multi-agent-routing--session-isolation-openclaw-aligned)
@@ -63,6 +64,60 @@ When NextClaw AI needs to operate the product itself (version/status/doctor/chan
    ```bash
    nextclaw stop
    ```
+
+For internet access on a VPS:
+
+- NextClaw itself serves plain HTTP on port `18791`.
+- Direct access is `http://<server-ip>:18791`.
+- If you want `https://` or standard `80/443`, put Nginx/Caddy in front and proxy to `http://127.0.0.1:18791`.
+- Do not point a reverse proxy upstream to `https://127.0.0.1:18791`; NextClaw does not terminate TLS itself.
+
+---
+
+## Public Server Deployment
+
+NextClaw binds the UI to `0.0.0.0` by default, but the built-in server is still an HTTP server. For a public VPS, use one of these two patterns:
+
+1. Direct HTTP for quick validation:
+
+   ```text
+   http://<server-ip>:18791
+   ```
+
+2. Recommended: terminate TLS in Nginx/Caddy and proxy to local NextClaw HTTP:
+
+   ```nginx
+   server {
+     listen 80;
+     server_name _;
+
+     location / {
+       proxy_pass http://127.0.0.1:18791;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection "upgrade";
+     }
+   }
+   ```
+
+Important rules:
+
+- NextClaw upstream must stay `http://127.0.0.1:18791`.
+- `443` belongs to Nginx/Caddy plus your certificate, not to NextClaw directly.
+- If you later add HTTPS, keep TLS termination in the reverse proxy, then forward to `http://127.0.0.1:18791`.
+
+Minimal verification sequence:
+
+```bash
+curl http://127.0.0.1:18791/api/health
+curl -I http://127.0.0.1:18791/
+curl -I http://<server-ip>/
+```
+
+If `127.0.0.1:18791` is healthy but the public entry returns `502`, the problem is in your reverse proxy, firewall, or upstream target, not in the NextClaw HTTP server.
 
 ---
 
@@ -923,6 +978,8 @@ NextClaw binds UI to `0.0.0.0` by default and attempts to detect/print a public 
 | **Unknown model** | Confirm the model ID is supported by your provider (e.g. OpenRouter model list). |
 | **No replies on a channel** | Ensure the channel is `enabled`, `allowFrom` includes your user ID if set, and the gateway is running (`nextclaw start` or `nextclaw gateway`). Run `nextclaw channels status` to see channel status. |
 | **Port already in use** | Change `ui.port` in config or use `--ui-port` when starting. Default UI port is 18791, gateway 18790. |
+| **Port connects but the UI never responds** | This usually means the target port is occupied by a stale or wrong listener instead of a healthy NextClaw HTTP server. Newer `nextclaw start` now preflights the UI port and fails fast with diagnostics. On the server, run `ss -ltnp | grep 18791` or `lsof -iTCP:18791 -sTCP:LISTEN -n -P`, then free the port or restart with `--ui-port <port>`. |
+| **Public browser access returns 502** | First verify `curl http://127.0.0.1:18791/api/health` on the server. If it is `200`, your reverse proxy is misconfigured. Make sure it proxies to `http://127.0.0.1:18791` instead of `https://127.0.0.1:18791`, and that `443` is terminated by Nginx/Caddy rather than NextClaw itself. |
 | **Config not loading** | Ensure `NEXTCLAW_HOME` (if set) points to the directory that contains `config.json`. Run `nextclaw status` to see which config file is used. |
 | **Agent not responding in CLI** | Run `nextclaw init` if you have not yet; ensure a provider and model are set and the provider key is valid. |
 

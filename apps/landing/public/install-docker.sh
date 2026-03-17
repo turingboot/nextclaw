@@ -256,6 +256,8 @@ log "Health check passed: UI/API is reachable on port ${UI_PORT}"
 echo "UI: http://127.0.0.1:${UI_PORT}"
 echo "API: http://127.0.0.1:${UI_PORT}/api"
 echo "Gateway (direct): http://127.0.0.1:${API_PORT}"
+echo "Public deploy note: NextClaw serves plain HTTP on ${UI_PORT}."
+echo "If you need https:// or standard 80/443 access, put Nginx/Caddy in front and proxy to http://127.0.0.1:${UI_PORT}."
 echo "Data dir: ${DATA_DIR}"
 echo "Container: ${CONTAINER_NAME}"
 echo

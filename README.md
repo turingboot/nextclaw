@@ -66,6 +66,8 @@ nextclaw start
 
 Open **http://127.0.0.1:18791** → set your provider and model → start chatting.
 
+On a VPS, NextClaw serves plain HTTP on `18791`. Use `http://<server-ip>:18791` directly for a quick check, or put Nginx/Caddy in front for `80/443`. `https://` must be terminated by the reverse proxy, not by NextClaw itself.
+
 ```bash
 nextclaw stop    # stop the service
 ```
