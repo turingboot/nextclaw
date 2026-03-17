@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { ChatInputBar } from '@nextclaw/agent-chat-ui';
 import {
   buildChatSlashItems,
   buildModelStateHint,
@@ -16,7 +17,6 @@ import { useChatInputBarController } from '@/components/chat/chat-input/chat-inp
 import { usePresenter } from '@/components/chat/presenter/chat-presenter-context';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { useChatInputStore } from '@/components/chat/stores/chat-input.store';
-import { ChatInputBar } from '@/components/chat/ui/chat-input-bar/chat-input-bar';
 import { t } from '@/lib/i18n';
 
 function buildThinkingLabels(): Record<ChatThinkingLevel, string> {

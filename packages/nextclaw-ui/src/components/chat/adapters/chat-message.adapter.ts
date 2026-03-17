@@ -7,7 +7,7 @@ import type {
   ChatMessageRole,
   ChatMessageViewModel,
   ChatToolPartViewModel
-} from '@/components/chat/view-models/chat-ui.types';
+} from '@nextclaw/agent-chat-ui';
 
 export type ChatMessagePartSource =
   | {

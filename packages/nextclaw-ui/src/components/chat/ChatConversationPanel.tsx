@@ -1,7 +1,7 @@
 import { useRef } from 'react';
+import { useStickyBottomScroll } from '@nextclaw/agent-chat-ui';
 import { Button } from '@/components/ui/button';
 import { ChatInputBarContainer, ChatMessageListContainer } from '@/components/chat/nextclaw';
-import { useStickyBottomScroll } from '@/components/chat/hooks/use-sticky-bottom-scroll';
 import { ChatWelcome } from '@/components/chat/ChatWelcome';
 import { usePresenter } from '@/components/chat/presenter/chat-presenter-context';
 import { useChatThreadStore } from '@/components/chat/stores/chat-thread.store';

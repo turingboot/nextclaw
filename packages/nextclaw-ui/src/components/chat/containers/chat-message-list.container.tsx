@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { type UiMessage } from '@nextclaw/agent-chat';
+import { ChatMessageList } from '@nextclaw/agent-chat-ui';
 import { adaptChatMessages, type ChatMessageSource } from '@/components/chat/adapters/chat-message.adapter';
 import { useI18n } from '@/components/providers/I18nProvider';
-import { ChatMessageList } from '@/components/chat/ui/chat-message-list/chat-message-list';
 import { formatDateTime, t } from '@/lib/i18n';
 
 type ChatMessageListContainerProps = {

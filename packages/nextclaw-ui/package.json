@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@nextclaw/agent-chat": "workspace:*",
+    "@nextclaw/agent-chat-ui": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-popover": "^1.1.15",

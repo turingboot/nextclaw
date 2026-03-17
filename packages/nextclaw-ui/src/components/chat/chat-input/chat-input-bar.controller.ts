@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { ChatSlashItem } from '@nextclaw/agent-chat-ui';
 import type { KeyboardEvent } from 'react';
-import type { ChatSlashItem } from '@/components/chat/view-models/chat-ui.types';
 
 type UseChatInputBarControllerParams = {
   isSlashMode: boolean;

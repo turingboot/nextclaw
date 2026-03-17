@@ -2,10 +2,10 @@ import type {
   ChatInlineHint,
   ChatSelectedItem,
   ChatSkillPickerOption,
-  ChatSlashItem,
   ChatSkillPickerProps,
+  ChatSlashItem,
   ChatToolbarSelect
-} from '@/components/chat/view-models/chat-ui.types';
+} from '@nextclaw/agent-chat-ui';
 
 export type ChatThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'adaptive' | 'xhigh';
 

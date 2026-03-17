@@ -85,7 +85,7 @@ export default [
     }
   },
   {
-    files: ["packages/nextclaw-ui/**/*.{ts,tsx,mts,cts}"],
+    files: ["packages/nextclaw-ui/**/*.{ts,tsx,mts,cts}", "packages/nextclaw-agent-chat-ui/**/*.{ts,tsx,mts,cts}"],
     plugins: {
       "react-hooks": reactHooks
     },
@@ -108,7 +108,11 @@ export default [
     }
   },
   {
-    files: ["packages/nextclaw-ui/src/components/**/*.tsx", "packages/nextclaw-ui/src/App.tsx"],
+    files: [
+      "packages/nextclaw-ui/src/components/**/*.tsx",
+      "packages/nextclaw-ui/src/App.tsx",
+      "packages/nextclaw-agent-chat-ui/src/components/**/*.tsx"
+    ],
     rules: {
       "max-lines-per-function": [
         "warn",
