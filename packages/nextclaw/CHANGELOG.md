@@ -1,5 +1,11 @@
 # nextclaw
 
+## 0.9.28
+
+### Patch Changes
+
+- Fix marketplace skill install when a previous failed attempt leaves an empty or partial skill directory behind.
+
 ## 0.9.27
 
 ### Patch Changes
