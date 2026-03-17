@@ -178,11 +178,43 @@ jobs:
           if (-not (Test-Path "apps/desktop/release/win-unpacked")) {
             throw "Windows desktop unpacked directory not found."
           }
+          $sourceDir = (Resolve-Path "apps/desktop/release/win-unpacked").Path
+          $stagingDir = Join-Path "apps/desktop/release" "win-unpacked-staging"
+          if (Test-Path $stagingDir) {
+            Remove-Item -Recurse -Force $stagingDir
+          }
+          New-Item -ItemType Directory -Path $stagingDir | Out-Null
+          & robocopy $sourceDir $stagingDir /E /R:2 /W:1 /XF debug.log
+          if ($LASTEXITCODE -gt 7) {
+            throw "robocopy failed with exit code $LASTEXITCODE"
+          }
           $zipPath = "apps/desktop/release/NextClaw Desktop-win32-x64-unpacked.zip"
           if (Test-Path $zipPath) {
             Remove-Item -Force $zipPath
           }
-          Compress-Archive -Path "apps/desktop/release/win-unpacked/*" -DestinationPath $zipPath
+          Compress-Archive -Path (Join-Path $stagingDir "*") -DestinationPath $zipPath
+          Remove-Item -Recurse -Force $stagingDir
+
+      - name: Stage Smoke Logs (Windows)
+        if: matrix.platform == 'win32' && always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $stagingRoot = "apps/desktop/release/windows-smoke-logs"
+          if (Test-Path $stagingRoot) {
+            Remove-Item -Recurse -Force $stagingRoot
+          }
+          New-Item -ItemType Directory -Path $stagingRoot | Out-Null
+
+          $homeLogs = Join-Path $env:RUNNER_TEMP "nextclaw-desktop-smoke-home/logs"
+          if (Test-Path $homeLogs) {
+            Copy-Item -Recurse -Force $homeLogs (Join-Path $stagingRoot "home-logs")
+          }
+
+          $appLogs = Join-Path $env:APPDATA "NextClaw Desktop/logs"
+          if (Test-Path $appLogs) {
+            Copy-Item -Recurse -Force $appLogs (Join-Path $stagingRoot "app-logs")
+          }
 
       - name: Upload Smoke Logs (macOS)
         if: matrix.platform == 'darwin' && always()
@@ -202,8 +234,7 @@ jobs:
           name: desktop-smoke-logs-win32-x64
           if-no-files-found: warn
           path: |
-            ${{ runner.temp }}/nextclaw-desktop-smoke-home/logs/**
-            ~\AppData\Roaming\NextClaw Desktop\logs\**
+            apps/desktop/release/windows-smoke-logs/**
 
       - name: Upload Smoke Logs (Linux)
         if: matrix.platform == 'linux' && always()
