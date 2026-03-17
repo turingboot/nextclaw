@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from '@/components/chat/internal/cn';
 
 type ChatReasoningBlockProps = {
   label: string;

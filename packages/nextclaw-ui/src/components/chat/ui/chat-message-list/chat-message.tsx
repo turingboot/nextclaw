@@ -1,9 +1,9 @@
 import type { ChatMessageTexts, ChatMessageViewModel } from '@/components/chat/view-models/chat-ui.types';
+import { cn } from '@/components/chat/internal/cn';
 import { ChatMessageMarkdown } from '@/components/chat/ui/chat-message-list/chat-message-markdown';
 import { ChatReasoningBlock } from '@/components/chat/ui/chat-message-list/chat-reasoning-block';
 import { ChatToolCard } from '@/components/chat/ui/chat-message-list/chat-tool-card';
 import { ChatUnknownPart } from '@/components/chat/ui/chat-message-list/chat-unknown-part';
-import { cn } from '@/lib/utils';
 
 type ChatMessageProps = {
   message: ChatMessageViewModel;

@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { ChatButton } from '@/components/chat/default-skin/button';
 import { ChatUiPrimitives } from '@/components/chat/ui/primitives/chat-ui-primitives';
 import type { ChatInputBarActionsProps } from '@/components/chat/view-models/chat-ui.types';
 import { ArrowUp, Square } from 'lucide-react';
@@ -13,7 +13,7 @@ export function ChatInputBarActions(props: ChatInputBarActionsProps) {
       <div className="flex items-center gap-2">
         {props.isSending ? (
           props.canStopGeneration ? (
-            <Button
+            <ChatButton
               size="icon"
               variant="outline"
               className="h-8 w-8 rounded-full"
@@ -22,13 +22,13 @@ export function ChatInputBarActions(props: ChatInputBarActionsProps) {
               disabled={props.stopDisabled}
             >
               <Square className="h-3 w-3 fill-current" />
-            </Button>
+            </ChatButton>
           ) : (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span>
-                    <Button
+                    <ChatButton
                       size="icon"
                       variant="outline"
                       className="h-8 w-8 rounded-full"
@@ -36,7 +36,7 @@ export function ChatInputBarActions(props: ChatInputBarActionsProps) {
                       disabled
                     >
                       <Square className="h-3 w-3 fill-current" />
-                    </Button>
+                    </ChatButton>
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="top">
@@ -46,7 +46,7 @@ export function ChatInputBarActions(props: ChatInputBarActionsProps) {
             </TooltipProvider>
           )
         ) : (
-          <Button
+          <ChatButton
             size="icon"
             className="h-8 w-8 rounded-full"
             aria-label={props.sendButtonLabel}
@@ -54,7 +54,7 @@ export function ChatInputBarActions(props: ChatInputBarActionsProps) {
             disabled={props.sendDisabled}
           >
             <ArrowUp className="h-5 w-5" />
-          </Button>
+          </ChatButton>
         )}
       </div>
     </div>

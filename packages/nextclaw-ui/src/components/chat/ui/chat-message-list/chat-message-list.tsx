@@ -1,8 +1,8 @@
 import type { ChatMessageListProps } from '@/components/chat/view-models/chat-ui.types';
+import { cn } from '@/components/chat/internal/cn';
 import { ChatMessageAvatar } from '@/components/chat/ui/chat-message-list/chat-message-avatar';
 import { ChatMessage } from '@/components/chat/ui/chat-message-list/chat-message';
 import { ChatMessageMeta } from '@/components/chat/ui/chat-message-list/chat-message-meta';
-import { cn } from '@/lib/utils';
 
 export function ChatMessageList(props: ChatMessageListProps) {
   return (

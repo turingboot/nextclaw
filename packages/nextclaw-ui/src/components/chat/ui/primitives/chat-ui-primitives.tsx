@@ -1,23 +1,23 @@
-import { Input as DefaultInput } from '@/components/ui/input';
+import { ChatInput as DefaultInput } from '@/components/chat/default-skin/input';
 import {
-  Popover as DefaultPopover,
-  PopoverAnchor as DefaultPopoverAnchor,
-  PopoverContent as DefaultPopoverContent,
-  PopoverTrigger as DefaultPopoverTrigger
-} from '@/components/ui/popover';
+  ChatPopover as DefaultPopover,
+  ChatPopoverAnchor as DefaultPopoverAnchor,
+  ChatPopoverContent as DefaultPopoverContent,
+  ChatPopoverTrigger as DefaultPopoverTrigger
+} from '@/components/chat/default-skin/popover';
 import {
-  Select as DefaultSelect,
-  SelectContent as DefaultSelectContent,
-  SelectItem as DefaultSelectItem,
-  SelectTrigger as DefaultSelectTrigger,
-  SelectValue as DefaultSelectValue
-} from '@/components/ui/select';
+  ChatSelect as DefaultSelect,
+  ChatSelectContent as DefaultSelectContent,
+  ChatSelectItem as DefaultSelectItem,
+  ChatSelectTrigger as DefaultSelectTrigger,
+  ChatSelectValue as DefaultSelectValue
+} from '@/components/chat/default-skin/select';
 import {
-  Tooltip as DefaultTooltip,
-  TooltipContent as DefaultTooltipContent,
-  TooltipProvider as DefaultTooltipProvider,
-  TooltipTrigger as DefaultTooltipTrigger
-} from '@/components/ui/tooltip';
+  ChatTooltip as DefaultTooltip,
+  ChatTooltipContent as DefaultTooltipContent,
+  ChatTooltipProvider as DefaultTooltipProvider,
+  ChatTooltipTrigger as DefaultTooltipTrigger
+} from '@/components/chat/default-skin/tooltip';
 
 // Centralized primitive adapter layer for chat UI.
 export const ChatUiPrimitives = {

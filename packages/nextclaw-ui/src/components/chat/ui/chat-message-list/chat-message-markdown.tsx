@@ -2,9 +2,9 @@ import { useMemo, type ReactNode } from 'react';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { cn } from '@/components/chat/internal/cn';
 import { ChatCodeBlock } from '@/components/chat/ui/chat-message-list/chat-code-block';
 import type { ChatMessageRole, ChatMessageTexts } from '@/components/chat/view-models/chat-ui.types';
-import { cn } from '@/lib/utils';
 
 const MARKDOWN_MAX_CHARS = 140_000;
 const SAFE_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:']);
