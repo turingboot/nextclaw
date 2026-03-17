@@ -24,7 +24,10 @@
     "tsc": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@nextclaw/ncp": "workspace:*"
+    "@nextclaw/ncp": "workspace:*",
+    "lucide-react": "^0.462.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
