@@ -19,6 +19,7 @@ export type {
   OpenAIToolCallDelta,
 } from "./llm-api.js";
 export type {
+  NcpInvalidToolArgumentsResult,
   NcpTool,
   NcpToolCallResult,
   NcpToolDefinition,

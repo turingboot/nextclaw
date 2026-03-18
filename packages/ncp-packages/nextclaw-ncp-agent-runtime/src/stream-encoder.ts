@@ -26,9 +26,9 @@ export class DefaultNcpStreamEncoder implements NcpStreamEncoder {
 
       const delta = choice.delta as DeltaLike | undefined;
       if (delta) {
+        yield* emitReasoningDelta(delta, { sessionId, messageId });
         const nextState = yield* emitTextDeltas(delta, { sessionId, messageId }, state);
         state = nextState;
-        yield* emitReasoningDelta(delta, { sessionId, messageId });
         yield* emitToolCallDeltas(delta, toolCallBuffers, { sessionId, messageId });
       }
 

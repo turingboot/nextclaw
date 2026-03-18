@@ -186,7 +186,7 @@ export type ChatMessageTexts = {
 export type ChatMessageListProps = {
   messages: ChatMessageViewModel[];
   isSending: boolean;
-  hasStreamingDraft: boolean;
+  hasAssistantDraft: boolean;
   texts: ChatMessageTexts;
   className?: string;
 };

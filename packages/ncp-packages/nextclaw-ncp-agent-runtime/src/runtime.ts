@@ -8,14 +8,21 @@ import {
   type NcpEndpointEvent,
   type NcpLLMApi,
   type NcpLLMApiInput,
-  type NcpRoundBuffer,
+  type NcpToolCallResult,
   type NcpStreamEncoder,
   type NcpToolRegistry,
+  type OpenAIChatChunk,
   NcpEventType,
 } from "@nextclaw/ncp";
 import { DefaultNcpStreamEncoder } from "./stream-encoder.js";
-import { DefaultNcpRoundBuffer } from "./round-buffer.js";
-import { appendToolRoundToInput, genId, parseToolArgs } from "./utils.js";
+import {
+  appendToolRoundToInput,
+  createInvalidToolArgumentsResult,
+  genId,
+  parseToolArgs,
+  validateToolArgs,
+} from "./utils.js";
+import { DefaultNcpRoundCollector } from "./round-collector.js";
 
 export type DefaultNcpAgentRuntimeConfig = {
   contextBuilder: NcpContextBuilder;
@@ -88,60 +95,70 @@ export class DefaultNcpAgentRuntime implements NcpAgentRuntime {
     ctx: NcpEncodeContext,
     options?: NcpAgentRunOptions,
   ): AsyncGenerator<NcpEndpointEvent> {
-    const roundBuffer: NcpRoundBuffer = new DefaultNcpRoundBuffer();
+    const roundCollector = new DefaultNcpRoundCollector();
     let currentInput = llmInput;
     let done = false;
 
     while (!done && !options?.signal?.aborted) {
-      roundBuffer.clear();
+      roundCollector.clear();
 
       const stream = this.llmApi.generate(currentInput, { signal: options?.signal });
+      const tappedStream = this.tapStream(stream, (chunk) => roundCollector.consumeChunk(chunk));
 
-      for await (const event of this.streamEncoder.encode(stream, ctx)) {
+      for await (const event of this.streamEncoder.encode(tappedStream, ctx)) {
         yield event;
-
-        switch (event.type) {
-          case NcpEventType.MessageToolCallStart:
-            roundBuffer.startToolCall(event.payload.toolCallId, event.payload.toolName);
-            break;
-          case NcpEventType.MessageToolCallArgs:
-            roundBuffer.appendToolCallArgs(event.payload.args);
-            break;
-          case NcpEventType.MessageToolCallEnd: {
-            const pending = roundBuffer.consumePendingToolCall();
-            if (pending) {
-              const parsedArgs = parseToolArgs(pending.args);
-              const result = await this.toolRegistry.execute(
-                pending.toolCallId,
-                pending.toolName,
-                parsedArgs,
-              );
-              roundBuffer.appendToolCall({
-                toolCallId: pending.toolCallId,
-                toolName: pending.toolName,
-                args: parsedArgs,
-                result,
-              });
-              yield {
-                type: NcpEventType.MessageToolCallResult,
-                payload: {
-                  sessionId: ctx.sessionId,
-                  toolCallId: pending.toolCallId,
-                  content: result,
-                },
-              };
-            }
-            break;
-          }
-          case NcpEventType.MessageTextDelta:
-            roundBuffer.appendText(event.payload.delta);
-            break;
-          default:
-            break;
-        }
       }
 
-      const toolResults = roundBuffer.getToolCalls();
+      const toolResults: NcpToolCallResult[] = [];
+      for (const toolCall of roundCollector.getToolCalls()) {
+        const tool = this.toolRegistry.getTool(toolCall.toolName);
+        const parsedArgs = parseToolArgs(toolCall.args);
+        let result: unknown;
+        let args: Record<string, unknown> | null = null;
+
+        if (!parsedArgs.ok) {
+          result = createInvalidToolArgumentsResult({
+            toolCallId: toolCall.toolCallId,
+            toolName: toolCall.toolName,
+            rawArgumentsText: parsedArgs.rawText,
+            issues: parsedArgs.issues,
+          });
+        } else {
+          const schemaIssues = validateToolArgs(parsedArgs.value, tool?.parameters);
+          if (schemaIssues.length > 0) {
+            result = createInvalidToolArgumentsResult({
+              toolCallId: toolCall.toolCallId,
+              toolName: toolCall.toolName,
+              rawArgumentsText: parsedArgs.rawText,
+              issues: schemaIssues,
+            });
+          } else {
+            args = parsedArgs.value;
+            result = await this.toolRegistry.execute(
+              toolCall.toolCallId,
+              toolCall.toolName,
+              parsedArgs.value,
+            );
+          }
+        }
+
+        toolResults.push({
+          toolCallId: toolCall.toolCallId,
+          toolName: toolCall.toolName,
+          args,
+          rawArgsText: parsedArgs.rawText,
+          result,
+        });
+        yield {
+          type: NcpEventType.MessageToolCallResult,
+          payload: {
+            sessionId: ctx.sessionId,
+            toolCallId: toolCall.toolCallId,
+            content: result,
+          },
+        };
+      }
+
       if (toolResults.length === 0) {
         yield {
           type: NcpEventType.RunFinished,
@@ -153,9 +170,20 @@ export class DefaultNcpAgentRuntime implements NcpAgentRuntime {
 
       currentInput = appendToolRoundToInput(
         currentInput,
-        roundBuffer.getText(),
+        roundCollector.getReasoning(),
+        roundCollector.getText(),
         toolResults,
       );
+    }
+  }
+
+  private async *tapStream(
+    stream: AsyncIterable<OpenAIChatChunk>,
+    onChunk: (chunk: OpenAIChatChunk) => void,
+  ): AsyncGenerator<OpenAIChatChunk> {
+    for await (const chunk of stream) {
+      onChunk(chunk);
+      yield chunk;
     }
   }
 }

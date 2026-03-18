@@ -23,7 +23,7 @@ export type ForwardResponseOptions = {
   endpoint: NcpAgentClientEndpoint;
   requestEvent: NcpEndpointEvent;
   requestSignal: AbortSignal;
-  timeoutMs: number;
+  timeoutMs: number | null;
   scope: EventScope;
 };
 
@@ -66,10 +66,12 @@ async function* createForwardSseEvents(options: ForwardResponseOptions): AsyncGe
   };
 
   requestSignal.addEventListener("abort", stop, { once: true });
-  timeoutId = setTimeout(() => {
-    push(toErrorFrame("TIMEOUT", "NCP HTTP stream timed out before terminal event."));
-    stop();
-  }, timeoutMs);
+  if (timeoutMs !== null) {
+    timeoutId = setTimeout(() => {
+      push(toErrorFrame("TIMEOUT", "NCP HTTP stream timed out before terminal event."));
+      stop();
+    }, timeoutMs);
+  }
 
   unsubscribe = endpoint.subscribe((event) => {
     if (!matchesScope(scope, event)) {

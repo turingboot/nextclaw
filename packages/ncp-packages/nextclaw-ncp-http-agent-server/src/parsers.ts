@@ -3,10 +3,7 @@ import type {
   NcpRequestEnvelope,
   NcpStreamRequestPayload,
 } from "@nextclaw/ncp";
-import {
-  DEFAULT_BASE_PATH,
-  DEFAULT_REQUEST_TIMEOUT_MS,
-} from "./types.js";
+import { DEFAULT_BASE_PATH } from "./types.js";
 
 export function normalizeBasePath(basePath: string | undefined): string {
   const raw = (basePath ?? DEFAULT_BASE_PATH).trim();
@@ -17,9 +14,12 @@ export function normalizeBasePath(basePath: string | undefined): string {
   return withLeadingSlash.endsWith("/") ? withLeadingSlash.slice(0, -1) : withLeadingSlash;
 }
 
-export function sanitizeTimeout(timeoutMs: number | undefined): number {
+export function sanitizeTimeout(timeoutMs: number | null | undefined): number | null {
   if (typeof timeoutMs !== "number" || !Number.isFinite(timeoutMs)) {
-    return DEFAULT_REQUEST_TIMEOUT_MS;
+    return null;
+  }
+  if (timeoutMs <= 0) {
+    return null;
   }
   return Math.max(1_000, Math.trunc(timeoutMs));
 }

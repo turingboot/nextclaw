@@ -50,6 +50,13 @@ function buildNcpSendMetadata(payload: {
   return metadata;
 }
 
+function isMissingNcpSessionError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return error.message.includes('ncp session not found:');
+}
+
 export function NcpChatPage({ view }: ChatPageProps) {
   const [presenter] = useState(() => new NcpChatPresenter());
   const [draftSessionId, setDraftSessionId] = useState(() => createNcpSessionId());
@@ -107,18 +114,22 @@ export function NcpChatPage({ view }: ChatPageProps) {
       })
   );
 
-  const loadSeed = useCallback(async (sessionId: string): Promise<NcpConversationSeed> => {
-    const sessionSummary = sessionSummariesRef.current.find((item) => item.sessionId === sessionId) ?? null;
-    if (!sessionSummary) {
-      return {
-        messages: [],
-        status: 'idle'
-      };
+  const loadSeed = useCallback(async (sessionId: string, signal: AbortSignal): Promise<NcpConversationSeed> => {
+    signal.throwIfAborted();
+    let history: Awaited<ReturnType<typeof fetchNcpSessionMessages>> | null = null;
+    try {
+      history = await fetchNcpSessionMessages(sessionId, 300);
+    } catch (error) {
+      if (!isMissingNcpSessionError(error)) {
+        throw error;
+      }
     }
-    const history = await fetchNcpSessionMessages(sessionId, 300);
+    signal.throwIfAborted();
+
+    const sessionSummary = sessionSummariesRef.current.find((item) => item.sessionId === sessionId) ?? null;
     return {
-      messages: history.messages,
-      status: sessionSummary.status === 'running' ? 'running' : 'idle'
+      messages: history?.messages ?? [],
+      status: sessionSummary?.status === 'running' ? 'running' : 'idle'
     };
   }, []);
 
@@ -278,7 +289,7 @@ export function NcpChatPage({ view }: ChatPageProps) {
     presenter.chatSessionListManager.syncSnapshot({
       sessions,
       query,
-      isLoading: sessionsQuery.isLoading || agent.isHydrating
+      isLoading: sessionsQuery.isLoading
     });
     presenter.chatRunStatusManager.syncSnapshot({
       sessionRunStatusByKey,

@@ -20,7 +20,9 @@ export class AgentRunExecutor {
         metadata: envelope.metadata,
       },
     };
-    let messageSentPublished = false;
+    await session.stateManager.dispatch(messageSent);
+    await this.persistSession(envelope.sessionId);
+    yield structuredClone(messageSent);
 
     try {
       for await (const event of session.runtime.run(
@@ -32,12 +34,6 @@ export class AgentRunExecutor {
         },
         { signal: controller.signal },
       )) {
-        if (!messageSentPublished) {
-          messageSentPublished = true;
-          await this.persistSession(envelope.sessionId);
-          yield structuredClone(messageSent);
-        }
-
         await this.persistSession(envelope.sessionId);
         yield structuredClone(event);
       }

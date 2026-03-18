@@ -28,16 +28,12 @@ import {
   type NcpToolCallStartPayload,
   NcpEventType,
 } from "@nextclaw/ncp";
+import {
+  cloneConversationMessage,
+  normalizeConversationMessage,
+} from "./agent-conversation-message-normalizer.js";
 
 const DEFAULT_ASSISTANT_ROLE: NcpMessageRole = "assistant";
-
-const cloneMessage = (message: NcpMessage): NcpMessage => {
-  return {
-    ...message,
-    parts: [...message.parts],
-    metadata: message.metadata ? { ...message.metadata } : undefined,
-  };
-};
 
 const buildRuntimeError = (payload: NcpRunErrorPayload): NcpError => {
   const message = payload.error?.trim();
@@ -74,8 +70,8 @@ export class DefaultNcpAgentConversationStateManager
     }
 
     const snapshot: NcpAgentConversationSnapshot = {
-      messages: this.messages.map((message) => cloneMessage(message)),
-      streamingMessage: this.streamingMessage ? cloneMessage(this.streamingMessage) : null,
+      messages: this.messages.map((message) => cloneConversationMessage(message)),
+      streamingMessage: this.streamingMessage ? cloneConversationMessage(this.streamingMessage) : null,
       error: this.error ? { ...this.error, details: this.error.details ? { ...this.error.details } : undefined } : null,
       activeRun: this.activeRun ? { ...this.activeRun } : null,
     };
@@ -112,7 +108,7 @@ export class DefaultNcpAgentConversationStateManager
   }
 
   hydrate(payload: NcpAgentConversationHydrationParams): void {
-    this.messages = payload.messages.map((message: NcpMessage) => cloneMessage(message));
+    this.messages = payload.messages.map((message: NcpMessage) => normalizeConversationMessage(message));
     this.streamingMessage = null;
     this.error = null;
     this.activeRun = payload.activeRun
@@ -480,7 +476,7 @@ export class DefaultNcpAgentConversationStateManager
 
     const messageIndex = this.messages.findIndex((message) => message.id === messageId);
     if (messageIndex >= 0) {
-      const existingMessage = cloneMessage(this.messages[messageIndex]!);
+      const existingMessage = cloneConversationMessage(this.messages[messageIndex]!);
       const nextMessages = [...this.messages];
       nextMessages.splice(messageIndex, 1);
       this.messages = nextMessages;
@@ -591,7 +587,7 @@ export class DefaultNcpAgentConversationStateManager
   }
 
   private upsertMessage(message: NcpMessage): void {
-    const normalizedMessage = cloneMessage(message);
+    const normalizedMessage = normalizeConversationMessage(message);
     const messageIndex = this.messages.findIndex((item) => item.id === normalizedMessage.id);
     if (messageIndex < 0) {
       this.messages = [...this.messages, normalizedMessage];
@@ -609,7 +605,7 @@ export class DefaultNcpAgentConversationStateManager
     if (!nextStreamingMessage && !this.streamingMessage) {
       return;
     }
-    this.streamingMessage = nextStreamingMessage ? cloneMessage(nextStreamingMessage) : null;
+    this.streamingMessage = nextStreamingMessage ? normalizeConversationMessage(nextStreamingMessage) : null;
     this.stateVersion += 1;
   }
 

@@ -19,12 +19,26 @@ export type LLMStreamDelta = {
   delta: string;
 };
 
+export type LLMStreamReasoningDelta = {
+  type: "reasoning_delta";
+  delta: string;
+};
+
+export type LLMStreamToolCallDelta = {
+  type: "tool_call_delta";
+  toolCalls: Array<Record<string, unknown>>;
+};
+
 export type LLMStreamDone = {
   type: "done";
   response: LLMResponse;
 };
 
-export type LLMStreamEvent = LLMStreamDelta | LLMStreamDone;
+export type LLMStreamEvent =
+  | LLMStreamDelta
+  | LLMStreamReasoningDelta
+  | LLMStreamToolCallDelta
+  | LLMStreamDone;
 
 export abstract class LLMProvider {
   protected apiKey?: string | null;

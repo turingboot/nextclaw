@@ -61,6 +61,7 @@ describe('adaptChatMessages', () => {
     expect(adapted[0]?.roleLabel).toBe('Assistant');
     expect(adapted[0]?.timestampLabel).toBe('formatted:2026-03-17T10:00:00.000Z');
     expect(adapted[0]?.parts.map((part) => part.type)).toEqual(['markdown', 'reasoning', 'tool-card']);
+    expect(adapted[0]?.parts[1]).toMatchObject({ type: 'reasoning', label: 'Reasoning', text: 'internal reasoning' });
     expect(adapted[0]?.parts[2]).toMatchObject({
       type: 'tool-card',
       card: {

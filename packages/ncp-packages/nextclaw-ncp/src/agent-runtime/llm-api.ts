@@ -14,6 +14,7 @@ export type OpenAIChatMessage =
   | {
       role: "assistant";
       content?: string | null;
+      reasoning_content?: string;
       tool_calls?: OpenAIToolCall[];
     }
   | { role: "tool"; content: string; tool_call_id: string };

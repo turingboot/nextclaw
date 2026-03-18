@@ -14,8 +14,21 @@ export interface NcpTool {
 export type NcpToolCallResult = {
   toolCallId: string;
   toolName: string;
-  args: unknown;
+  args: Record<string, unknown> | null;
+  rawArgsText: string;
   result: unknown;
+};
+
+export type NcpInvalidToolArgumentsResult = {
+  ok: false;
+  error: {
+    code: "invalid_tool_arguments";
+    message: string;
+    toolCallId: string;
+    toolName: string;
+    rawArgumentsText: string;
+    issues: string[];
+  };
 };
 
 export interface NcpToolRegistry {

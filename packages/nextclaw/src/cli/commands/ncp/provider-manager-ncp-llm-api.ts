@@ -1,4 +1,10 @@
-import type { OpenAIChatChunk, NcpLLMApi, NcpLLMApiInput, NcpLLMApiOptions } from "@nextclaw/ncp";
+import type {
+  OpenAIChatChunk,
+  OpenAIToolCallDelta,
+  NcpLLMApi,
+  NcpLLMApiInput,
+  NcpLLMApiOptions,
+} from "@nextclaw/ncp";
 import { parseThinkingLevel, type LLMResponse, type ProviderManager, type ThinkingLevel, type ToolCallRequest } from "@nextclaw/core";
 
 function normalizeModel(value: string | undefined): string | null {
@@ -33,15 +39,26 @@ function toToolCallDelta(toolCall: ToolCallRequest, index: number) {
   };
 }
 
-function toFinalChunk(response: LLMResponse, includeText: boolean): OpenAIChatChunk {
+function toFinalChunk(
+  response: LLMResponse,
+  options: {
+    includeText: boolean;
+    includeReasoning: boolean;
+    includeToolCalls: boolean;
+  },
+): OpenAIChatChunk {
   const delta: NonNullable<OpenAIChatChunk["choices"]>[number]["delta"] = {};
-  if (includeText && typeof response.content === "string" && response.content.length > 0) {
+  if (options.includeText && typeof response.content === "string" && response.content.length > 0) {
     delta.content = response.content;
   }
-  if (typeof response.reasoningContent === "string" && response.reasoningContent.length > 0) {
+  if (
+    options.includeReasoning &&
+    typeof response.reasoningContent === "string" &&
+    response.reasoningContent.length > 0
+  ) {
     delta.reasoning_content = response.reasoningContent;
   }
-  if (response.toolCalls.length > 0) {
+  if (options.includeToolCalls && response.toolCalls.length > 0) {
     delta.tool_calls = response.toolCalls.map((toolCall, index) => toToolCallDelta(toolCall, index));
   }
 
@@ -63,6 +80,8 @@ export class ProviderManagerNcpLLMApi implements NcpLLMApi {
     const model = normalizeModel(input.model) ?? this.providerManager.get(null).getDefaultModel();
     const thinkingLevel = normalizeThinkingLevel(input.thinkingLevel);
     let sawTextDelta = false;
+    let sawReasoningDelta = false;
+    let sawToolCallDelta = false;
 
     for await (const event of this.providerManager.chatStream({
       messages: input.messages as Array<Record<string, unknown>>,
@@ -86,7 +105,39 @@ export class ProviderManagerNcpLLMApi implements NcpLLMApi {
         continue;
       }
 
-      yield toFinalChunk(event.response, !sawTextDelta);
+      if (event.type === "reasoning_delta") {
+        sawReasoningDelta = true;
+        yield {
+          choices: [
+            {
+              delta: {
+                reasoning_content: event.delta,
+              },
+            },
+          ],
+        };
+        continue;
+      }
+
+      if (event.type === "tool_call_delta") {
+        sawToolCallDelta = true;
+        yield {
+          choices: [
+            {
+              delta: {
+                tool_calls: event.toolCalls as OpenAIToolCallDelta[],
+              },
+            },
+          ],
+        };
+        continue;
+      }
+
+      yield toFinalChunk(event.response, {
+        includeText: !sawTextDelta,
+        includeReasoning: !sawReasoningDelta,
+        includeToolCalls: !sawToolCallDelta,
+      });
     }
   }
 }

@@ -10,6 +10,7 @@ import {
   NcpEventType,
 } from "@nextclaw/ncp";
 import { createNcpHttpAgentRouter } from "./index.js";
+import { sanitizeTimeout } from "./parsers.js";
 
 const now = "2026-03-12T00:00:00.000Z";
 
@@ -122,6 +123,20 @@ describe("createNcpHttpAgentRouter", () => {
       type: NcpEventType.MessageAbort,
       payload: { sessionId: "session-1" },
     });
+  });
+});
+
+describe("sanitizeTimeout", () => {
+  it("disables timeout by default", () => {
+    expect(sanitizeTimeout(undefined)).toBeNull();
+    expect(sanitizeTimeout(null)).toBeNull();
+    expect(sanitizeTimeout(0)).toBeNull();
+    expect(sanitizeTimeout(-1)).toBeNull();
+  });
+
+  it("keeps explicit timeout support", () => {
+    expect(sanitizeTimeout(1_500)).toBe(1_500);
+    expect(sanitizeTimeout(200)).toBe(1_000);
   });
 });
 

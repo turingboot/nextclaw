@@ -15,5 +15,5 @@ export type NcpHttpAgentHandlerOptions = {
    * See NcpHttpAgentStreamProvider for details.
    */
   streamProvider?: NcpHttpAgentStreamProvider;
-  timeoutMs: number;
+  timeoutMs: number | null;
 };

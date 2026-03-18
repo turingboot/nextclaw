@@ -8,7 +8,7 @@ type ChatReasoningBlockProps = {
 
 export function ChatReasoningBlock(props: ChatReasoningBlockProps) {
   return (
-    <details className="mt-3">
+    <details className="mt-3" open>
       <summary className={cn('cursor-pointer text-xs', props.isUser ? 'text-primary-100' : 'text-gray-500')}>
         {props.label}
       </summary>

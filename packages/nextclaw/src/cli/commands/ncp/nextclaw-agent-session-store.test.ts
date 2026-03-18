@@ -1,0 +1,135 @@
+import { randomUUID } from "node:crypto";
+import { mkdtempSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { afterEach, describe, expect, it } from "vitest";
+import { SessionManager } from "@nextclaw/core";
+import type { AgentSessionRecord } from "@nextclaw/ncp-toolkit";
+import { NextclawAgentSessionStore } from "./nextclaw-agent-session-store.js";
+
+const tempDirs: string[] = [];
+
+function createTempWorkspace(): string {
+  const dir = mkdtempSync(join(tmpdir(), "nextclaw-ncp-session-store-"));
+  tempDirs.push(dir);
+  return dir;
+}
+
+afterEach(() => {
+  while (tempDirs.length > 0) {
+    const dir = tempDirs.pop();
+    if (dir) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+describe("NextclawAgentSessionStore", () => {
+  it("preserves assistant part order across save/load", async () => {
+    const workspace = createTempWorkspace();
+    const sessionManager = new SessionManager(workspace);
+    const store = new NextclawAgentSessionStore(sessionManager);
+    const sessionId = `session-${randomUUID()}`;
+
+    const record: AgentSessionRecord = {
+      sessionId,
+      updatedAt: new Date().toISOString(),
+      messages: [
+        {
+          id: "user-1",
+          sessionId,
+          role: "user",
+          status: "final",
+          timestamp: new Date().toISOString(),
+          parts: [{ type: "text", text: "hello" }],
+        },
+        {
+          id: "assistant-1",
+          sessionId,
+          role: "assistant",
+          status: "final",
+          timestamp: new Date().toISOString(),
+          parts: [
+            { type: "reasoning", text: "think" },
+            { type: "text", text: "answer" },
+            {
+              type: "tool-invocation",
+              toolCallId: "call-1",
+              toolName: "list_dir",
+              state: "result",
+              args: { path: "." },
+              result: { entries: [] },
+            },
+          ],
+        },
+      ],
+      metadata: {},
+    };
+
+    await store.saveSession(record);
+    const loaded = await store.getSession(sessionId);
+
+    expect(loaded?.messages[1]?.role).toBe("assistant");
+    expect(loaded?.messages[1]?.parts.map((part) => part.type)).toEqual([
+      "reasoning",
+      "text",
+      "tool-invocation",
+    ]);
+  });
+
+  it("strips leaked reply tags when saving and loading assistant history", async () => {
+    const workspace = createTempWorkspace();
+    const sessionManager = new SessionManager(workspace);
+    const store = new NextclawAgentSessionStore(sessionManager);
+    const sessionId = `session-${randomUUID()}`;
+
+    const record: AgentSessionRecord = {
+      sessionId,
+      updatedAt: new Date().toISOString(),
+      messages: [
+        {
+          id: "assistant-2",
+          sessionId,
+          role: "assistant",
+          status: "final",
+          timestamp: new Date().toISOString(),
+          parts: [{ type: "text", text: "[[reply_to_current]] hello" }],
+        },
+      ],
+      metadata: {},
+    };
+
+    await store.saveSession(record);
+    const loaded = await store.getSession(sessionId);
+
+    expect(loaded?.messages).toHaveLength(1);
+    expect(loaded?.messages[0]).toMatchObject({
+      role: "assistant",
+      parts: [{ type: "text", text: "hello" }],
+      metadata: {
+        reply_to: "assistant-2",
+      },
+    });
+  });
+
+  it("strips leaked reply tags from legacy assistant content during hydration", async () => {
+    const workspace = createTempWorkspace();
+    const sessionManager = new SessionManager(workspace);
+    const sessionId = `session-${randomUUID()}`;
+    const session = sessionManager.getOrCreate(sessionId);
+
+    sessionManager.addMessage(session, "assistant", "[[reply_to: legacy-msg-9]] hello");
+    sessionManager.save(session);
+
+    const store = new NextclawAgentSessionStore(sessionManager);
+    const loaded = await store.getSession(sessionId);
+
+    expect(loaded?.messages.at(-1)).toMatchObject({
+      role: "assistant",
+      parts: [{ type: "text", text: "hello" }],
+      metadata: {
+        reply_to: "legacy-msg-9",
+      },
+    });
+  });
+});

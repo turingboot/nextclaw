@@ -49,7 +49,7 @@ describe('ChatMessageList', () => {
           }
         ]}
         isSending
-        hasStreamingDraft={false}
+        hasAssistantDraft={false}
         texts={{
           copyCodeLabel: 'Copy',
           copiedCodeLabel: 'Copied',
@@ -84,7 +84,7 @@ describe('ChatMessageList', () => {
           }
         ]}
         isSending={false}
-        hasStreamingDraft={false}
+        hasAssistantDraft={false}
         texts={{
           copyCodeLabel: 'Copy',
           copiedCodeLabel: 'Copied',
@@ -94,5 +94,66 @@ describe('ChatMessageList', () => {
     );
 
     expect(screen.getByText('Unknown Part: step-start')).toBeTruthy();
+  });
+
+  it('renders reasoning expanded by default while keeping the original details layout', () => {
+    render(
+      <ChatMessageList
+        messages={[
+          {
+            id: 'assistant-3',
+            role: 'assistant',
+            roleLabel: 'Assistant',
+            timestampLabel: '10:04',
+            parts: [
+              {
+                type: 'reasoning',
+                label: 'Reasoning',
+                text: 'This is the full reasoning content.\nIt spans multiple lines for inspection.'
+              }
+            ]
+          }
+        ]}
+        isSending={false}
+        hasAssistantDraft={false}
+        texts={{
+          copyCodeLabel: 'Copy',
+          copiedCodeLabel: 'Copied',
+          typingLabel: 'Typing...'
+        }}
+      />
+    );
+
+    expect(screen.getByText('Reasoning')).toBeTruthy();
+    const details = document.querySelector('details');
+    expect(details?.hasAttribute('open')).toBe(true);
+    expect(screen.getByText(/This is the full reasoning content\./)).toBeTruthy();
+  });
+
+  it('does not render the typing placeholder after assistant output has started but is still pending', () => {
+    render(
+      <ChatMessageList
+        messages={[
+          {
+            id: 'assistant-pending',
+            role: 'assistant',
+            roleLabel: 'Assistant',
+            timestampLabel: '10:05',
+            status: 'pending',
+            parts: [{ type: 'reasoning', label: 'Reasoning', text: 'Thinking...' }]
+          }
+        ]}
+        isSending
+        hasAssistantDraft
+        texts={{
+          copyCodeLabel: 'Copy',
+          copiedCodeLabel: 'Copied',
+          typingLabel: 'Typing...'
+        }}
+      />
+    );
+
+    expect(screen.queryByText('Typing...')).toBeNull();
+    expect(screen.getByText('Thinking...')).toBeTruthy();
   });
 });

@@ -670,7 +670,7 @@ export const LABELS: Record<string, { zh: string; en: string }> = {
   chatToolWorkflowDetails: { zh: '展开查看参数和结果', en: 'Expand to view params and results' },
   chatToolOutput: { zh: '查看输出', en: 'View Output' },
   chatToolNoOutput: { zh: '无输出（执行完成）', en: 'No output (completed)' },
-  chatReasoning: { zh: '查看推理内容', en: 'Show reasoning' },
+  chatReasoning: { zh: '推理过程', en: 'Reasoning' },
   chatUnknownPart: { zh: '未知消息片段', en: 'Unknown message part' },
   chatCodeCopy: { zh: '复制代码', en: 'Copy' },
   chatCodeCopied: { zh: '已复制', en: 'Copied' },

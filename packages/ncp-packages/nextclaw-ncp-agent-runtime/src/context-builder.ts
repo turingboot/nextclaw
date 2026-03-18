@@ -65,6 +65,7 @@ function messageToOpenAI(msg: NcpMessage): OpenAIChatMessage[] {
 
   if (role === "assistant") {
     const texts: string[] = [];
+    const reasonings: string[] = [];
     const toolInvocations: Array<{
       toolCallId: string;
       toolName: string;
@@ -73,6 +74,9 @@ function messageToOpenAI(msg: NcpMessage): OpenAIChatMessage[] {
     }> = [];
 
     for (const p of parts) {
+      if (p.type === "reasoning") {
+        reasonings.push(p.text);
+      }
       if (p.type === "text") {
         texts.push(p.text);
       }
@@ -87,12 +91,14 @@ function messageToOpenAI(msg: NcpMessage): OpenAIChatMessage[] {
     }
 
     const text = texts.join("");
+    const reasoning = reasonings.join("");
     const out: OpenAIChatMessage[] = [];
 
     if (toolInvocations.length > 0) {
       out.push({
         role: "assistant",
         content: text || null,
+        ...(reasoning ? { reasoning_content: reasoning } : {}),
         tool_calls: toolInvocations.map((t) => ({
           id: t.toolCallId,
           type: "function" as const,
@@ -111,7 +117,11 @@ function messageToOpenAI(msg: NcpMessage): OpenAIChatMessage[] {
         });
       }
     } else {
-      out.push({ role: "assistant", content: text });
+      out.push({
+        role: "assistant",
+        content: text,
+        ...(reasoning ? { reasoning_content: reasoning } : {}),
+      });
     }
     return out;
   }

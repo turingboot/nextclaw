@@ -401,6 +401,35 @@ describe("provider connection test route", () => {
     expect(minimaxPortal?.auth?.methods?.map((method) => method.id)).toEqual(["global", "cn"]);
   });
 
+  it("exposes minimax coding plan defaults in provider meta", async () => {
+    const configPath = createTempConfigPath();
+    saveConfig(ConfigSchema.parse({}), configPath);
+
+    const app = createUiRouter({
+      configPath,
+      publish: () => {}
+    });
+
+    const metaResponse = await app.request("http://localhost/api/config/meta");
+    expect(metaResponse.status).toBe(200);
+    const metaPayload = await metaResponse.json() as {
+      ok: true;
+      data: {
+        providers: Array<{
+          name: string;
+          defaultModels?: string[];
+          supportsWireApi?: boolean;
+          defaultWireApi?: "auto" | "chat" | "responses";
+        }>;
+      };
+    };
+    const minimax = metaPayload.data.providers.find((provider) => provider.name === "minimax");
+    expect(minimax).toBeDefined();
+    expect(minimax?.defaultModels).toContain("minimax/codex-MiniMax-M2.7");
+    expect(minimax?.supportsWireApi).toBe(true);
+    expect(minimax?.defaultWireApi).toBe("chat");
+  });
+
   it("defaults minimax-portal auth method to cn when methodId is omitted", async () => {
     const configPath = createTempConfigPath();
     saveConfig(ConfigSchema.parse({}), configPath);

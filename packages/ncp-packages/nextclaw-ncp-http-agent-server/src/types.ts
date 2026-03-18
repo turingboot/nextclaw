@@ -5,7 +5,6 @@ import type {
 } from "@nextclaw/ncp";
 
 export const DEFAULT_BASE_PATH = "/ncp/agent";
-export const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
 
 /** Filters which events belong to the current request (session/run/correlation). */
 export type EventScope = {
@@ -41,7 +40,11 @@ export type NcpHttpAgentServerOptions = {
   /** Client endpoint to forward requests to (in-process adapter or remote HTTP client). */
   agentClientEndpoint: NcpAgentClientEndpoint;
   basePath?: string;
-  requestTimeoutMs?: number;
+  /**
+   * Optional forward-stream timeout in milliseconds.
+   * When omitted or set to a non-positive value, no server-side timeout is applied.
+   */
+  requestTimeoutMs?: number | null;
   /**
    * Optional. When set, `/stream` serves live session events from streamProvider instead of
    * forwarding to the agent.

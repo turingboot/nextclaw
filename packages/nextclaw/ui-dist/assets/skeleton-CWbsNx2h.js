@@ -1,1 +1,0 @@
-import{j as t}from"./vendor-B7ozqnFC.js";import{c as o}from"./index-DK4TS5ev.js";function m({className:e,...s}){return t.jsx("div",{className:o("animate-pulse rounded-md bg-slate-200",e),...s})}export{m as S};

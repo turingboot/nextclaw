@@ -75,6 +75,7 @@ const {
 } = NextclawCore;
 
 type Config = NextclawCore.Config;
+type ExtensionRegistry = NextclawCore.ExtensionRegistry;
 type LLMProvider = NextclawCore.LLMProvider;
 type MessageBus = NextclawCore.MessageBus;
 type SessionManager = NextclawCore.SessionManager;
@@ -405,7 +406,25 @@ export class ServiceCommands {
       console.log("Warning: No channels enabled");
     }
 
-    await this.startUiIfEnabled(uiConfig, uiStaticDir, cron, runtimePool, sessionManager, providerManager);
+    await this.startUiIfEnabled(
+      uiConfig,
+      uiStaticDir,
+      cron,
+      runtimePool,
+      sessionManager,
+      providerManager,
+      bus,
+      gatewayController,
+      () => resolveConfigSecrets(loadConfig(), { configPath: runtimeConfigPath }),
+      () => extensionRegistry,
+      ({ channel, accountId }) =>
+        resolvePluginChannelMessageToolHints({
+          registry: pluginRegistry,
+          channel,
+          cfg: resolveConfigSecrets(loadConfig(), { configPath: runtimeConfigPath }),
+          accountId,
+        }),
+    );
 
     const cronStatus = cron.status();
     if (cronStatus.jobs > 0) {
@@ -1163,7 +1182,12 @@ export class ServiceCommands {
     cronService: NextclawCore.CronService,
     runtimePool: GatewayAgentRuntimePool,
     sessionManager: SessionManager,
-    providerManager: NextclawCore.ProviderManager
+    providerManager: NextclawCore.ProviderManager,
+    bus: MessageBus,
+    gatewayController: GatewayControllerImpl,
+    getConfig: () => Config,
+    getExtensionRegistry: () => ExtensionRegistry | undefined,
+    resolveMessageToolHints: (params: { channel: string; accountId?: string | null }) => string[],
   ): Promise<void> {
     if (!uiConfig.enabled) {
       return;
@@ -1270,8 +1294,18 @@ export class ServiceCommands {
       }
     });
     const ncpAgent = await createUiNcpAgent({
+      bus,
+      providerManager,
       sessionManager,
-      runtimePool
+      cronService,
+      gatewayController,
+      getConfig,
+      getExtensionRegistry,
+      resolveMessageToolHints: ({ channel, accountId }) =>
+        resolveMessageToolHints({
+          channel,
+          accountId,
+        }),
     });
 
     const uiServer = startUiServer({

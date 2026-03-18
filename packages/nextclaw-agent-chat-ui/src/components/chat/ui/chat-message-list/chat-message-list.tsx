@@ -21,7 +21,7 @@ export function ChatMessageList(props: ChatMessageListProps) {
         );
       })}
 
-      {props.isSending && !props.hasStreamingDraft ? (
+      {props.isSending && !props.hasAssistantDraft ? (
         <div className="flex justify-start gap-3">
           <ChatMessageAvatar role="assistant" />
           <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500 shadow-sm">

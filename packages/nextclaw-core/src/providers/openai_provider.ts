@@ -183,19 +183,23 @@ export class OpenAICompatibleProvider extends LLMProvider {
         continue;
       }
 
+      const reasoningDelta =
+        (delta as { reasoning_content?: string } | undefined)?.reasoning_content ??
+        (delta as { reasoning?: string } | undefined)?.reasoning;
+      if (typeof reasoningDelta === "string" && reasoningDelta) {
+        reasoningParts.push(reasoningDelta);
+        yield {
+          type: "reasoning_delta",
+          delta: reasoningDelta,
+        };
+      }
+
       if (typeof delta.content === "string" && delta.content.length > 0) {
         contentParts.push(delta.content);
         yield {
           type: "delta",
           delta: delta.content
         };
-      }
-
-      const reasoningDelta =
-        (delta as { reasoning_content?: string } | undefined)?.reasoning_content ??
-        (delta as { reasoning?: string } | undefined)?.reasoning;
-      if (typeof reasoningDelta === "string" && reasoningDelta) {
-        reasoningParts.push(reasoningDelta);
       }
 
       const toolDeltas = (delta as { tool_calls?: Array<Record<string, unknown>> }).tool_calls;
@@ -222,6 +226,10 @@ export class OpenAICompatibleProvider extends LLMProvider {
           }
           toolCallBuffers.set(index, current);
         }
+        yield {
+          type: "tool_call_delta",
+          toolCalls: structuredClone(toolDeltas),
+        };
       }
 
       const legacyFunctionCall = (delta as { function_call?: { name?: string; arguments?: string } } | undefined)

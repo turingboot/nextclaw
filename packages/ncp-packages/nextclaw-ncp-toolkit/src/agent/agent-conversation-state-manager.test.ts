@@ -93,6 +93,44 @@ describe("DefaultNcpAgentConversationStateManager streaming", () => {
     expect(manager.getSnapshot().activeRun).toBeNull();
   });
 
+  it("strips reply tags from assistant text when the run is finalized", () => {
+    const manager = new DefaultNcpAgentConversationStateManager();
+
+    manager.dispatch({
+      type: NcpEventType.MessageTextStart,
+      payload: {
+        sessionId: "session-1",
+        messageId: "assistant-reply",
+      },
+    });
+    manager.dispatch({
+      type: NcpEventType.MessageTextDelta,
+      payload: {
+        sessionId: "session-1",
+        messageId: "assistant-reply",
+        delta: "[[reply_to_current]] hello",
+      },
+    });
+    manager.dispatch({
+      type: NcpEventType.RunFinished,
+      payload: {
+        sessionId: "session-1",
+        runId: "run-reply",
+      },
+    });
+
+    expect(manager.getSnapshot().messages.at(-1)).toMatchObject({
+      id: "assistant-reply",
+      sessionId: "session-1",
+      role: "assistant",
+      status: "final",
+      parts: [{ type: "text", text: "hello" }],
+      metadata: {
+        reply_to: "assistant-reply",
+      },
+    });
+  });
+
   it("handles reasoning and tool-call lifecycle on one streaming message", () => {
     const manager = new DefaultNcpAgentConversationStateManager();
 
@@ -530,6 +568,32 @@ describe("DefaultNcpAgentConversationStateManager hydration", () => {
         abortDisabledReason: null,
       },
     });
+  });
+
+  it("hydrate strips leaked reply tags from assistant history", () => {
+    const manager = new DefaultNcpAgentConversationStateManager();
+
+    manager.hydrate({
+      sessionId: "session-4",
+      messages: [
+        createMessage({
+          id: "assistant-4",
+          sessionId: "session-4",
+          parts: [{ type: "text", text: "[[reply_to: message-9]] hello" }],
+        }),
+      ],
+    });
+
+    expect(manager.getSnapshot().messages).toEqual([
+      createMessage({
+        id: "assistant-4",
+        sessionId: "session-4",
+        parts: [{ type: "text", text: "hello" }],
+        metadata: {
+          reply_to: "message-9",
+        },
+      }),
+    ]);
   });
 
   it("promotes hydrated message into streaming state when a new live stream continues with the same message id", () => {

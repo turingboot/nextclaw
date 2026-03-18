@@ -55,7 +55,11 @@ export function ChatMessageListContainer(props: ChatMessageListContainerProps) {
     <ChatMessageList
       messages={messages}
       isSending={props.isSending}
-      hasStreamingDraft={props.uiMessages.some((message) => message.meta?.status === 'streaming')}
+      hasAssistantDraft={props.uiMessages.some(
+        (message) =>
+          message.role === 'assistant' &&
+          (message.meta?.status === 'streaming' || message.meta?.status === 'pending')
+      )}
       className={props.className}
       texts={{
         copyCodeLabel: t('chatCodeCopy'),

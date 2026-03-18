@@ -1,6 +1,14 @@
 import type { SessionManager, SessionMessage } from "@nextclaw/core";
 import type { AgentSessionRecord, AgentSessionStore } from "@nextclaw/ncp-toolkit";
-import type { NcpMessage, NcpMessagePart, NcpToolInvocationPart } from "@nextclaw/ncp";
+import { type NcpMessage, type NcpMessagePart, sanitizeAssistantReplyTags } from "@nextclaw/ncp";
+import {
+  cloneMetadata,
+  ensureIsoTimestamp,
+  extractMessageMetadata,
+  mergeSessionMetadata,
+  normalizeString,
+  toLegacyMessages,
+} from "./nextclaw-ncp-message-bridge.js";
 
 type LegacyToolCall = {
   id: string;
@@ -10,114 +18,6 @@ type LegacyToolCall = {
     arguments: string;
   };
 };
-
-function normalizeString(value: unknown): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function cloneMetadata(value: unknown): Record<string, unknown> | undefined {
-  return isRecord(value) ? structuredClone(value) : undefined;
-}
-
-function readStringArray(value: unknown): string[] | null {
-  if (!Array.isArray(value)) {
-    return null;
-  }
-  const deduped = new Set<string>();
-  for (const item of value) {
-    const normalized = normalizeString(item);
-    if (normalized) {
-      deduped.add(normalized);
-    }
-  }
-  return [...deduped];
-}
-
-function mergeSessionMetadata(
-  currentMetadata: Record<string, unknown>,
-  inputMetadata?: Record<string, unknown>,
-): Record<string, unknown> {
-  if (!inputMetadata) {
-    return currentMetadata;
-  }
-
-  const nextMetadata = {
-    ...currentMetadata,
-    ...structuredClone(inputMetadata),
-  };
-  const model =
-    normalizeString(inputMetadata.model) ??
-    normalizeString(inputMetadata.preferred_model) ??
-    normalizeString(inputMetadata.preferredModel);
-  if (model) {
-    nextMetadata.model = model;
-    nextMetadata.preferred_model = model;
-  }
-
-  const thinking =
-    normalizeString(inputMetadata.thinking) ??
-    normalizeString(inputMetadata.preferred_thinking) ??
-    normalizeString(inputMetadata.thinking_level) ??
-    normalizeString(inputMetadata.thinkingLevel);
-  if (thinking) {
-    nextMetadata.thinking = thinking;
-    nextMetadata.preferred_thinking = thinking;
-  }
-
-  const sessionType =
-    normalizeString(inputMetadata.session_type) ?? normalizeString(inputMetadata.sessionType);
-  if (sessionType) {
-    nextMetadata.session_type = sessionType;
-  }
-
-  const label =
-    normalizeString(inputMetadata.label) ?? normalizeString(inputMetadata.session_label);
-  if (label) {
-    nextMetadata.label = label;
-  }
-
-  const requestedSkills =
-    readStringArray(inputMetadata.requested_skills) ??
-    readStringArray(inputMetadata.requestedSkills);
-  if (requestedSkills) {
-    nextMetadata.requested_skills = requestedSkills;
-  }
-
-  return nextMetadata;
-}
-
-function extractMessageMetadata(messages: NcpMessage[]): Record<string, unknown> | undefined {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message?.role !== "user") {
-      continue;
-    }
-    const metadata = cloneMetadata(message.metadata);
-    if (metadata) {
-      return metadata;
-    }
-  }
-  return undefined;
-}
-
-function ensureIsoTimestamp(value: unknown, fallback: string): string {
-  if (typeof value !== "string") {
-    return fallback;
-  }
-  const timestamp = Date.parse(value);
-  if (!Number.isFinite(timestamp)) {
-    return fallback;
-  }
-  return new Date(timestamp).toISOString();
-}
 
 function tryParseJson(value: string): unknown {
   try {
@@ -197,12 +97,45 @@ function createMessageId(sessionId: string, index: number, role: string, timesta
   return `${sessionId}:${safeRole}:${index}:${timestamp}`;
 }
 
+function isNcpMessagePart(value: unknown): value is NcpMessagePart {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value) && typeof (value as { type?: unknown }).type === "string";
+}
+
+function readStoredNcpParts(message: SessionMessage): NcpMessagePart[] | null {
+  const rawParts = message.ncp_parts;
+  if (!Array.isArray(rawParts)) {
+    return null;
+  }
+  const parts = rawParts.filter((part): part is NcpMessagePart => isNcpMessagePart(part));
+  if (parts.length !== rawParts.length) {
+    return null;
+  }
+  return structuredClone(parts);
+}
+
 function buildAssistantMessage(params: {
   sessionId: string;
   index: number;
   message: SessionMessage;
 }): NcpMessage {
   const timestamp = ensureIsoTimestamp(params.message.timestamp, new Date().toISOString());
+  const replyTo =
+    typeof params.message.reply_to === "string" && params.message.reply_to.trim().length > 0
+      ? params.message.reply_to.trim()
+      : undefined;
+  const storedParts = readStoredNcpParts(params.message);
+  if (storedParts) {
+    return sanitizeAssistantReplyTags({
+      id: createMessageId(params.sessionId, params.index, "assistant", timestamp),
+      sessionId: params.sessionId,
+      role: "assistant",
+      status: "final",
+      timestamp,
+      parts: storedParts,
+      metadata: replyTo ? { reply_to: replyTo } : undefined,
+    });
+  }
+
   const toolCalls = parseLegacyToolCalls(params.message.tool_calls);
   const parts: NcpMessagePart[] = [...contentToParts(params.message.content)];
 
@@ -224,14 +157,15 @@ function buildAssistantMessage(params: {
     });
   }
 
-  return {
+  return sanitizeAssistantReplyTags({
     id: createMessageId(params.sessionId, params.index, "assistant", timestamp),
     sessionId: params.sessionId,
     role: "assistant",
     status: "final",
     timestamp,
-    parts
-  };
+    parts,
+    metadata: replyTo ? { reply_to: replyTo } : undefined,
+  });
 }
 
 function buildGenericMessage(params: {
@@ -319,96 +253,6 @@ function toNcpMessages(sessionId: string, messages: SessionMessage[]): NcpMessag
   });
 
   return ncpMessages;
-}
-
-function serializeToolArgs(args: unknown): string {
-  if (typeof args === "string") {
-    return args;
-  }
-  return JSON.stringify(args ?? {});
-}
-
-function serializeLegacyContent(parts: NcpMessagePart[]): unknown {
-  const text = parts
-    .filter((part): part is Extract<NcpMessagePart, { type: "text" }> => part.type === "text")
-    .map((part) => part.text)
-    .join("");
-  if (text.length > 0) {
-    return text;
-  }
-  if (parts.length === 0) {
-    return "";
-  }
-  return structuredClone(parts);
-}
-
-function toLegacyMessages(messages: NcpMessage[]): SessionMessage[] {
-  const legacyMessages: SessionMessage[] = [];
-
-  for (const message of messages) {
-    const timestamp = ensureIsoTimestamp(message.timestamp, new Date().toISOString());
-
-    if (message.role === "assistant") {
-      const textContent = message.parts
-        .filter((part): part is Extract<NcpMessagePart, { type: "text" }> => part.type === "text")
-        .map((part) => part.text)
-        .join("");
-      const reasoningContent = message.parts
-        .filter((part): part is Extract<NcpMessagePart, { type: "reasoning" }> => part.type === "reasoning")
-        .map((part) => part.text)
-        .join("");
-      const toolInvocations = message.parts.filter(
-        (part): part is NcpToolInvocationPart => part.type === "tool-invocation"
-      );
-
-      const assistantMessage: SessionMessage = {
-        role: "assistant",
-        content: textContent,
-        timestamp,
-        ncp_message_id: message.id
-      };
-      if (reasoningContent.length > 0) {
-        assistantMessage.reasoning_content = reasoningContent;
-      }
-      if (toolInvocations.length > 0) {
-        assistantMessage.tool_calls = toolInvocations.map((toolInvocation, index) => ({
-          id: toolInvocation.toolCallId ?? `${message.id}:tool:${index}`,
-          type: "function",
-          function: {
-            name: toolInvocation.toolName,
-            arguments: serializeToolArgs(toolInvocation.args)
-          }
-        }));
-      }
-      legacyMessages.push(assistantMessage);
-
-      for (const toolInvocation of toolInvocations) {
-        if (toolInvocation.state !== "result") {
-          continue;
-        }
-        legacyMessages.push({
-          role: "tool",
-          name: toolInvocation.toolName,
-          tool_call_id: toolInvocation.toolCallId,
-          content: typeof toolInvocation.result === "string"
-            ? toolInvocation.result
-            : JSON.stringify(toolInvocation.result ?? null),
-          timestamp,
-          ncp_message_id: message.id
-        });
-      }
-      continue;
-    }
-
-    legacyMessages.push({
-      role: message.role,
-      content: serializeLegacyContent(message.parts),
-      timestamp,
-      ncp_message_id: message.id
-    });
-  }
-
-  return legacyMessages;
 }
 
 function resolveLegacyEventType(message: SessionMessage): string {

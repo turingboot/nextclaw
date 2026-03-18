@@ -1091,6 +1091,9 @@ export class AgentLoop {
         onAssistantDelta(event.delta);
         continue;
       }
+      if (event.type === "reasoning_delta" || event.type === "tool_call_delta") {
+        continue;
+      }
       finalResponse = event.response;
     }
 
