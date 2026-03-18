@@ -47,6 +47,7 @@
   "dependencies": {
     "chokidar": "^3.6.0",
     "commander": "^12.1.0",
+    "yaml": "^2.8.1",
     "@nextclaw/core": "workspace:*",
     "@nextclaw/ncp": "workspace:*",
     "@nextclaw/ncp-agent-runtime": "workspace:*",

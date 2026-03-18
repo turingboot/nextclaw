@@ -963,9 +963,9 @@ export class CliRuntime {
     }
     console.log(`  Path: ${result.destinationDir}`);
   }
-
   async skillsPublish(options: {
     dir: string;
+    meta?: string;
     slug?: string;
     name?: string;
     summary?: string;
@@ -981,6 +981,7 @@ export class CliRuntime {
   }): Promise<void> {
     const result = await publishMarketplaceSkill({
       skillDir: expandHome(options.dir),
+      metaFile: options.meta ? expandHome(options.meta) : undefined,
       slug: options.slug,
       name: options.name,
       summary: options.summary,
@@ -994,13 +995,12 @@ export class CliRuntime {
       apiBaseUrl: options.apiBaseUrl,
       token: options.token
     });
-
-    console.log(result.created ? `✓ Published new skill: ${result.slug}` : `✓ Updated skill: ${result.slug}`);
-    console.log(`  Files: ${result.fileCount}`);
+    console.log(`${result.created ? `✓ Published new skill: ${result.slug}` : `✓ Updated skill: ${result.slug}`}\n  Files: ${result.fileCount}`);
   }
 
   async skillsUpdate(options: {
     dir: string;
+    meta?: string;
     slug?: string;
     name?: string;
     summary?: string;
@@ -1015,6 +1015,7 @@ export class CliRuntime {
   }): Promise<void> {
     const result = await publishMarketplaceSkill({
       skillDir: expandHome(options.dir),
+      metaFile: options.meta ? expandHome(options.meta) : undefined,
       slug: options.slug,
       name: options.name,
       summary: options.summary,
@@ -1028,7 +1029,6 @@ export class CliRuntime {
       token: options.token,
       requireExisting: true
     });
-
     console.log(`✓ Updated skill: ${result.slug}`);
     console.log(`  Files: ${result.fileCount}`);
   }

@@ -1,6 +1,12 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { SkillsLoader } from "@nextclaw/core";
+import {
+  buildLocalizedTextMap,
+  parseSkillFrontmatter,
+  readMarketplaceMetadataFile,
+  type LocalizedTextMap
+} from "./marketplace.metadata.js";
 
 const DEFAULT_MARKETPLACE_API_BASE = "https://marketplace-api.nextclaw.io";
 
@@ -30,10 +36,13 @@ export type MarketplaceSkillInstallOptions = {
 
 export type MarketplaceSkillPublishOptions = {
   skillDir: string;
+  metaFile?: string;
   slug?: string;
   name?: string;
   summary?: string;
+  summaryI18n?: LocalizedTextMap;
   description?: string;
+  descriptionI18n?: LocalizedTextMap;
   author?: string;
   tags?: string[];
   sourceRepo?: string;
@@ -208,12 +217,25 @@ export async function publishMarketplaceSkill(options: MarketplaceSkillPublishOp
   }
 
   const parsedFrontmatter = parseSkillFrontmatter(readFileSync(join(skillDir, "SKILL.md"), "utf8"));
-  const slug = validateSkillSlug(options.slug?.trim() || basename(skillDir), "slug");
-  const name = options.name?.trim() || parsedFrontmatter.name || slug;
-  const description = options.description?.trim() || parsedFrontmatter.description;
-  const summary = options.summary?.trim() || parsedFrontmatter.summary || description || `${slug} skill`;
-  const author = options.author?.trim() || parsedFrontmatter.author || "nextclaw";
-  const tags = normalizeTags(options.tags && options.tags.length > 0 ? options.tags : parsedFrontmatter.tags);
+  const metadata = readMarketplaceMetadataFile(skillDir, options.metaFile);
+  const slug = validateSkillSlug(options.slug?.trim() || metadata.slug || basename(skillDir), "slug");
+  const name = options.name?.trim() || metadata.name || parsedFrontmatter.name || slug;
+  const description = options.description?.trim()
+    || metadata.description
+    || metadata.descriptionI18n?.en
+    || parsedFrontmatter.description;
+  const summary = options.summary?.trim()
+    || metadata.summary
+    || metadata.summaryI18n?.en
+    || parsedFrontmatter.summary
+    || description
+    || `${slug} skill`;
+  const summaryI18n = buildLocalizedTextMap(summary, parsedFrontmatter.summaryI18n, metadata.summaryI18n, options.summaryI18n);
+  const descriptionI18n = description
+    ? buildLocalizedTextMap(description, parsedFrontmatter.descriptionI18n, metadata.descriptionI18n, options.descriptionI18n)
+    : undefined;
+  const author = options.author?.trim() || metadata.author || parsedFrontmatter.author || "nextclaw";
+  const tags = normalizeTags(options.tags && options.tags.length > 0 ? options.tags : (metadata.tags ?? parsedFrontmatter.tags));
 
   const apiBase = resolveMarketplaceApiBase(options.apiBaseUrl);
   const token = resolveMarketplaceAdminToken(options.token);
@@ -232,13 +254,15 @@ export async function publishMarketplaceSkill(options: MarketplaceSkillPublishOp
       slug,
       name,
       summary,
+      summaryI18n,
       description,
+      descriptionI18n,
       author,
       tags,
-      sourceRepo: options.sourceRepo?.trim() || undefined,
-      homepage: options.homepage?.trim() || undefined,
-      publishedAt: options.publishedAt?.trim() || undefined,
-      updatedAt: options.updatedAt?.trim() || undefined,
+      sourceRepo: options.sourceRepo?.trim() || metadata.sourceRepo,
+      homepage: options.homepage?.trim() || metadata.homepage,
+      publishedAt: options.publishedAt?.trim() || metadata.publishedAt,
+      updatedAt: options.updatedAt?.trim() || metadata.updatedAt,
       files
     })
   });
@@ -463,60 +487,6 @@ function normalizeTags(rawTags: string[] | undefined): string[] {
     output.push(tag);
   }
   return output.length > 0 ? output : ["skill"];
-}
-
-function parseSkillFrontmatter(raw: string): {
-  name?: string;
-  summary?: string;
-  description?: string;
-  author?: string;
-  tags?: string[];
-} {
-  const normalized = raw.replace(/\r\n/g, "\n");
-  const match = normalized.match(/^---\n([\s\S]*?)\n---/);
-  if (!match || !match[1]) {
-    return {};
-  }
-
-  const metadata = new Map<string, string>();
-  for (const line of match[1].split("\n")) {
-    const parsed = line.match(/^([A-Za-z0-9_-]+):\s*(.+)$/);
-    if (!parsed) {
-      continue;
-    }
-    const key = parsed[1]?.trim().toLowerCase();
-    const value = parsed[2]?.trim();
-    if (!key || !value) {
-      continue;
-    }
-    metadata.set(key, trimYamlString(value));
-  }
-
-  const rawTags = metadata.get("tags");
-  let tags: string[] | undefined;
-  if (rawTags) {
-    if (rawTags.startsWith("[") && rawTags.endsWith("]")) {
-      tags = rawTags
-        .slice(1, -1)
-        .split(",")
-        .map((entry) => trimYamlString(entry))
-        .filter(Boolean);
-    } else {
-      tags = rawTags.split(",").map((entry) => entry.trim()).filter(Boolean);
-    }
-  }
-
-  return {
-    name: metadata.get("name"),
-    summary: metadata.get("summary"),
-    description: metadata.get("description"),
-    author: metadata.get("author"),
-    tags
-  };
-}
-
-function trimYamlString(raw: string): string {
-  return raw.replace(/^['"]/, "").replace(/['"]$/, "").trim();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

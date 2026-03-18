@@ -1,0 +1,21 @@
+{
+  "slug": "humanizer",
+  "name": "Humanizer",
+  "summary": "Remove AI writing patterns from text and make the result sound more natural.",
+  "summaryI18n": {
+    "en": "Remove AI writing patterns from text and make the result sound more natural.",
+    "zh": "去除文本中的 AI 写作痕迹，让文本表达更自然。"
+  },
+  "description": "Use this skill when editing or reviewing text to reduce obvious AI writing patterns while preserving the original meaning and tone.",
+  "descriptionI18n": {
+    "en": "Use this skill when editing or reviewing text to reduce obvious AI writing patterns while preserving the original meaning and tone.",
+    "zh": "在编辑或审阅文本时使用此技能，减少明显的 AI 写作痕迹，同时保留原意和语气。"
+  },
+  "author": "NextClaw",
+  "tags": [
+    "skill",
+    "writing",
+    "editing",
+    "humanizer"
+  ]
+}

@@ -107,6 +107,7 @@ const withRepeatableTag = (value: string, previous: string[] = []) => [...previo
 skills
   .command("publish <dir>")
   .description("Upload or create a skill in marketplace")
+  .option("--meta <path>", "Marketplace metadata file (default: <dir>/marketplace.json)")
   .option("--slug <slug>", "Skill slug (default: directory name)")
   .option("--name <name>", "Skill display name")
   .option("--summary <summary>", "Skill summary")
@@ -124,6 +125,7 @@ skills
 skills
   .command("update <dir>")
   .description("Update an existing skill in marketplace")
+  .option("--meta <path>", "Marketplace metadata file (default: <dir>/marketplace.json)")
   .option("--slug <slug>", "Skill slug (default: directory name)")
   .option("--name <name>", "Skill display name")
   .option("--summary <summary>", "Skill summary")
