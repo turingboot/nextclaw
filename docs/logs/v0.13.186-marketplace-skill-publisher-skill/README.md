@@ -14,11 +14,14 @@
 
 ## 测试/验证/验收方式
 
-- 通过：`python3 .codex/skills/marketplace-skill-publisher/scripts/validate_marketplace_skill.py --skill-dir skills/humanizer`
+- 通过：在 `/tmp` 下构造最小 `demo-skill` 样例目录（含 `SKILL.md` + `marketplace.json`），执行
+  - `python3 .codex/skills/marketplace-skill-publisher/scripts/validate_marketplace_skill.py --skill-dir <tmp-demo-skill-dir>`
+  - 结果：`Errors: 0`、`Warnings: 0`、`Result: OK`
 - 通过：`python3 .codex/skills/post-edit-maintainability-guard/scripts/check_maintainability.py --paths .codex/skills/marketplace-skill-publisher/SKILL.md .codex/skills/marketplace-skill-publisher/agents/openai.yaml .codex/skills/marketplace-skill-publisher/scripts/validate_marketplace_skill.py`
 - 说明：
   - `build/lint/tsc` 不适用，本次未触达项目构建、类型或运行主链路代码
   - 验收重点为 skill 文档可执行性与校验脚本的真实输出
+  - 当前仓库内的 `skills/humanizer` 只保留了 `marketplace.json`，缺少 `SKILL.md`；校验脚本对此会正确报错，这符合预期
 
 ## 发布/部署方式
 
