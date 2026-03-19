@@ -19,6 +19,9 @@
       "index.js"
     ]
   },
+  "scripts": {
+    "lint": "eslint index.js"
+  },
   "dependencies": {
     "@nextclaw/channel-runtime": "workspace:*"
   }

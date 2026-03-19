@@ -16,12 +16,15 @@ const trackedRuleIds = new Set([
 const args = process.argv.slice(2).filter((arg) => arg !== "--");
 const options = {
   json: args.includes("--json"),
-  failOnViolations: args.includes("--fail-on-violations")
+  failOnViolations: args.includes("--fail-on-violations"),
+  failOnCoverageGaps: args.includes("--fail-on-coverage-gaps")
 };
 
 const toPosixPath = (input) => input.split(sep).join("/");
 
 const readJsonFile = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
+const codeFileExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"]);
+const ignoredCoverageDirs = new Set(["node_modules", "dist", "build", ".next", ".vite", ".vitepress", ".wrangler", ".git", "coverage", "public"]);
 
 const listWorkspacePackageDirs = () => {
   const rootPackage = readJsonFile(resolve(rootDir, "package.json"));
@@ -64,6 +67,29 @@ const hasEslintLintScript = (packageDir) => {
   return typeof lintScript === "string" && lintScript.includes("eslint");
 };
 
+const hasCodeFiles = (packageDir) => {
+  const pendingDirs = [packageDir];
+
+  while (pendingDirs.length > 0) {
+    const currentDir = pendingDirs.pop();
+    for (const entry of readdirSync(currentDir, { withFileTypes: true })) {
+      if (ignoredCoverageDirs.has(entry.name)) {
+        continue;
+      }
+      const fullPath = resolve(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        pendingDirs.push(fullPath);
+        continue;
+      }
+      if (codeFileExtensions.has(entry.name.slice(entry.name.lastIndexOf(".")))) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
 const collapseNestedTargets = (packageDirs) => {
   const sortedDirs = [...packageDirs].sort((left, right) => left.length - right.length || left.localeCompare(right));
   const collapsed = [];
@@ -78,7 +104,23 @@ const collapseNestedTargets = (packageDirs) => {
   return collapsed;
 };
 
-const detectedPackageDirs = listWorkspacePackageDirs().filter(hasEslintLintScript);
+const workspacePackages = listWorkspacePackageDirs().map((packageDir) => ({
+  packageDir,
+  workspace: toPosixPath(relative(rootDir, packageDir)),
+  hasCodeFiles: hasCodeFiles(packageDir),
+  hasEslintLintScript: hasEslintLintScript(packageDir)
+}));
+
+const nonCodeWorkspaces = workspacePackages
+  .filter((entry) => !entry.hasCodeFiles)
+  .map((entry) => entry.workspace);
+const uncoveredCodeWorkspaces = workspacePackages
+  .filter((entry) => entry.hasCodeFiles && !entry.hasEslintLintScript)
+  .map((entry) => entry.workspace);
+
+const detectedPackageDirs = workspacePackages
+  .filter((entry) => entry.hasCodeFiles && entry.hasEslintLintScript)
+  .map((entry) => entry.packageDir);
 const targetPackageDirs = collapseNestedTargets(detectedPackageDirs);
 
 const detectWorkspace = (absoluteFilePath) => {
@@ -199,6 +241,12 @@ const violationsByWorkspace = Array.from(
 
 const report = {
   scannedWorkspaces: targetPackageDirs.map((packageDir) => toPosixPath(relative(rootDir, packageDir))),
+  coverage: {
+    totalWorkspaces: workspacePackages.length,
+    codeWorkspaces: workspacePackages.filter((entry) => entry.hasCodeFiles).map((entry) => entry.workspace),
+    nonCodeWorkspaces,
+    uncoveredCodeWorkspaces
+  },
   totalViolations: violations.length,
   affectedFiles: new Set(violations.map((violation) => violation.filePath)).size,
   violationsByRule,
@@ -211,10 +259,21 @@ if (options.json) {
 } else {
   console.log("Workspace maintainability report");
   console.log(`Scanned workspaces: ${report.scannedWorkspaces.length}`);
+  console.log(`Code workspaces: ${report.coverage.codeWorkspaces.length}`);
+  console.log(`Non-code workspaces: ${report.coverage.nonCodeWorkspaces.length}`);
+  console.log(`Coverage gaps: ${report.coverage.uncoveredCodeWorkspaces.length}`);
   console.log(`Affected files: ${report.affectedFiles}`);
   console.log(`Total violations: ${report.totalViolations}`);
   for (const [ruleId, count] of Object.entries(report.violationsByRule)) {
     console.log(`- ${ruleId}: ${count}`);
+  }
+
+  if (report.coverage.uncoveredCodeWorkspaces.length > 0) {
+    console.log("");
+    console.log("Uncovered code workspaces:");
+    for (const workspace of report.coverage.uncoveredCodeWorkspaces) {
+      console.log(`- ${workspace}`);
+    }
   }
 
   if (report.totalViolations === 0) {
@@ -248,5 +307,8 @@ if (options.json) {
 }
 
 if (options.failOnViolations && report.totalViolations > 0) {
+  process.exit(1);
+}
+if (options.failOnCoverageGaps && report.coverage.uncoveredCodeWorkspaces.length > 0) {
   process.exit(1);
 }
