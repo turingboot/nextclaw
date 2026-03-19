@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { spawn } from "node:child_process";
-import { dirname, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer as createNetServer, Socket } from "node:net";
+import { homedir } from "node:os";
 
 const command = process.argv[2] ?? "start";
 
@@ -15,6 +16,39 @@ if (command !== "start") {
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const backendDir = resolve(rootDir, "packages/nextclaw");
 const frontendDir = resolve(rootDir, "packages/nextclaw-ui");
+const nextclawHome = resolve(process.env.NEXTCLAW_HOME ?? join(homedir(), ".nextclaw"));
+const normalizeWatchPath = (filePath) => filePath.replaceAll("\\", "/");
+const toRelativeWatchPath = (baseDir, targetPath) => {
+  const normalizedRelative = normalizeWatchPath(relative(baseDir, targetPath));
+  if (!normalizedRelative || normalizedRelative === ".") {
+    return null;
+  }
+  if (normalizedRelative.startsWith("./")) {
+    return normalizedRelative;
+  }
+  return `./${normalizedRelative}`;
+};
+const buildTsxWatchExcludeGlobs = (homePath, baseDir) => {
+  const candidates = new Set([normalizeWatchPath(homePath)]);
+  try {
+    candidates.add(normalizeWatchPath(realpathSync(homePath)));
+  } catch {
+    // Ignore realpath failures for non-existent or inaccessible home paths.
+  }
+  const allPatterns = new Set();
+  for (const candidate of candidates) {
+    allPatterns.add(candidate);
+    allPatterns.add(`${candidate}/**`);
+    const relativeCandidate = toRelativeWatchPath(baseDir, candidate);
+    if (relativeCandidate) {
+      allPatterns.add(relativeCandidate);
+      allPatterns.add(`${relativeCandidate}/**`);
+    }
+  }
+  return [...allPatterns];
+};
+const tsxWatchExcludeGlobs = buildTsxWatchExcludeGlobs(nextclawHome, backendDir);
+const firstPartyPluginDir = resolve(rootDir, "packages/extensions");
 
 const DEFAULT_BACKEND_PORT = 18792;
 const DEFAULT_FRONTEND_PORT = 5174;
@@ -150,6 +184,7 @@ spawnProcess(
   backendBin,
   [
     "watch",
+    ...tsxWatchExcludeGlobs.flatMap((glob) => ["--exclude", glob]),
     "--tsconfig",
     "tsconfig.json",
     "src/cli/index.ts",
@@ -158,7 +193,10 @@ spawnProcess(
     String(backendPort)
   ],
   backendDir,
-  { NODE_OPTIONS: developmentNodeOptions }
+  {
+    NODE_OPTIONS: developmentNodeOptions,
+    NEXTCLAW_DEV_FIRST_PARTY_PLUGIN_DIR: firstPartyPluginDir
+  }
 );
 
 spawnProcess(

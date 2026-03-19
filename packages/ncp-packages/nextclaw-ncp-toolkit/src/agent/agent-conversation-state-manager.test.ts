@@ -283,6 +283,85 @@ describe("DefaultNcpAgentConversationStateManager reasoning boundaries", () => {
       { type: "reasoning", text: "second thinking" },
     ]);
   });
+
+  it("preserves tool-first streaming parts when text later arrives with the real assistant message id", () => {
+    const manager = new DefaultNcpAgentConversationStateManager();
+
+    manager.dispatch({
+      type: NcpEventType.MessageToolCallStart,
+      payload: {
+        sessionId: "session-1",
+        toolCallId: "tool-9",
+        toolName: "command_execution",
+      },
+    });
+    manager.dispatch({
+      type: NcpEventType.MessageToolCallArgs,
+      payload: {
+        sessionId: "session-1",
+        toolCallId: "tool-9",
+        args: "{\"command\":\"pwd\"}",
+      },
+    });
+    manager.dispatch({
+      type: NcpEventType.MessageToolCallResult,
+      payload: {
+        sessionId: "session-1",
+        toolCallId: "tool-9",
+        content: {
+          status: "completed",
+        },
+      },
+    });
+    manager.dispatch({
+      type: NcpEventType.MessageTextStart,
+      payload: {
+        sessionId: "session-1",
+        messageId: "assistant-9",
+      },
+    });
+    manager.dispatch({
+      type: NcpEventType.MessageTextDelta,
+      payload: {
+        sessionId: "session-1",
+        messageId: "assistant-9",
+        delta: "done",
+      },
+    });
+    manager.dispatch({
+      type: NcpEventType.RunFinished,
+      payload: {
+        sessionId: "session-1",
+        messageId: "assistant-9",
+      },
+    });
+
+    const snapshot = manager.getSnapshot();
+    expect(snapshot.streamingMessage).toBeNull();
+    expect(snapshot.messages.at(-1)).toEqual({
+      id: "assistant-9",
+      sessionId: "session-1",
+      role: "assistant",
+      status: "final",
+      timestamp: expect.any(String),
+      parts: [
+        {
+          type: "tool-invocation",
+          toolCallId: "tool-9",
+          toolName: "command_execution",
+          state: "result",
+          args: "{\"command\":\"pwd\"}",
+          result: {
+            status: "completed",
+          },
+        },
+        {
+          type: "text",
+          text: "done",
+        },
+      ],
+    });
+  });
 });
 
 describe("DefaultNcpAgentConversationStateManager error and notify", () => {

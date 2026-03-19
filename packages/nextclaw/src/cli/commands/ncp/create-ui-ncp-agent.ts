@@ -1,10 +1,11 @@
-import type {
-  Config,
-  CronService,
-  GatewayController,
-  MessageBus,
-  ProviderManager,
-  SessionManager,
+import {
+  type Config,
+  type CronService,
+  DisposableStore,
+  type GatewayController,
+  type MessageBus,
+  type ProviderManager,
+  type SessionManager,
 } from "@nextclaw/core";
 import { DefaultNcpAgentRuntime } from "@nextclaw/ncp-agent-runtime";
 import {
@@ -21,6 +22,10 @@ import { NextclawAgentSessionStore } from "./nextclaw-agent-session-store.js";
 import { NextclawNcpToolRegistry } from "./nextclaw-ncp-tool-registry.js";
 import { ProviderManagerNcpLLMApi } from "./provider-manager-ncp-llm-api.js";
 import { UiNcpRuntimeRegistry } from "./ui-ncp-runtime-registry.js";
+
+export type UiNcpAgentHandle = UiNcpAgent & {
+  applyExtensionRegistry?: (extensionRegistry?: NextclawExtensionRegistry) => void;
+};
 
 type MessageToolHintsResolver = (params: {
   sessionKey: string;
@@ -50,6 +55,18 @@ function resolveNativeReasoningNormalizationMode(params: {
   );
 }
 
+function buildPluginRuntimeSnapshotKey(extensionRegistry?: NextclawExtensionRegistry): string {
+  const registrations = extensionRegistry?.ncpAgentRuntimes ?? [];
+  return registrations
+    .map((registration) => [
+      registration.pluginId,
+      registration.kind,
+      registration.label,
+      registration.source,
+    ].join(":"))
+    .join("|");
+}
+
 export async function createUiNcpAgent(params: {
   bus: MessageBus;
   providerManager: ProviderManager;
@@ -59,67 +76,99 @@ export async function createUiNcpAgent(params: {
   getConfig: () => Config;
   getExtensionRegistry?: () => NextclawExtensionRegistry | undefined;
   resolveMessageToolHints?: MessageToolHintsResolver;
-}): Promise<UiNcpAgent> {
+}): Promise<UiNcpAgentHandle> {
   const sessionStore = new NextclawAgentSessionStore(params.sessionManager);
-  const buildRuntimeRegistry = (): UiNcpRuntimeRegistry => {
-    const runtimeRegistry = new UiNcpRuntimeRegistry();
-    runtimeRegistry.register({
-      kind: "native",
-      label: "Native",
-      createRuntime: ({ stateManager, sessionMetadata, setSessionMetadata }) => {
-        const reasoningNormalizationMode = resolveNativeReasoningNormalizationMode({
-          config: params.getConfig(),
-          sessionMetadata,
-        });
-        if (
-          reasoningNormalizationMode !== "off" &&
-          readAssistantReasoningNormalizationModeFromMetadata(sessionMetadata) !== reasoningNormalizationMode
-        ) {
-          setSessionMetadata(
-            writeAssistantReasoningNormalizationModeToMetadata(
-              sessionMetadata,
-              reasoningNormalizationMode,
-            ),
-          );
-        }
+  const runtimeRegistry = new UiNcpRuntimeRegistry();
+  runtimeRegistry.register({
+    kind: "native",
+    label: "Native",
+    createRuntime: ({ stateManager, sessionMetadata, setSessionMetadata }) => {
+      const reasoningNormalizationMode = resolveNativeReasoningNormalizationMode({
+        config: params.getConfig(),
+        sessionMetadata,
+      });
+      if (
+        reasoningNormalizationMode !== "off" &&
+        readAssistantReasoningNormalizationModeFromMetadata(sessionMetadata) !== reasoningNormalizationMode
+      ) {
+        setSessionMetadata(
+          writeAssistantReasoningNormalizationModeToMetadata(
+            sessionMetadata,
+            reasoningNormalizationMode,
+          ),
+        );
+      }
 
-        const toolRegistry = new NextclawNcpToolRegistry({
-          bus: params.bus,
-          providerManager: params.providerManager,
+      const toolRegistry = new NextclawNcpToolRegistry({
+        bus: params.bus,
+        providerManager: params.providerManager,
+        sessionManager: params.sessionManager,
+        cronService: params.cronService,
+        gatewayController: params.gatewayController,
+        getConfig: params.getConfig,
+        getExtensionRegistry: params.getExtensionRegistry,
+      });
+      return new DefaultNcpAgentRuntime({
+        contextBuilder: new NextclawNcpContextBuilder({
           sessionManager: params.sessionManager,
-          cronService: params.cronService,
-          gatewayController: params.gatewayController,
-          getConfig: params.getConfig,
-          getExtensionRegistry: params.getExtensionRegistry,
-        });
-        return new DefaultNcpAgentRuntime({
-          contextBuilder: new NextclawNcpContextBuilder({
-            sessionManager: params.sessionManager,
-            toolRegistry,
-            getConfig: params.getConfig,
-            resolveMessageToolHints: params.resolveMessageToolHints,
-          }),
-          llmApi: new ProviderManagerNcpLLMApi(params.providerManager),
           toolRegistry,
-          stateManager,
-          reasoningNormalizationMode,
-        });
-      },
-    });
-    for (const registration of params.getExtensionRegistry?.()?.ncpAgentRuntimes ?? []) {
-      runtimeRegistry.register({
+          getConfig: params.getConfig,
+          resolveMessageToolHints: params.resolveMessageToolHints,
+        }),
+        llmApi: new ProviderManagerNcpLLMApi(params.providerManager),
+        toolRegistry,
+        stateManager,
+        reasoningNormalizationMode,
+      });
+    },
+  });
+
+  const pluginRuntimeScopes = new Map<string, DisposableStore>();
+  let pluginRuntimeSnapshotKey = "";
+  let activeExtensionRegistry: NextclawExtensionRegistry | undefined;
+  const syncPluginRuntimeRegistrations = (extensionRegistry?: NextclawExtensionRegistry): void => {
+    const nextSnapshotKey = buildPluginRuntimeSnapshotKey(extensionRegistry);
+    if (nextSnapshotKey === pluginRuntimeSnapshotKey) {
+      return;
+    }
+
+    pluginRuntimeSnapshotKey = nextSnapshotKey;
+    for (const scope of pluginRuntimeScopes.values()) {
+      scope.dispose();
+    }
+    pluginRuntimeScopes.clear();
+
+    for (const registration of extensionRegistry?.ncpAgentRuntimes ?? []) {
+      const pluginId = registration.pluginId.trim() || registration.kind;
+      let scope = pluginRuntimeScopes.get(pluginId);
+      if (!scope) {
+        scope = new DisposableStore();
+        pluginRuntimeScopes.set(pluginId, scope);
+      }
+      scope.add(runtimeRegistry.register({
         kind: registration.kind,
         label: registration.label,
         createRuntime: registration.createRuntime,
-      });
+      }));
     }
-    return runtimeRegistry;
   };
+
+  const resolveActiveExtensionRegistry = (): NextclawExtensionRegistry | undefined =>
+    activeExtensionRegistry ?? params.getExtensionRegistry?.();
+
+  const refreshPluginRuntimeRegistrations = (): void => {
+    syncPluginRuntimeRegistrations(resolveActiveExtensionRegistry());
+  };
+
+  refreshPluginRuntimeRegistrations();
 
   const backend = new DefaultNcpAgentBackend({
     endpointId: "nextclaw-ui-agent",
     sessionStore,
-    createRuntime: (runtimeParams) => buildRuntimeRegistry().createRuntime(runtimeParams),
+    createRuntime: (runtimeParams) => {
+      refreshPluginRuntimeRegistrations();
+      return runtimeRegistry.createRuntime(runtimeParams);
+    },
   });
 
   await backend.start();
@@ -129,6 +178,13 @@ export async function createUiNcpAgent(params: {
     agentClientEndpoint: createAgentClientFromServer(backend),
     streamProvider: backend,
     sessionApi: backend,
-    listSessionTypes: () => buildRuntimeRegistry().listSessionTypes(),
+    listSessionTypes: () => {
+      refreshPluginRuntimeRegistrations();
+      return runtimeRegistry.listSessionTypes();
+    },
+    applyExtensionRegistry: (extensionRegistry) => {
+      activeExtensionRegistry = extensionRegistry;
+      syncPluginRuntimeRegistrations(extensionRegistry);
+    },
   };
 }

@@ -3,26 +3,21 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import createJitiImport from "jiti";
-import type { Config } from "@nextclaw/core";
-import { getWorkspacePathFromConfig } from "@nextclaw/core";
+import { getWorkspacePathFromConfig, type Config } from "@nextclaw/core";
+import { filterPluginCandidatesByExcludedRoots } from "./candidate-filter.js";
 import { normalizePluginsConfig, resolveEnableState } from "./config-state.js";
 import { discoverOpenClawPlugins } from "./discovery.js";
 import { loadPluginManifestRegistry } from "./manifest-registry.js";
 import { createPluginRecord, validatePluginConfig } from "./plugin-loader-utils.js";
 import { createPluginRegisterRuntime, registerPluginWithApi, type PluginRegisterRuntime } from "./registry.js";
-import type {
-  OpenClawPluginDefinition,
-  OpenClawPluginModule,
-  PluginLogger,
-  PluginRecord,
-  PluginRegistry
-} from "./types.js";
+import type { OpenClawPluginDefinition, OpenClawPluginModule, PluginLogger, PluginRecord, PluginRegistry } from "./types.js";
 
 export type PluginLoadOptions = {
   config: Config;
   workspaceDir?: string;
   logger?: PluginLogger;
   mode?: "full" | "validate";
+  excludeRoots?: string[];
   reservedToolNames?: string[];
   reservedChannelIds?: string[];
   reservedProviderIds?: string[];
@@ -350,10 +345,11 @@ export function loadOpenClawPlugins(options: PluginLoadOptions): PluginRegistry 
     workspaceDir,
     extraPaths: normalized.loadPaths
   });
+  const filteredCandidates = filterPluginCandidatesByExcludedRoots(discovery.candidates, options.excludeRoots ?? []);
   const manifestRegistry = loadPluginManifestRegistry({
     config: options.config,
     workspaceDir,
-    candidates: discovery.candidates,
+    candidates: filteredCandidates,
     diagnostics: discovery.diagnostics
   });
 
@@ -364,7 +360,7 @@ export function loadOpenClawPlugins(options: PluginLoadOptions): PluginRegistry 
     registry.plugins.map((entry) => [entry.id, entry.origin])
   );
 
-  for (const candidate of discovery.candidates) {
+  for (const candidate of filteredCandidates) {
     const manifest = manifestByRoot.get(candidate.rootDir);
     if (!manifest) {
       continue;

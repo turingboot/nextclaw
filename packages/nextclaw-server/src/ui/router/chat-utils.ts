@@ -17,16 +17,12 @@ function resolveSessionTypeLabel(sessionType: string): string {
   if (sessionType === "native") {
     return "Native";
   }
-  if (sessionType === "codex") {
-    return "Codex";
-  }
-  if (sessionType === "codex-sdk") {
-    return "Codex";
-  }
-  if (sessionType === "claude-agent-sdk") {
-    return "Claude Code";
-  }
-  return sessionType;
+  return sessionType
+    .trim()
+    .split(/[-_]+/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ") || sessionType;
 }
 
 export async function buildChatSessionTypesView(chatRuntime?: UiChatRuntime): Promise<ChatSessionTypesView> {

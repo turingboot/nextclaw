@@ -1,7 +1,6 @@
 import type { CronService, ThinkingLevel } from "@nextclaw/core";
 import type { NcpAgentClientEndpoint, NcpMessage, NcpSessionApi, NcpSessionSummary } from "@nextclaw/ncp";
 import type { NcpHttpAgentStreamProvider } from "@nextclaw/ncp-http-agent-server";
-
 export type ApiError = {
   code: string;
   message: string;
@@ -248,6 +247,7 @@ export type SessionHistoryView = {
 export type SessionPatchUpdate = {
   label?: string | null;
   preferredModel?: string | null;
+  preferredThinking?: ThinkingLevel | null;
   sessionType?: string | null;
   clearHistory?: boolean;
 };

@@ -61,11 +61,9 @@ export function useInstallMarketplaceItem() {
     mutationFn: (request: MarketplaceInstallRequest) => installMarketplaceItem(request),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['marketplace-installed', result.type] });
-      queryClient.refetchQueries({ queryKey: ['marketplace-installed', result.type], type: 'active' });
-      queryClient.refetchQueries({ queryKey: ['marketplace-items'], type: 'active' });
+      queryClient.invalidateQueries({ queryKey: ['marketplace-items'] });
       if (result.type === 'plugin') {
         queryClient.invalidateQueries({ queryKey: ['ncp-session-types'] });
-        queryClient.refetchQueries({ queryKey: ['ncp-session-types'], type: 'active' });
       }
       const fallback = result.type === 'plugin'
         ? t('marketplaceInstallSuccessPlugin')
@@ -86,11 +84,8 @@ export function useManageMarketplaceItem() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['marketplace-installed', result.type] });
       queryClient.invalidateQueries({ queryKey: ['marketplace-items'] });
-      queryClient.refetchQueries({ queryKey: ['marketplace-installed', result.type], type: 'active' });
-      queryClient.refetchQueries({ queryKey: ['marketplace-items'], type: 'active' });
       if (result.type === 'plugin') {
         queryClient.invalidateQueries({ queryKey: ['ncp-session-types'] });
-        queryClient.refetchQueries({ queryKey: ['ncp-session-types'], type: 'active' });
       }
       const fallback = result.action === 'enable'
         ? t('marketplaceEnableSuccess')

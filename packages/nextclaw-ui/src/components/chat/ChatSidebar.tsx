@@ -66,6 +66,25 @@ function sessionTitle(session: SessionEntryView): string {
   return chunks[chunks.length - 1] || session.key;
 }
 
+function resolveSessionTypeLabel(
+  sessionType: string,
+  options: Array<{ value: string; label: string }>
+): string | null {
+  const normalized = sessionType.trim().toLowerCase();
+  if (!normalized || normalized === 'native') {
+    return null;
+  }
+  const matchedOption = options.find((option) => option.value.trim().toLowerCase() === normalized);
+  if (matchedOption?.label.trim()) {
+    return matchedOption.label.trim();
+  }
+  return normalized
+    .split(/[-_]+/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 const navItems = [
   { target: '/cron', label: () => t('chatSidebarScheduledTasks'), icon: AlarmClock },
   { target: '/skills', label: () => t('chatSidebarSkills'), icon: BrainCircuit },
@@ -224,6 +243,7 @@ export function ChatSidebar() {
                   {group.sessions.map((session) => {
                     const active = listSnapshot.selectedSessionKey === session.key;
                     const runStatus = runSnapshot.sessionRunStatusByKey.get(session.key);
+                    const sessionTypeLabel = resolveSessionTypeLabel(session.sessionType, inputSnapshot.sessionTypeOptions);
                     return (
                       <button
                         key={session.key}
@@ -236,7 +256,21 @@ export function ChatSidebar() {
                         )}
                       >
                         <div className="grid grid-cols-[minmax(0,1fr)_0.875rem] items-center gap-1.5">
-                          <span className="truncate font-medium">{sessionTitle(session)}</span>
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className="truncate font-medium">{sessionTitle(session)}</span>
+                            {sessionTypeLabel ? (
+                              <span
+                                className={cn(
+                                  'shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none',
+                                  active
+                                    ? 'border-gray-300 bg-white/80 text-gray-700'
+                                    : 'border-gray-200 bg-gray-100 text-gray-500'
+                                )}
+                              >
+                                {sessionTypeLabel}
+                              </span>
+                            ) : null}
+                          </span>
                           <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
                             {runStatus ? <SessionRunBadge status={runStatus} /> : null}
                           </span>

@@ -116,7 +116,6 @@ export function buildReloadPlan(changedPaths: string[]): ReloadPlan {
     }
     if (rule.kind === "reload-plugins") {
       plan.reloadPlugins = true;
-      plan.restartChannels = true;
       continue;
     }
     if (rule.kind === "restart-required") {

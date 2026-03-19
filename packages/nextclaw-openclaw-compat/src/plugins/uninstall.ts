@@ -1,7 +1,9 @@
 import fs from "node:fs/promises";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
-import type { Config } from "@nextclaw/core";
+import { getWorkspacePathFromConfig, type Config } from "@nextclaw/core";
 import { resolvePluginInstallDir } from "./install.js";
+import { loadPluginManifest } from "./manifest.js";
 
 export type UninstallActions = {
   entry: boolean;
@@ -32,6 +34,16 @@ export type UninstallPluginResult =
       warnings: string[];
     }
   | { ok: false; error: string };
+
+function pushUniquePath(targets: string[], candidate: string | null | undefined): void {
+  if (!candidate) {
+    return;
+  }
+  const resolved = path.resolve(candidate);
+  if (!targets.includes(resolved)) {
+    targets.push(resolved);
+  }
+}
 
 export function resolveUninstallDirectoryTarget(params: {
   pluginId: string;
@@ -64,6 +76,36 @@ export function resolveUninstallDirectoryTarget(params: {
   }
 
   return defaultPath;
+}
+
+export function resolveUninstallDirectoryTargets(params: {
+  config: Config;
+  pluginId: string;
+  hasInstall: boolean;
+  installRecord?: PluginInstallRecord;
+  extensionsDir?: string;
+}): string[] {
+  if (!params.hasInstall || isLinkedPathInstall(params.installRecord)) {
+    return [];
+  }
+
+  const targets: string[] = [];
+  pushUniquePath(
+    targets,
+    resolveUninstallDirectoryTarget({
+      pluginId: params.pluginId,
+      hasInstall: params.hasInstall,
+      installRecord: params.installRecord,
+      extensionsDir: params.extensionsDir
+    })
+  );
+
+  pushUniquePath(targets, params.installRecord?.installPath);
+
+  const workspaceDir = getWorkspacePathFromConfig(params.config);
+  pushUniquePath(targets, path.join(workspaceDir, ".nextclaw", "extensions", params.pluginId));
+
+  return targets;
 }
 
 export function removePluginFromConfig(
@@ -106,14 +148,15 @@ export function removePluginFromConfig(
   }
 
   let load = pluginsConfig.load;
-  if (installRecord?.source === "path" && installRecord.sourcePath) {
-    const sourcePath = installRecord.sourcePath;
-    const loadPaths = load?.paths;
-    if (Array.isArray(loadPaths) && loadPaths.includes(sourcePath)) {
-      const nextLoadPaths = loadPaths.filter((entry) => entry !== sourcePath);
-      load = nextLoadPaths.length > 0 ? { ...load, paths: nextLoadPaths } : undefined;
-      actions.loadPath = true;
-    }
+  const configuredLoadPaths = Array.isArray(load?.paths) ? load.paths : [];
+  const nextLoadPaths = configuredLoadPaths.filter((entry) => !matchesPluginLoadPath(entry, pluginId));
+  if (nextLoadPaths.length !== configuredLoadPaths.length) {
+    load = nextLoadPaths.length > 0 ? { ...load, paths: nextLoadPaths } : undefined;
+    actions.loadPath = true;
+  } else if (installRecord?.source === "path" && installRecord.sourcePath && configuredLoadPaths.includes(installRecord.sourcePath)) {
+    const filteredLoadPaths = configuredLoadPaths.filter((entry) => entry !== installRecord.sourcePath);
+    load = filteredLoadPaths.length > 0 ? { ...load, paths: filteredLoadPaths } : undefined;
+    actions.loadPath = true;
   }
 
   const nextPlugins: Config["plugins"] = {
@@ -153,6 +196,32 @@ export function removePluginFromConfig(
   };
 }
 
+function matchesPluginLoadPath(rawPath: string, pluginId: string): boolean {
+  const normalizedPath = rawPath.trim();
+  if (!normalizedPath) {
+    return false;
+  }
+
+  const resolvedPath = path.resolve(normalizedPath);
+  if (!existsSync(resolvedPath)) {
+    return false;
+  }
+
+  const candidateRoot = (() => {
+    try {
+      return statSync(resolvedPath).isDirectory() ? resolvedPath : path.dirname(resolvedPath);
+    } catch {
+      return null;
+    }
+  })();
+  if (!candidateRoot) {
+    return false;
+  }
+
+  const manifest = loadPluginManifest(candidateRoot);
+  return manifest.ok && manifest.manifest.id === pluginId;
+}
+
 export async function uninstallPlugin(params: {
   config: Config;
   pluginId: string;
@@ -179,26 +248,26 @@ export async function uninstallPlugin(params: {
   };
   const warnings: string[] = [];
 
-  const deleteTarget =
+  const deleteTargets =
     deleteFiles && !isLinked
-      ? resolveUninstallDirectoryTarget({
+      ? resolveUninstallDirectoryTargets({
+          config,
           pluginId,
           hasInstall,
           installRecord,
           extensionsDir
         })
-      : null;
+      : [];
 
-  if (deleteTarget) {
-    const existed =
-      (await fs
-        .access(deleteTarget)
-        .then(() => true)
-        .catch(() => false)) ?? false;
+  for (const deleteTarget of deleteTargets) {
+    const existed = await fs
+      .access(deleteTarget)
+      .then(() => true)
+      .catch(() => false);
 
     try {
       await fs.rm(deleteTarget, { recursive: true, force: true });
-      actions.directory = existed;
+      actions.directory = actions.directory || existed;
     } catch (error) {
       warnings.push(
         `Failed to remove plugin directory ${deleteTarget}: ${error instanceof Error ? error.message : String(error)}`

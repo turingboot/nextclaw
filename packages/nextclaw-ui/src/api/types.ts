@@ -283,6 +283,7 @@ export type NcpSessionStatusView = NcpSessionStatus;
 export type SessionPatchUpdate = {
   label?: string | null;
   preferredModel?: string | null;
+  preferredThinking?: ThinkingLevel | null;
   sessionType?: string | null;
   clearHistory?: boolean;
 };

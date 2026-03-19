@@ -1,3 +1,4 @@
+import { toDisposable, type Disposable } from "@nextclaw/core";
 import type { NcpAgentRuntime } from "@nextclaw/ncp";
 import type { RuntimeFactoryParams } from "@nextclaw/ncp-toolkit";
 
@@ -12,6 +13,10 @@ export type UiNcpRuntimeRegistration = {
   kind: string;
   label: string;
   createRuntime: (params: RuntimeFactoryParams) => NcpAgentRuntime;
+};
+
+type RuntimeRegistrationEntry = UiNcpRuntimeRegistration & {
+  token: symbol;
 };
 
 function normalizeRuntimeKind(value: unknown): string | null {
@@ -31,19 +36,29 @@ function readRequestedRuntimeKind(sessionMetadata: Record<string, unknown>): str
 }
 
 export class UiNcpRuntimeRegistry {
-  private readonly registrations = new Map<string, UiNcpRuntimeRegistration>();
+  private readonly registrations = new Map<string, RuntimeRegistrationEntry>();
 
   constructor(private readonly defaultKind = DEFAULT_UI_NCP_RUNTIME_KIND) {}
 
-  register(registration: UiNcpRuntimeRegistration): void {
+  register(registration: UiNcpRuntimeRegistration): Disposable {
     const normalizedKind = normalizeRuntimeKind(registration.kind);
     if (!normalizedKind) {
       throw new Error("ui ncp runtime kind must be a non-empty string");
     }
 
+    const token = Symbol(normalizedKind);
     this.registrations.set(normalizedKind, {
       ...registration,
       kind: normalizedKind,
+      token,
+    });
+
+    return toDisposable(() => {
+      const current = this.registrations.get(normalizedKind);
+      if (!current || current.token !== token) {
+        return;
+      }
+      this.registrations.delete(normalizedKind);
     });
   }
 

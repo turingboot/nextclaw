@@ -118,6 +118,29 @@ describe("DefaultNcpAgentBackend with in-memory session store", () => {
     });
   });
 
+  it("updates persisted session metadata outside the active run path", async () => {
+    const backend = createBackend(new EchoNcpLLMApi());
+
+    await backend.emit({
+      type: NcpEventType.MessageRequest,
+      payload: createEnvelope("hello"),
+    });
+
+    const updated = await backend.updateSession("session-1", {
+      metadata: {
+        session_type: "native",
+        preferred_model: "openai/gpt-5",
+        preferred_thinking: "medium",
+      },
+    });
+
+    expect(updated?.metadata).toMatchObject({
+      session_type: "native",
+      preferred_model: "openai/gpt-5",
+      preferred_thinking: "medium",
+    });
+  });
+
   it("streams live session events for an active session", async () => {
     const backend = createBackend(new SlowEchoNcpLLMApi());
     const requestPromise = backend.emit({

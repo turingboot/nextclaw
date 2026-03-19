@@ -30,7 +30,7 @@ export class ConfigReloader {
       loadConfig: () => Config;
       getExtensionChannels?: () => ExtensionRegistry["channels"];
       applyAgentRuntimeConfig?: (config: Config) => void;
-      reloadPlugins?: (config: Config) => Promise<void> | void;
+      reloadPlugins?: (params: { config: Config; changedPaths: string[] }) => Promise<{ restartChannels?: boolean } | void> | { restartChannels?: boolean } | void;
       onRestartRequired: (paths: string[]) => void;
     }
   ) {
@@ -46,7 +46,11 @@ export class ConfigReloader {
     this.options.applyAgentRuntimeConfig = callback;
   }
 
-  setReloadPlugins(callback: ((config: Config) => Promise<void> | void) | undefined): void {
+  setReloadPlugins(
+    callback:
+      | ((params: { config: Config; changedPaths: string[] }) => Promise<{ restartChannels?: boolean } | void> | { restartChannels?: boolean } | void)
+      | undefined
+  ): void {
     this.options.reloadPlugins = callback;
   }
 
@@ -59,11 +63,15 @@ export class ConfigReloader {
     this.options.providerManager?.setConfig(nextConfig);
     const plan = buildReloadPlan(changedPaths);
 
+    let reloadPluginsResult: { restartChannels?: boolean } | void = undefined;
     if (plan.reloadPlugins) {
-      await this.reloadPlugins(nextConfig);
+      reloadPluginsResult = await this.reloadPlugins({
+        config: nextConfig,
+        changedPaths
+      });
       console.log("Config reload: plugins reloaded.");
     }
-    if (plan.restartChannels) {
+    if (plan.restartChannels || reloadPluginsResult?.restartChannels) {
       await this.reloadChannels(nextConfig);
       console.log("Config reload: channels restarted.");
     }
@@ -164,10 +172,13 @@ export class ConfigReloader {
     }
   }
 
-  private async reloadPlugins(nextConfig: Config): Promise<void> {
+  private async reloadPlugins(params: {
+    config: Config;
+    changedPaths: string[];
+  }): Promise<{ restartChannels?: boolean } | void> {
     if (!this.options.reloadPlugins) {
       return;
     }
-    await this.options.reloadPlugins(nextConfig);
+    return await this.options.reloadPlugins(params);
   }
 }

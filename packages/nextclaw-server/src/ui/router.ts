@@ -97,6 +97,7 @@ export function createUiRouter(options: UiRouterOptions): Hono {
     app.get("/api/ncp/session-types", ncpSessionController.getSessionTypes);
     app.get("/api/ncp/sessions", ncpSessionController.listSessions);
     app.get("/api/ncp/sessions/:sessionId", ncpSessionController.getSession);
+    app.put("/api/ncp/sessions/:sessionId", ncpSessionController.patchSession);
     app.get("/api/ncp/sessions/:sessionId/messages", ncpSessionController.listSessionMessages);
     app.delete("/api/ncp/sessions/:sessionId", ncpSessionController.deleteSession);
   }

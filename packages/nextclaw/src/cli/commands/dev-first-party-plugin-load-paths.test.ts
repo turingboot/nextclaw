@@ -1,0 +1,143 @@
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { tmpdir } from "node:os";
+import { afterEach, describe, expect, it } from "vitest";
+import { ConfigSchema } from "@nextclaw/core";
+import {
+  applyDevFirstPartyPluginLoadPaths,
+  resolveDevFirstPartyPluginInstallRoots,
+  resolveDevFirstPartyPluginLoadPaths,
+} from "./dev-first-party-plugin-load-paths.js";
+
+const tempDirs: string[] = [];
+
+const createTempDir = () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "nextclaw-dev-plugin-load-paths-"));
+  tempDirs.push(dir);
+  return dir;
+};
+
+const writeWorkspacePluginPackage = (rootDir: string, dirName: string, packageName: string) => {
+  const packageDir = path.join(rootDir, dirName);
+  mkdirSync(packageDir, { recursive: true });
+  writeFileSync(
+    path.join(packageDir, "package.json"),
+    JSON.stringify({
+      name: packageName,
+      version: "0.0.0-test",
+      openclaw: {
+        extensions: ["dist/index.js"],
+      },
+    }),
+  );
+};
+
+afterEach(() => {
+  while (tempDirs.length > 0) {
+    const dir = tempDirs.pop();
+    if (dir) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+describe("resolveDevFirstPartyPluginLoadPaths", () => {
+  it("maps installed first-party npm plugins to local workspace package dirs", () => {
+    const workspaceExtensionsDir = createTempDir();
+    writeWorkspacePluginPackage(
+      workspaceExtensionsDir,
+      "nextclaw-ncp-runtime-plugin-codex-sdk",
+      "@nextclaw/nextclaw-ncp-runtime-plugin-codex-sdk",
+    );
+    writeWorkspacePluginPackage(
+      workspaceExtensionsDir,
+      "other-package",
+      "@nextclaw/other-package",
+    );
+
+    const config = ConfigSchema.parse({
+      agents: {
+        defaults: {
+          workspace: createTempDir(),
+          model: "openai/gpt-5",
+        },
+      },
+      plugins: {
+        installs: {
+          "nextclaw-ncp-runtime-plugin-codex-sdk": {
+            source: "npm",
+            spec: "@nextclaw/nextclaw-ncp-runtime-plugin-codex-sdk@0.1.0",
+          },
+        },
+      },
+    });
+
+    expect(resolveDevFirstPartyPluginLoadPaths(config, workspaceExtensionsDir)).toEqual([
+      path.join(workspaceExtensionsDir, "nextclaw-ncp-runtime-plugin-codex-sdk"),
+    ]);
+  });
+
+  it("prepends resolved dev plugin paths ahead of existing config load paths", () => {
+    const workspaceExtensionsDir = createTempDir();
+    writeWorkspacePluginPackage(
+      workspaceExtensionsDir,
+      "nextclaw-ncp-runtime-plugin-codex-sdk",
+      "@nextclaw/nextclaw-ncp-runtime-plugin-codex-sdk",
+    );
+    const existingLoadPath = createTempDir();
+    const config = ConfigSchema.parse({
+      agents: {
+        defaults: {
+          workspace: createTempDir(),
+          model: "openai/gpt-5",
+        },
+      },
+      plugins: {
+        load: {
+          paths: [existingLoadPath],
+        },
+        installs: {
+          "nextclaw-ncp-runtime-plugin-codex-sdk": {
+            source: "npm",
+            spec: "@nextclaw/nextclaw-ncp-runtime-plugin-codex-sdk",
+          },
+        },
+      },
+    });
+
+    const nextConfig = applyDevFirstPartyPluginLoadPaths(config, workspaceExtensionsDir);
+    expect(nextConfig.plugins.load?.paths).toEqual([
+      path.join(workspaceExtensionsDir, "nextclaw-ncp-runtime-plugin-codex-sdk"),
+      existingLoadPath,
+    ]);
+  });
+
+  it("returns install roots for first-party npm plugins so dev can suppress duplicated installed copies", () => {
+    const workspaceExtensionsDir = createTempDir();
+    writeWorkspacePluginPackage(
+      workspaceExtensionsDir,
+      "nextclaw-ncp-runtime-plugin-codex-sdk",
+      "@nextclaw/nextclaw-ncp-runtime-plugin-codex-sdk",
+    );
+    const installRoot = path.join(createTempDir(), "nextclaw-ncp-runtime-plugin-codex-sdk");
+    const config = ConfigSchema.parse({
+      agents: {
+        defaults: {
+          workspace: createTempDir(),
+          model: "openai/gpt-5",
+        },
+      },
+      plugins: {
+        installs: {
+          "nextclaw-ncp-runtime-plugin-codex-sdk": {
+            source: "npm",
+            spec: "@nextclaw/nextclaw-ncp-runtime-plugin-codex-sdk",
+            installPath: installRoot,
+          },
+        },
+      },
+    });
+
+    expect(resolveDevFirstPartyPluginInstallRoots(config, workspaceExtensionsDir)).toEqual([installRoot]);
+  });
+});

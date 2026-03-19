@@ -86,6 +86,17 @@ function buildCliEnv(config: CodexSdkNcpAgentRuntimeConfig): Record<string, stri
   return Object.keys(env).length > 0 ? env : undefined;
 }
 
+function normalizeThreadOptions(
+  options: ThreadOptions | undefined,
+  model: string | undefined,
+): ThreadOptions {
+  return {
+    ...options,
+    skipGitRepoCheck: options?.skipGitRepoCheck ?? true,
+    ...(model ? { model } : {}),
+  };
+}
+
 export class CodexSdkNcpAgentRuntime implements NcpAgentRuntime {
   private codexPromise: Promise<CodexClient> | null = null;
   private thread: Thread | null = null;
@@ -268,10 +279,7 @@ export class CodexSdkNcpAgentRuntime implements NcpAgentRuntime {
     }
 
     const codex = await this.getCodex();
-    const threadOptions = {
-      ...this.config.threadOptions,
-      ...(this.config.model ? { model: this.config.model } : {}),
-    };
+    const threadOptions = normalizeThreadOptions(this.config.threadOptions, this.config.model);
 
     this.thread = this.threadId
       ? codex.resumeThread(this.threadId, threadOptions)

@@ -10,7 +10,7 @@ import {
   type ProviderManager,
 } from "@nextclaw/core";
 import { NcpEventType, type NcpEndpointEvent, type NcpRequestEnvelope } from "@nextclaw/ncp";
-import { loadPluginRegistry, toExtensionRegistry } from "../plugins.js";
+import { loadPluginRegistry, toExtensionRegistry, type NextclawExtensionRegistry } from "../plugins.js";
 import { createUiNcpAgent } from "./create-ui-ncp-agent.js";
 
 const tempDirs: string[] = [];
@@ -188,7 +188,13 @@ describe("createUiNcpAgent", () => {
         entries: {},
       },
     });
-    let extensionRegistry = toExtensionRegistry(loadPluginRegistry(config, workspace));
+    let extensionRegistry: NextclawExtensionRegistry = {
+      tools: [],
+      channels: [],
+      engines: [],
+      ncpAgentRuntimes: [],
+      diagnostics: [],
+    };
 
     const ncpAgent = await createUiNcpAgent({
       bus: new MessageBus(),
@@ -227,6 +233,19 @@ describe("createUiNcpAgent", () => {
         { value: "native", label: "Native" },
         { value: "codex", label: "Codex" },
       ],
+    });
+
+    ncpAgent.applyExtensionRegistry?.({
+      tools: [],
+      channels: [],
+      engines: [],
+      ncpAgentRuntimes: [],
+      diagnostics: [],
+    });
+
+    expect(await ncpAgent.listSessionTypes?.()).toEqual({
+      defaultType: "native",
+      options: [{ value: "native", label: "Native" }],
     });
   });
 });

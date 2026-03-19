@@ -65,8 +65,14 @@ describe('ChatInputBar', () => {
       />
     );
 
-    expect(screen.getByPlaceholderText('Type a message')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /Web Search/i }));
+    const textarea = screen.getByPlaceholderText('Type a message');
+    const chipButton = screen.getByRole('button', { name: /Web Search/i });
+
+    expect(textarea).toBeTruthy();
+    expect(chipButton).toBeTruthy();
+    expect(chipButton.parentElement?.contains(textarea)).toBe(true);
+
+    fireEvent.click(chipButton);
     expect(onRemove).toHaveBeenCalledWith('skill:web-search');
   });
 

@@ -13,7 +13,6 @@ import { spawn } from "node:child_process";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { createServer as createNetServer } from "node:net";
-import { fileURLToPath } from "node:url";
 import chokidar from "chokidar";
 import { GatewayControllerImpl } from "../gateway/controller.js";
 import { ConfigReloader } from "../config-reloader.js";
@@ -44,15 +43,25 @@ import {
   toExtensionRegistry,
   toPluginConfigView
 } from "./plugins.js";
-import type { RequestRestartParams } from "../types.js";
 import {
-  consumeRestartSentinel,
-  formatRestartSentinelMessage,
-  parseSessionKey
-} from "../restart-sentinel.js";
+  disablePluginMutation,
+  enablePluginMutation,
+  installPluginMutation,
+  uninstallPluginMutation,
+} from "./plugin-mutation-actions.js";
+import { reloadServicePlugins } from "./service-plugin-reload.js";
+import type { RequestRestartParams } from "../types.js";
+import { consumeRestartSentinel, formatRestartSentinelMessage, parseSessionKey } from "../restart-sentinel.js";
 import { GatewayAgentRuntimePool } from "./agent-runtime-pool.js";
-import { createUiNcpAgent } from "./ncp/create-ui-ncp-agent.js";
+import { resolveCliSubcommandEntry } from "./cli-subcommand-launch.js";
+import { createUiNcpAgent, type UiNcpAgentHandle } from "./ncp/create-ui-ncp-agent.js";
+import {
+  buildMarketplaceSkillInstallArgs,
+  pickUserFacingCommandSummary,
+} from "./service-marketplace-helpers.js";
 import { UiChatRunCoordinator } from "./ui-chat-run-coordinator.js";
+
+export { buildMarketplaceSkillInstallArgs, pickUserFacingCommandSummary, resolveCliSubcommandEntry };
 
 const {
   APP_NAME,
@@ -98,79 +107,11 @@ function createSkillsLoader(workspace: string): SkillsLoaderInstance | null {
   return new ctor(workspace);
 }
 
-function containsAbsoluteFsPath(line: string): boolean {
-  const normalized = line.trim();
-  if (!normalized) {
-    return false;
-  }
-
-  const lowered = normalized.toLowerCase();
-  if (lowered.includes("http://") || lowered.includes("https://")) {
-    return false;
-  }
-
-  if (/^[A-Za-z]:\\/.test(normalized)) {
-    return true;
-  }
-
-  return /(?:^|\s)(?:~\/|\/[^\s]+)/.test(normalized);
-}
-
-export function pickUserFacingCommandSummary(output: string, fallback: string): string {
-  const lines = output
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (lines.length === 0) {
-    return fallback;
-  }
-
-  const visibleLines = lines.filter((line) => {
-    if (/^(path|install path|source path|destination|location)\s*:/i.test(line)) {
-      return false;
-    }
-    if (containsAbsoluteFsPath(line)) {
-      return false;
-    }
-    return true;
-  });
-
-  if (visibleLines.length === 0) {
-    return fallback;
-  }
-
-  const preferred = [...visibleLines].reverse().find((line) =>
-    /\b(installed|enabled|disabled|uninstalled|published|updated|already installed|removed)\b/i.test(line)
-  );
-
-  return preferred ?? visibleLines[visibleLines.length - 1] ?? fallback;
-}
-
-export function buildMarketplaceSkillInstallArgs(params: {
-  slug: string;
-  workspace: string;
-  force?: boolean;
-}): string[] {
-  const args = ["skills", "install", params.slug, "--workdir", params.workspace];
-  if (params.force) {
-    args.push("--force");
-  }
-  return args;
-}
-
-export function resolveCliSubcommandEntry(params: {
-  argvEntry?: string;
-  importMetaUrl: string;
-}): string {
-  const argvEntry = params.argvEntry?.trim();
-  if (argvEntry) {
-    return resolve(argvEntry);
-  }
-  return fileURLToPath(new URL("../index.js", params.importMetaUrl));
-}
-
 export class ServiceCommands {
+  private applyLiveConfigReload: (() => Promise<void>) | null = null;
+
+  private liveUiNcpAgent: UiNcpAgentHandle | null = null;
+
   constructor(
     private deps: {
       requestRestart: (params: RequestRestartParams) => Promise<void>;
@@ -180,6 +121,8 @@ export class ServiceCommands {
   async startGateway(
     options: { uiOverrides?: Partial<Config["ui"]>; allowMissingProvider?: boolean; uiStaticDir?: string | null } = {}
   ): Promise<void> {
+    this.applyLiveConfigReload = null;
+    this.liveUiNcpAgent = null;
     const runtimeConfigPath = getConfigPath();
     const config = resolveConfigSecrets(loadConfig(), { configPath: runtimeConfigPath });
     const workspace = getWorkspacePath(config.agents.defaults.workspace);
@@ -244,6 +187,9 @@ export class ServiceCommands {
         });
       }
     });
+    this.applyLiveConfigReload = async () => {
+      await reloader.applyReloadPlan(resolveConfigSecrets(loadConfig(), { configPath: runtimeConfigPath }));
+    };
     const gatewayController = new GatewayControllerImpl({
       reloader,
       cron,
@@ -283,26 +229,28 @@ export class ServiceCommands {
     });
 
     reloader.setApplyAgentRuntimeConfig((nextConfig) => runtimePool.applyRuntimeConfig(nextConfig));
-    reloader.setReloadPlugins(async (nextConfig) => {
-      const nextWorkspace = getWorkspacePath(nextConfig.agents.defaults.workspace);
-      const nextPluginRegistry = loadPluginRegistry(nextConfig, nextWorkspace);
-      const nextExtensionRegistry = toExtensionRegistry(nextPluginRegistry);
-      logPluginDiagnostics(nextPluginRegistry);
-
-      await stopPluginChannelGateways(pluginGatewayHandles);
-      const startedPluginGateways = await startPluginChannelGateways({
-        registry: nextPluginRegistry,
-        logger: pluginGatewayLogger
+    reloader.setReloadPlugins(async ({ config: nextConfig, changedPaths }) => {
+      const result = await reloadServicePlugins({
+        nextConfig,
+        changedPaths,
+        pluginRegistry,
+        extensionRegistry,
+        pluginChannelBindings,
+        pluginGatewayHandles,
+        pluginGatewayLogger,
+        logPluginGatewayDiagnostics,
       });
-      pluginGatewayHandles = startedPluginGateways.handles;
-      logPluginGatewayDiagnostics(startedPluginGateways.diagnostics);
-
-      pluginRegistry = nextPluginRegistry;
-      extensionRegistry = nextExtensionRegistry;
-      pluginChannelBindings = getPluginChannelBindings(nextPluginRegistry);
-      runtimePool.applyExtensionRegistry(nextExtensionRegistry);
+      pluginRegistry = result.pluginRegistry;
+      extensionRegistry = result.extensionRegistry;
+      pluginChannelBindings = result.pluginChannelBindings;
+      pluginGatewayHandles = result.pluginGatewayHandles;
+      runtimePool.applyExtensionRegistry(result.extensionRegistry);
+      this.liveUiNcpAgent?.applyExtensionRegistry?.(result.extensionRegistry);
       runtimePool.applyRuntimeConfig(nextConfig);
-      console.log("Config reload: plugin channel gateways restarted.");
+      if (result.restartChannels) {
+        console.log("Config reload: plugin channel gateways restarted.");
+      }
+      return { restartChannels: result.restartChannels };
     });
 
     let pluginChannelBindings = getPluginChannelBindings(pluginRegistry);
@@ -469,6 +417,8 @@ export class ServiceCommands {
       await this.wakeFromRestartSentinel({ bus, sessionManager });
       await runtimePool.run();
     } finally {
+      this.applyLiveConfigReload = null;
+      this.liveUiNcpAgent = null;
       await stopPluginChannelGateways(pluginGatewayHandles);
       setPluginRuntimeBridge(null);
     }
@@ -1261,13 +1211,12 @@ export class ServiceCommands {
       if (sessionType === "native") {
         return "Native";
       }
-      if (sessionType === "codex-sdk") {
-        return "Codex";
-      }
-      if (sessionType === "claude-agent-sdk") {
-        return "Claude Code";
-      }
-      return sessionType;
+      return sessionType
+        .trim()
+        .split(/[-_]+/g)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ") || sessionType;
     };
 
     let publishUiEvent: ((event: UiServerEvent) => void) | null = null;
@@ -1307,6 +1256,7 @@ export class ServiceCommands {
           accountId,
         }),
     });
+    this.liveUiNcpAgent = ncpAgent;
 
     const uiServer = startUiServer({
       host: uiConfig.host,
@@ -1412,9 +1362,9 @@ export class ServiceCommands {
   }
 
   private async installMarketplacePlugin(spec: string): Promise<{ message: string; output?: string }> {
-    const output = await this.runCliSubcommand(["plugins", "install", spec]);
-    const summary = pickUserFacingCommandSummary(output, `Installed plugin: ${spec}`);
-    return { message: summary };
+    const result = await installPluginMutation(spec);
+    await this.applyLiveConfigReload?.();
+    return { message: result.message };
   }
 
   private async installMarketplaceSkill(params: {
@@ -1457,21 +1407,23 @@ export class ServiceCommands {
   }
 
   private async enableMarketplacePlugin(id: string): Promise<{ message: string; output?: string }> {
-    const output = await this.runCliSubcommand(["plugins", "enable", id]);
-    const summary = pickUserFacingCommandSummary(output, `Enabled plugin: ${id}`);
-    return { message: summary };
+    const result = await enablePluginMutation(id);
+    await this.applyLiveConfigReload?.();
+    return { message: result.message };
   }
 
   private async disableMarketplacePlugin(id: string): Promise<{ message: string; output?: string }> {
-    const output = await this.runCliSubcommand(["plugins", "disable", id]);
-    const summary = pickUserFacingCommandSummary(output, `Disabled plugin: ${id}`);
-    return { message: summary };
+    const result = await disablePluginMutation(id);
+    await this.applyLiveConfigReload?.();
+    return { message: result.message };
   }
 
   private async uninstallMarketplacePlugin(id: string): Promise<{ message: string; output?: string }> {
-    const output = await this.runCliSubcommand(["plugins", "uninstall", id, "--force"]);
-    const summary = pickUserFacingCommandSummary(output, `Uninstalled plugin: ${id}`);
-    return { message: summary };
+    await disablePluginMutation(id);
+    await this.applyLiveConfigReload?.();
+    const result = await uninstallPluginMutation(id, { force: true });
+    await this.applyLiveConfigReload?.();
+    return { message: result.message };
   }
 
   private async uninstallMarketplaceSkill(slug: string): Promise<{ message: string; output?: string }> {

@@ -73,11 +73,25 @@ export function useWebSocket(queryClient?: QueryClient) {
         return;
       }
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['ncp-sessions'] });
       if (sessionKey && sessionKey.trim().length > 0) {
         queryClient.invalidateQueries({ queryKey: ['session-history', sessionKey.trim()] });
+        queryClient.invalidateQueries({ queryKey: ['ncp-session-messages', sessionKey.trim()] });
         return;
       }
       queryClient.invalidateQueries({ queryKey: ['session-history'] });
+      queryClient.invalidateQueries({ queryKey: ['ncp-session-messages'] });
+    };
+
+    const shouldInvalidateConfigQuery = (configPath: string) => {
+      const normalized = configPath.trim().toLowerCase();
+      if (!normalized) {
+        return true;
+      }
+      if (normalized.startsWith('plugins') || normalized.startsWith('skills')) {
+        return false;
+      }
+      return true;
     };
 
     setConnectionStatus('connecting');
@@ -98,14 +112,16 @@ export function useWebSocket(queryClient?: QueryClient) {
     });
 
     client.on('config.updated', (event) => {
+      const payload = event.payload as { path?: unknown } | undefined;
+      const configPath = typeof payload?.path === 'string' ? payload.path : '';
       // Trigger refetch of config
-      if (queryClient) {
+      if (queryClient && shouldInvalidateConfigQuery(configPath)) {
         queryClient.invalidateQueries({ queryKey: ['config'] });
       }
-      if (event.type === 'config.updated' && event.payload.path.startsWith('session')) {
+      if (configPath.startsWith('session')) {
         invalidateSessionQueries();
       }
-      if (event.type === 'config.updated' && event.payload.path.startsWith('plugins')) {
+      if (configPath.startsWith('plugins')) {
         queryClient?.invalidateQueries({ queryKey: ['ncp-session-types'] });
         queryClient?.invalidateQueries({ queryKey: ['marketplace-installed', 'plugin'] });
         queryClient?.invalidateQueries({ queryKey: ['marketplace-items'] });

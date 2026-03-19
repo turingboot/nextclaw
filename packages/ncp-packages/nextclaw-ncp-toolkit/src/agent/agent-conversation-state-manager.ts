@@ -32,22 +32,17 @@ import {
   cloneConversationMessage,
   normalizeConversationMessage,
 } from "./agent-conversation-message-normalizer.js";
+import {
+  buildRuntimeError,
+  clearToolCallTrackingByMessageId,
+  findToolInvocationPart,
+  findToolNameByCallId,
+  remapTrackedToolCallsToMessageId,
+  shouldPromoteStreamingMessageId,
+  upsertToolInvocationPart,
+} from "./agent-conversation-state-manager.utils.js";
 
 const DEFAULT_ASSISTANT_ROLE: NcpMessageRole = "assistant";
-
-const buildRuntimeError = (payload: NcpRunErrorPayload): NcpError => {
-  const message = payload.error?.trim();
-  return {
-    code: "runtime-error",
-    message: message && message.length > 0 ? message : "Agent run failed.",
-    details: {
-      sessionId: payload.sessionId,
-      messageId: payload.messageId,
-      threadId: payload.threadId,
-      runId: payload.runId,
-    },
-  };
-};
 
 export class DefaultNcpAgentConversationStateManager
   implements NcpAgentConversationStateManager
@@ -208,9 +203,17 @@ export class DefaultNcpAgentConversationStateManager
       });
       this.replaceStreamingMessage(null);
       if (targetMessageId) {
-        this.clearToolCallTrackingByMessageId(targetMessageId);
+        clearToolCallTrackingByMessageId(
+          this.toolCallMessageIdByCallId,
+          this.toolCallArgsRawByCallId,
+          targetMessageId,
+        );
       } else {
-        this.clearToolCallTrackingByMessageId(streamingMessageId);
+        clearToolCallTrackingByMessageId(
+          this.toolCallMessageIdByCallId,
+          this.toolCallArgsRawByCallId,
+          streamingMessageId,
+        );
       }
     }
   }
@@ -301,7 +304,7 @@ export class DefaultNcpAgentConversationStateManager
     );
     this.toolCallArgsRawByCallId.set(payload.toolCallId, "");
 
-    const nextParts = this.upsertToolInvocationPart(targetMessage.parts, {
+    const nextParts = upsertToolInvocationPart(targetMessage.parts, {
       type: "tool-invocation",
       toolCallId: payload.toolCallId,
       toolName: payload.toolName,
@@ -332,10 +335,10 @@ export class DefaultNcpAgentConversationStateManager
   handleMessageToolCallEnd(payload: NcpToolCallEndPayload): void {
     const targetMessage = this.resolveToolCallTargetMessage(payload.sessionId, payload.toolCallId);
     const args = this.toolCallArgsRawByCallId.get(payload.toolCallId) ?? "";
-    const nextParts = this.upsertToolInvocationPart(targetMessage.parts, {
+    const nextParts = upsertToolInvocationPart(targetMessage.parts, {
       type: "tool-invocation",
       toolCallId: payload.toolCallId,
-      toolName: this.findToolNameByCallId(targetMessage.parts, payload.toolCallId) ?? "unknown",
+      toolName: findToolNameByCallId(targetMessage.parts, payload.toolCallId) ?? "unknown",
       state: "call",
       args,
     });
@@ -357,12 +360,12 @@ export class DefaultNcpAgentConversationStateManager
         args: existingPart.args,
         result: payload.content,
       };
-      return this.upsertToolInvocationPart(targetMessage.parts, mergedPart);
+      return upsertToolInvocationPart(targetMessage.parts, mergedPart);
     });
 
     if (!updated) {
       const fallbackMessage = this.resolveToolCallTargetMessage(payload.sessionId, payload.toolCallId);
-      const nextParts = this.upsertToolInvocationPart(fallbackMessage.parts, {
+      const nextParts = upsertToolInvocationPart(fallbackMessage.parts, {
         type: "tool-invocation",
         toolCallId: payload.toolCallId,
         toolName: "unknown",
@@ -394,7 +397,11 @@ export class DefaultNcpAgentConversationStateManager
       };
       this.upsertMessage(finalizedMessage);
       this.replaceStreamingMessage(null);
-      this.clearToolCallTrackingByMessageId(finalizedMessage.id);
+      clearToolCallTrackingByMessageId(
+        this.toolCallMessageIdByCallId,
+        this.toolCallArgsRawByCallId,
+        finalizedMessage.id,
+      );
     }
     this.setError(null);
     this.clearActiveRun();
@@ -408,7 +415,11 @@ export class DefaultNcpAgentConversationStateManager
       };
       this.upsertMessage(failedMessage);
       this.replaceStreamingMessage(null);
-      this.clearToolCallTrackingByMessageId(failedMessage.id);
+      clearToolCallTrackingByMessageId(
+        this.toolCallMessageIdByCallId,
+        this.toolCallArgsRawByCallId,
+        failedMessage.id,
+      );
     }
     this.setError(buildRuntimeError(payload));
     this.clearActiveRun();
@@ -441,8 +452,8 @@ export class DefaultNcpAgentConversationStateManager
     messageId?: string,
   ): void {
     const targetMessage = this.resolveToolCallTargetMessage(sessionId, toolCallId, messageId);
-    const toolName = this.findToolNameByCallId(targetMessage.parts, toolCallId) ?? "unknown";
-    const nextParts = this.upsertToolInvocationPart(targetMessage.parts, {
+    const toolName = findToolNameByCallId(targetMessage.parts, toolCallId) ?? "unknown";
+    const nextParts = upsertToolInvocationPart(targetMessage.parts, {
       type: "tool-invocation",
       toolCallId,
       toolName,
@@ -490,6 +501,28 @@ export class DefaultNcpAgentConversationStateManager
       return nextStreamingMessage;
     }
 
+    const existingStreamingMessage = this.streamingMessage;
+    if (
+      existingStreamingMessage &&
+      existingStreamingMessage.id !== messageId &&
+      existingStreamingMessage.sessionId === sessionId &&
+      shouldPromoteStreamingMessageId(existingStreamingMessage, messageId)
+    ) {
+      const nextStreamingMessage: NcpMessage = {
+        ...existingStreamingMessage,
+        id: messageId,
+        sessionId,
+        status,
+      };
+      remapTrackedToolCallsToMessageId(
+        this.toolCallMessageIdByCallId,
+        existingStreamingMessage.id,
+        messageId,
+      );
+      this.replaceStreamingMessage(nextStreamingMessage);
+      return nextStreamingMessage;
+    }
+
     const nextStreamingMessage: NcpMessage = {
       id: messageId,
       sessionId,
@@ -525,7 +558,7 @@ export class DefaultNcpAgentConversationStateManager
     ) => NcpMessage["parts"],
   ): boolean {
     if (this.streamingMessage) {
-      const part = this.findToolInvocationPart(this.streamingMessage.parts, toolCallId);
+      const part = findToolInvocationPart(this.streamingMessage.parts, toolCallId);
       if (part) {
         const nextParts = updater(this.streamingMessage, part);
         this.replaceStreamingMessage({ ...this.streamingMessage, parts: nextParts });
@@ -535,7 +568,7 @@ export class DefaultNcpAgentConversationStateManager
 
     for (let index = this.messages.length - 1; index >= 0; index -= 1) {
       const candidateMessage = this.messages[index];
-      const part = this.findToolInvocationPart(candidateMessage.parts, toolCallId);
+      const part = findToolInvocationPart(candidateMessage.parts, toolCallId);
       if (!part) {
         continue;
       }
@@ -550,40 +583,6 @@ export class DefaultNcpAgentConversationStateManager
     }
 
     return false;
-  }
-
-  private findToolInvocationPart(parts: NcpMessage["parts"], toolCallId: string) {
-    for (let index = parts.length - 1; index >= 0; index -= 1) {
-      const part = parts[index];
-      if (part.type === "tool-invocation" && part.toolCallId === toolCallId) {
-        return part;
-      }
-    }
-    return null;
-  }
-
-  private findToolNameByCallId(parts: NcpMessage["parts"], toolCallId: string): string | null {
-    const part = this.findToolInvocationPart(parts, toolCallId);
-    return part?.toolName ?? null;
-  }
-
-  private upsertToolInvocationPart(
-    parts: NcpMessage["parts"],
-    toolPart: Extract<NcpMessage["parts"][number], { type: "tool-invocation" }>,
-  ): NcpMessage["parts"] {
-    const nextParts = [...parts];
-    for (let index = nextParts.length - 1; index >= 0; index -= 1) {
-      const part = nextParts[index];
-      if (part.type === "tool-invocation" && part.toolCallId === toolPart.toolCallId) {
-        nextParts[index] = {
-          ...part,
-          ...toolPart,
-        };
-        return nextParts;
-      }
-    }
-    nextParts.push(toolPart);
-    return nextParts;
   }
 
   private upsertMessage(message: NcpMessage): void {
@@ -631,16 +630,6 @@ export class DefaultNcpAgentConversationStateManager
     }
     this.activeRun = null;
     this.stateVersion += 1;
-  }
-
-  private clearToolCallTrackingByMessageId(messageId: string): void {
-    for (const [toolCallId, trackedMessageId] of this.toolCallMessageIdByCallId) {
-      if (trackedMessageId !== messageId) {
-        continue;
-      }
-      this.toolCallMessageIdByCallId.delete(toolCallId);
-      this.toolCallArgsRawByCallId.delete(toolCallId);
-    }
   }
 
   private notifyListeners(): void {

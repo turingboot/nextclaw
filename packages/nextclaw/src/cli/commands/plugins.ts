@@ -1,14 +1,7 @@
 import {
-  addPluginLoadPath,
   buildPluginStatusReport,
-  disablePluginInConfig,
-  enablePluginInConfig,
-  installPluginFromNpmSpec,
-  installPluginFromPath,
   loadOpenClawPlugins,
-  recordPluginInstall,
-  resolveUninstallDirectoryTarget,
-  uninstallPlugin,
+  resolveUninstallDirectoryTargets,
   type PluginChannelBinding,
   type PluginNcpAgentRuntimeRegistration,
   type PluginRegistry
@@ -19,15 +12,16 @@ import {
   RESERVED_PROVIDER_IDS,
 } from "./plugin-command-utils.js";
 import {
+  applyDevFirstPartyPluginLoadPaths,
+  resolveDevFirstPartyPluginInstallRoots,
+} from "./dev-first-party-plugin-load-paths.js";
+import {
   loadConfig,
-  saveConfig,
   type Config,
   type ExtensionRegistry,
-  getWorkspacePath,
-  expandHome
+  getWorkspacePath
 } from "@nextclaw/core";
 import { createInterface } from "node:readline";
-import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type {
   PluginsInfoOptions,
@@ -35,15 +29,30 @@ import type {
   PluginsListOptions,
   PluginsUninstallOptions
 } from "../types.js";
+import {
+  disablePluginMutation,
+  enablePluginMutation,
+  installPluginMutation,
+  type PluginMutationResult,
+  type PluginUninstallMutationResult,
+  uninstallPluginMutation,
+} from "./plugin-mutation-actions.js";
 
 export type NextclawExtensionRegistry = ExtensionRegistry & {
   ncpAgentRuntimes: PluginNcpAgentRuntimeRegistration[];
 };
 
 export function loadPluginRegistry(config: Config, workspaceDir: string): PluginRegistry {
-  return loadOpenClawPlugins({
+  const workspaceExtensionsDir = process.env.NEXTCLAW_DEV_FIRST_PARTY_PLUGIN_DIR;
+  const configWithDevPluginPaths = applyDevFirstPartyPluginLoadPaths(
     config,
+    workspaceExtensionsDir,
+  );
+  const excludedRoots = resolveDevFirstPartyPluginInstallRoots(config, workspaceExtensionsDir);
+  return loadOpenClawPlugins({
+    config: configWithDevPluginPaths,
     workspaceDir,
+    excludeRoots: excludedRoots,
     ...buildReservedPluginLoadOptions(),
     logger: {
       info: (message) => console.log(message),
@@ -160,6 +169,28 @@ export function mergePluginConfigView(
 
 export class PluginCommands {
   constructor() {}
+
+  async enablePlugin(id: string): Promise<PluginMutationResult> {
+    return await enablePluginMutation(id);
+  }
+
+  async disablePlugin(id: string): Promise<PluginMutationResult> {
+    return await disablePluginMutation(id);
+  }
+
+  async uninstallPlugin(
+    id: string,
+    opts: PluginsUninstallOptions = {},
+  ): Promise<PluginUninstallMutationResult> {
+    return await uninstallPluginMutation(id, opts);
+  }
+
+  async installPlugin(
+    pathOrSpec: string,
+    opts: PluginsInstallOptions = {},
+  ): Promise<PluginMutationResult> {
+    return await installPluginMutation(pathOrSpec, opts);
+  }
 
   pluginsList(opts: PluginsListOptions = {}): void {
     const config = loadConfig();
@@ -288,22 +319,32 @@ export class PluginCommands {
   }
 
   async pluginsEnable(id: string): Promise<void> {
-    const config = loadConfig();
-    const next = enablePluginInConfig(config, id);
-    saveConfig(next);
-    console.log(`Enabled plugin "${id}".`);
+    try {
+      const result = await this.enablePlugin(id);
+      console.log(result.message);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
     console.log("If gateway is running, plugin changes are hot-applied automatically.");
   }
 
   async pluginsDisable(id: string): Promise<void> {
-    const config = loadConfig();
-    const next = disablePluginInConfig(config, id);
-    saveConfig(next);
-    console.log(`Disabled plugin "${id}".`);
+    try {
+      const result = await this.disablePlugin(id);
+      console.log(result.message);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
     console.log("If gateway is running, plugin changes are hot-applied automatically.");
   }
 
   async pluginsUninstall(id: string, opts: PluginsUninstallOptions = {}): Promise<void> {
+    if (opts.keepConfig) {
+      console.log("`--keep-config` is deprecated, use `--keep-files`.");
+    }
+
     const config = loadConfig();
     const workspaceDir = getWorkspacePath(config.agents.defaults.workspace);
     const report = buildPluginStatusReport({
@@ -313,10 +354,6 @@ export class PluginCommands {
     });
 
     const keepFiles = Boolean(opts.keepFiles || opts.keepConfig);
-    if (opts.keepConfig) {
-      console.log("`--keep-config` is deprecated, use `--keep-files`.");
-    }
-
     const plugin = report.plugins.find((entry) => entry.id === id || entry.name === id);
     const pluginId = plugin?.id ?? id;
 
@@ -353,15 +390,16 @@ export class PluginCommands {
       preview.push("load path");
     }
 
-    const deleteTarget = !keepFiles
-      ? resolveUninstallDirectoryTarget({
+    const deleteTargets = !keepFiles
+      ? resolveUninstallDirectoryTargets({
+          config,
           pluginId,
           hasInstall,
           installRecord: install
         })
-      : null;
+      : [];
 
-    if (deleteTarget) {
+    for (const deleteTarget of deleteTargets) {
       preview.push(`directory: ${deleteTarget}`);
     }
 
@@ -383,138 +421,27 @@ export class PluginCommands {
       }
     }
 
-    const result = await uninstallPlugin({
-      config,
-      pluginId,
-      deleteFiles: !keepFiles
-    });
-
-    if (!result.ok) {
-      console.error(result.error);
+    try {
+      const result = await this.uninstallPlugin(id, opts);
+      for (const warning of result.warnings) {
+        console.warn(warning);
+      }
+      console.log(result.message);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
-
-    for (const warning of result.warnings) {
-      console.warn(warning);
-    }
-
-    saveConfig(result.config);
-
-    const removed: string[] = [];
-    if (result.actions.entry) {
-      removed.push("config entry");
-    }
-    if (result.actions.install) {
-      removed.push("install record");
-    }
-    if (result.actions.allowlist) {
-      removed.push("allowlist");
-    }
-    if (result.actions.loadPath) {
-      removed.push("load path");
-    }
-    if (result.actions.directory) {
-      removed.push("directory");
-    }
-
-    console.log(`Uninstalled plugin "${pluginId}". Removed: ${removed.length > 0 ? removed.join(", ") : "nothing"}.`);
     console.log("If gateway is running, plugin changes are hot-applied automatically.");
   }
 
   async pluginsInstall(pathOrSpec: string, opts: PluginsInstallOptions = {}): Promise<void> {
-    const fileSpec = this.resolveFileNpmSpecToLocalPath(pathOrSpec);
-    if (fileSpec && !fileSpec.ok) {
-      console.error(fileSpec.error);
+    try {
+      const result = await this.installPlugin(pathOrSpec, opts);
+      console.log(result.message);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
-    const normalized = fileSpec && fileSpec.ok ? fileSpec.path : pathOrSpec;
-    const resolved = resolve(expandHome(normalized));
-    const config = loadConfig();
-
-    if (existsSync(resolved)) {
-      if (opts.link) {
-        const probe = await installPluginFromPath({ path: resolved, dryRun: true });
-        if (!probe.ok) {
-          console.error(probe.error);
-          process.exit(1);
-        }
-
-        let next = addPluginLoadPath(config, resolved);
-        next = enablePluginInConfig(next, probe.pluginId);
-        next = recordPluginInstall(next, {
-          pluginId: probe.pluginId,
-          source: "path",
-          sourcePath: resolved,
-          installPath: resolved,
-          version: probe.version
-        });
-
-        saveConfig(next);
-        console.log(`Linked plugin path: ${resolved}`);
-        console.log("If gateway is running, plugin changes are hot-applied automatically.");
-        return;
-      }
-
-      const result = await installPluginFromPath({
-        path: resolved,
-        logger: {
-          info: (message) => console.log(message),
-          warn: (message) => console.warn(message)
-        }
-      });
-
-      if (!result.ok) {
-        console.error(result.error);
-        process.exit(1);
-      }
-
-      let next = enablePluginInConfig(config, result.pluginId);
-      next = recordPluginInstall(next, {
-        pluginId: result.pluginId,
-        source: this.isArchivePath(resolved) ? "archive" : "path",
-        sourcePath: resolved,
-        installPath: result.targetDir,
-        version: result.version
-      });
-      saveConfig(next);
-      console.log(`Installed plugin: ${result.pluginId}`);
-      console.log("If gateway is running, plugin changes are hot-applied automatically.");
-      return;
-    }
-
-    if (opts.link) {
-      console.error("`--link` requires a local path.");
-      process.exit(1);
-    }
-
-    if (this.looksLikePath(pathOrSpec)) {
-      console.error(`Path not found: ${resolved}`);
-      process.exit(1);
-    }
-
-    const result = await installPluginFromNpmSpec({
-      spec: pathOrSpec,
-      logger: {
-        info: (message) => console.log(message),
-        warn: (message) => console.warn(message)
-      }
-    });
-
-    if (!result.ok) {
-      console.error(result.error);
-      process.exit(1);
-    }
-
-    let next = enablePluginInConfig(config, result.pluginId);
-    next = recordPluginInstall(next, {
-      pluginId: result.pluginId,
-      source: "npm",
-      spec: pathOrSpec,
-      installPath: result.targetDir,
-      version: result.version
-    });
-    saveConfig(next);
-    console.log(`Installed plugin: ${result.pluginId}`);
     console.log("If gateway is running, plugin changes are hot-applied automatically.");
   }
 
@@ -569,50 +496,4 @@ export class PluginCommands {
     return normalized === "y" || normalized === "yes";
   }
 
-  private resolveFileNpmSpecToLocalPath(
-    raw: string
-  ): { ok: true; path: string } | { ok: false; error: string } | null {
-    const trimmed = raw.trim();
-    if (!trimmed.toLowerCase().startsWith("file:")) {
-      return null;
-    }
-    const rest = trimmed.slice("file:".length);
-    if (!rest) {
-      return { ok: false, error: "unsupported file: spec: missing path" };
-    }
-    if (rest.startsWith("///")) {
-      return { ok: true, path: rest.slice(2) };
-    }
-    if (rest.startsWith("//localhost/")) {
-      return { ok: true, path: rest.slice("//localhost".length) };
-    }
-    if (rest.startsWith("//")) {
-      return {
-        ok: false,
-        error: 'unsupported file: URL host (expected "file:<path>" or "file:///abs/path")'
-      };
-    }
-    return { ok: true, path: rest };
-  }
-
-  private looksLikePath(raw: string): boolean {
-    return (
-      raw.startsWith(".") ||
-      raw.startsWith("~") ||
-      raw.startsWith("/") ||
-      raw.endsWith(".ts") ||
-      raw.endsWith(".js") ||
-      raw.endsWith(".mjs") ||
-      raw.endsWith(".cjs") ||
-      raw.endsWith(".tgz") ||
-      raw.endsWith(".tar.gz") ||
-      raw.endsWith(".tar") ||
-      raw.endsWith(".zip")
-    );
-  }
-
-  private isArchivePath(filePath: string): boolean {
-    const lower = filePath.toLowerCase();
-    return lower.endsWith(".zip") || lower.endsWith(".tgz") || lower.endsWith(".tar.gz") || lower.endsWith(".tar");
-  }
 }

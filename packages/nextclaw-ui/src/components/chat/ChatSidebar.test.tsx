@@ -104,4 +104,100 @@ describe('ChatSidebar', () => {
       expect(screen.queryByText('Codex')).toBeNull();
     });
   });
+
+  it('shows a session type badge for non-native sessions in the list', () => {
+    useChatSessionListStore.setState({
+      snapshot: {
+        ...useChatSessionListStore.getState().snapshot,
+        sessions: [
+          {
+            key: 'session:codex-1',
+            createdAt: '2026-03-19T09:00:00.000Z',
+            updatedAt: '2026-03-19T09:05:00.000Z',
+            label: 'Codex Task',
+            sessionType: 'codex',
+            sessionTypeMutable: false,
+            messageCount: 2
+          }
+        ]
+      }
+    });
+
+    render(
+      <MemoryRouter>
+        <ChatSidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Codex Task')).not.toBeNull();
+    expect(screen.getByText('Codex')).not.toBeNull();
+  });
+
+  it('formats non-native session badges generically when the type is no longer in the available options', () => {
+    useChatInputStore.setState({
+      snapshot: {
+        ...useChatInputStore.getState().snapshot,
+        sessionTypeOptions: [{ value: 'native', label: 'Native' }]
+      }
+    });
+    useChatSessionListStore.setState({
+      snapshot: {
+        ...useChatSessionListStore.getState().snapshot,
+        sessions: [
+          {
+            key: 'session:workspace-agent-1',
+            createdAt: '2026-03-19T09:00:00.000Z',
+            updatedAt: '2026-03-19T09:05:00.000Z',
+            label: 'Workspace Task',
+            sessionType: 'workspace-agent',
+            sessionTypeMutable: false,
+            messageCount: 2
+          }
+        ]
+      }
+    });
+
+    render(
+      <MemoryRouter>
+        <ChatSidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Workspace Task')).not.toBeNull();
+    expect(screen.getByText('Workspace Agent')).not.toBeNull();
+  });
+
+  it('does not show a session type badge for native sessions in the list', () => {
+    useChatInputStore.setState({
+      snapshot: {
+        ...useChatInputStore.getState().snapshot,
+        sessionTypeOptions: [{ value: 'native', label: 'Native' }]
+      }
+    });
+    useChatSessionListStore.setState({
+      snapshot: {
+        ...useChatSessionListStore.getState().snapshot,
+        sessions: [
+          {
+            key: 'session:native-1',
+            createdAt: '2026-03-19T09:00:00.000Z',
+            updatedAt: '2026-03-19T09:05:00.000Z',
+            label: 'Native Task',
+            sessionType: 'native',
+            sessionTypeMutable: false,
+            messageCount: 1
+          }
+        ]
+      }
+    });
+
+    render(
+      <MemoryRouter>
+        <ChatSidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Native Task')).not.toBeNull();
+    expect(screen.queryByText('Native')).toBeNull();
+  });
 });

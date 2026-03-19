@@ -1,14 +1,18 @@
 import type { SetStateAction } from 'react';
 import type { ThinkingLevel } from '@/api/types';
+import { updateNcpSession } from '@/api/ncp-session';
 import { useChatInputStore } from '@/components/chat/stores/chat-input.store';
 import { useChatSessionListStore } from '@/components/chat/stores/chat-session-list.store';
 import type { ChatInputSnapshot } from '@/components/chat/stores/chat-input.store';
 import type { ChatStreamActionsManager } from '@/components/chat/managers/chat-stream-actions.manager';
 import type { ChatUiManager } from '@/components/chat/managers/chat-ui.manager';
+import { ChatSessionPreferenceSync } from '@/components/chat/chat-session-preference-sync';
 import type { ChatModelOption } from '@/components/chat/chat-input.types';
 import { normalizeSessionType } from '@/components/chat/useChatSessionTypeState';
 
 export class NcpChatInputManager {
+  private readonly sessionPreferenceSync = new ChatSessionPreferenceSync(updateNcpSession);
+
   constructor(
     private uiManager: ChatUiManager,
     private streamActionsManager: ChatStreamActionsManager,
@@ -135,10 +139,12 @@ export class NcpChatInputManager {
 
   selectModel = (value: string) => {
     this.setSelectedModel(value);
+    this.sessionPreferenceSync.syncSelectedSessionPreferences();
   };
 
   selectThinkingLevel = (value: ThinkingLevel) => {
     this.setSelectedThinkingLevel(value);
+    this.sessionPreferenceSync.syncSelectedSessionPreferences();
   };
 
   selectSkills = (next: string[]) => {

@@ -19,11 +19,8 @@ import {
   executeConfigAction,
   fetchSessions,
   fetchSessionHistory,
-  fetchNcpSessions,
-  fetchNcpSessionMessages,
   updateSession,
   deleteSession,
-  deleteNcpSession,
   sendChatTurn,
   fetchChatRun,
   fetchChatRuns,
@@ -34,6 +31,7 @@ import {
   setCronJobEnabled,
   runCronJob
 } from '@/api/config';
+import { deleteNcpSession, fetchNcpSessionMessages, fetchNcpSessions } from '@/api/ncp-session';
 import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
 

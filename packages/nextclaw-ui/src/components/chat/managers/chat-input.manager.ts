@@ -5,12 +5,15 @@ import type { ChatUiManager } from '@/components/chat/managers/chat-ui.manager';
 import { useChatSessionListStore } from '@/components/chat/stores/chat-session-list.store';
 import { normalizeSessionType } from '@/components/chat/useChatSessionTypeState';
 import type { ChatInputSnapshot } from '@/components/chat/stores/chat-input.store';
+import { ChatSessionPreferenceSync } from '@/components/chat/chat-session-preference-sync';
 import type { SetStateAction } from 'react';
 import type { ChatStreamActionsManager } from '@/components/chat/managers/chat-stream-actions.manager';
 import type { ThinkingLevel } from '@/api/types';
 import type { ChatModelOption } from '@/components/chat/chat-input.types';
 
 export class ChatInputManager {
+  private readonly sessionPreferenceSync = new ChatSessionPreferenceSync(updateSession);
+
   constructor(
     private uiManager: ChatUiManager,
     private streamActionsManager: ChatStreamActionsManager
@@ -139,10 +142,12 @@ export class ChatInputManager {
 
   selectModel = (value: string) => {
     this.setSelectedModel(value);
+    this.sessionPreferenceSync.syncSelectedSessionPreferences();
   };
 
   selectThinkingLevel = (value: ThinkingLevel) => {
     this.setSelectedThinkingLevel(value);
+    this.sessionPreferenceSync.syncSelectedSessionPreferences();
   };
 
   selectSkills = (next: string[]) => {

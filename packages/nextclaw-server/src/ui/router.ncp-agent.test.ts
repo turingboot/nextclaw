@@ -138,6 +138,19 @@ class StubNcpAgent implements NcpAgentClientEndpoint, NcpSessionApi {
     };
   }
 
+  async updateSession(sessionId: string, patch: { metadata?: Record<string, unknown> | null }) {
+    if (sessionId !== "session-1") {
+      return null;
+    }
+    return {
+      sessionId,
+      messageCount: 2,
+      updatedAt: "2026-03-17T00:00:00.000Z",
+      status: "idle" as const,
+      ...(patch.metadata ? { metadata: patch.metadata } : {})
+    };
+  }
+
   async deleteSession(): Promise<void> {}
 
   async listSessionTypes() {
@@ -228,6 +241,29 @@ describe("ncp ui routes", () => {
         { value: "native", label: "Native" },
         { value: "codex", label: "Codex" },
       ],
+    });
+
+    const patchResponse = await app.request("http://localhost/api/ncp/sessions/session-1", {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        preferredModel: "openai/gpt-5",
+        preferredThinking: "medium"
+      })
+    });
+    expect(patchResponse.status).toBe(200);
+    const patchPayload = await patchResponse.json() as {
+      ok: boolean;
+      data: {
+        metadata?: Record<string, unknown>;
+      };
+    };
+    expect(patchPayload.ok).toBe(true);
+    expect(patchPayload.data.metadata).toMatchObject({
+      preferred_model: "openai/gpt-5",
+      preferred_thinking: "medium"
     });
 
     const sendResponse = await app.request("http://localhost/api/ncp/agent/send", {

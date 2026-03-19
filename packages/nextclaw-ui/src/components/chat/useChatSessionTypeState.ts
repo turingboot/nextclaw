@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { SessionEntryView } from '@/api/types';
 import { t } from '@/lib/i18n';
@@ -33,16 +33,16 @@ export function resolveSessionTypeLabel(sessionType: string, fallbackLabel?: str
   if (sessionType === 'native') {
     return t('chatSessionTypeNative');
   }
-  if (sessionType === 'codex') {
-    return t('chatSessionTypeCodex');
+  const normalizedFallback = fallbackLabel?.trim();
+  if (normalizedFallback) {
+    return normalizedFallback;
   }
-  if (sessionType === 'codex-sdk') {
-    return t('chatSessionTypeCodex');
-  }
-  if (sessionType === 'claude-agent-sdk') {
-    return t('chatSessionTypeClaude');
-  }
-  return fallbackLabel?.trim() || sessionType;
+  return sessionType
+    .trim()
+    .split(/[-_]+/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || sessionType;
 }
 
 function buildSessionTypeOptions(
@@ -116,6 +116,7 @@ export function useChatSessionTypeState(params: UseChatSessionTypeStateParams): 
     () => normalizeSessionType(sessionTypesData?.defaultType ?? DEFAULT_SESSION_TYPE),
     [sessionTypesData?.defaultType]
   );
+  const lastAutoPendingSessionTypeRef = useRef<string | null>(null);
   const selectedSessionType = useMemo(
     () => normalizeSessionType(selectedSession?.sessionType ?? pendingSessionType ?? defaultSessionType),
     [defaultSessionType, pendingSessionType, selectedSession?.sessionType]
@@ -125,8 +126,21 @@ export function useChatSessionTypeState(params: UseChatSessionTypeStateParams): 
     if (selectedSessionKey) {
       return;
     }
+    const rawPending = typeof pendingSessionType === 'string' ? pendingSessionType.trim() : '';
+    const normalizedPending = normalizeSessionType(pendingSessionType);
+    const shouldFollowDefault =
+      rawPending.length === 0 ||
+      lastAutoPendingSessionTypeRef.current === normalizedPending ||
+      (lastAutoPendingSessionTypeRef.current === null && normalizedPending === DEFAULT_SESSION_TYPE);
+    if (!shouldFollowDefault) {
+      return;
+    }
+    lastAutoPendingSessionTypeRef.current = defaultSessionType;
+    if (normalizedPending === defaultSessionType) {
+      return;
+    }
     setPendingSessionType(defaultSessionType);
-  }, [defaultSessionType, selectedSessionKey, setPendingSessionType]);
+  }, [defaultSessionType, pendingSessionType, selectedSessionKey, setPendingSessionType]);
 
   const canEditSessionType = !selectedSessionKey || Boolean(selectedSession?.sessionTypeMutable);
   const availableSessionTypeSet = useMemo(

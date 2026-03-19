@@ -72,6 +72,41 @@ describe("chat session type routes - listing", () => {
     ]);
   });
 
+  it("formats non-native runtime labels generically when the runtime does not provide an explicit label", async () => {
+    useIsolatedHome();
+    const configPath = createTempConfigPath();
+    saveConfig(ConfigSchema.parse({}), configPath);
+    const app = createUiRouter({
+      configPath,
+      publish: () => {},
+      chatRuntime: {
+        processTurn: vi.fn(async () => ({
+          reply: "ok",
+          sessionKey: "agent:main:ui:direct:web-test"
+        })),
+        listSessionTypes: vi.fn(async () => ({
+          defaultType: "native",
+          options: [{ value: "workspace-agent", label: "" }]
+        }))
+      }
+    });
+
+    const response = await app.request("http://localhost/api/chat/session-types");
+    expect(response.status).toBe(200);
+    const payload = await response.json() as {
+      ok: boolean;
+      data: {
+        defaultType: string;
+        options: Array<{ value: string; label: string }>;
+      };
+    };
+    expect(payload.ok).toBe(true);
+    expect(payload.data.options).toEqual([
+      { value: "native", label: "Native" },
+      { value: "workspace-agent", label: "Workspace Agent" }
+    ]);
+  });
+
   it("keeps existing typed session unchanged when plugin becomes unavailable", async () => {
     useIsolatedHome();
     const configPath = createTempConfigPath();
@@ -206,5 +241,48 @@ describe("chat session type routes - mutability", () => {
     };
     expect(payload.ok).toBe(false);
     expect(payload.error.code).toBe("SESSION_TYPE_IMMUTABLE");
+  });
+
+  it("persists preferred model and preferred thinking to session metadata", async () => {
+    useIsolatedHome();
+    const configPath = createTempConfigPath();
+    saveConfig(ConfigSchema.parse({}), configPath);
+    const sessionManager = new SessionManager(".");
+    const session = sessionManager.getOrCreate("agent:main:ui:direct:web-session-preferences");
+    sessionManager.save(session);
+
+    const app = createUiRouter({
+      configPath,
+      publish: () => {},
+      chatRuntime: {
+        processTurn: vi.fn(async () => ({
+          reply: "ok",
+          sessionKey: session.key
+        })),
+        listSessionTypes: vi.fn(async () => ({
+          defaultType: "native",
+          options: [{ value: "native", label: "Native" }]
+        }))
+      }
+    });
+
+    const response = await app.request(`http://localhost/api/sessions/${encodeURIComponent(session.key)}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        preferredModel: "openai/gpt-5",
+        preferredThinking: "high"
+      })
+    });
+    expect(response.status).toBe(200);
+    const payload = await response.json() as {
+      ok: boolean;
+      data: {
+        metadata: Record<string, unknown>;
+      };
+    };
+    expect(payload.ok).toBe(true);
+    expect(payload.data.metadata.preferred_model).toBe("openai/gpt-5");
+    expect(payload.data.metadata.preferred_thinking).toBe("high");
   });
 });

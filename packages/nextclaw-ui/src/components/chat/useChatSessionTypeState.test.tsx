@@ -1,0 +1,58 @@
+import { renderHook } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { resolveSessionTypeLabel, useChatSessionTypeState } from '@/components/chat/useChatSessionTypeState';
+
+vi.mock('@/lib/i18n', () => ({
+  t: (key: string) => key
+}));
+
+describe('useChatSessionTypeState', () => {
+  it('formats non-native runtime labels generically when no explicit label is provided', () => {
+    expect(resolveSessionTypeLabel('workspace-agent')).toBe('Workspace Agent');
+  });
+
+  it('preserves an explicitly selected draft session type instead of resetting to the default', () => {
+    const setPendingSessionType = vi.fn();
+
+    const { result } = renderHook(() =>
+      useChatSessionTypeState({
+        selectedSession: null,
+        selectedSessionKey: null,
+        pendingSessionType: 'codex-sdk',
+        setPendingSessionType,
+        sessionTypesData: {
+          defaultType: 'native',
+          options: [
+            { value: 'native', label: 'Native' },
+            { value: 'codex-sdk', label: 'Codex' }
+          ]
+        }
+      })
+    );
+
+    expect(result.current.selectedSessionType).toBe('codex-sdk');
+    expect(setPendingSessionType).not.toHaveBeenCalled();
+  });
+
+  it('hydrates the draft session type from the runtime default when no explicit type exists', () => {
+    const setPendingSessionType = vi.fn();
+
+    renderHook(() =>
+      useChatSessionTypeState({
+        selectedSession: null,
+        selectedSessionKey: null,
+        pendingSessionType: '',
+        setPendingSessionType,
+        sessionTypesData: {
+          defaultType: 'codex-sdk',
+          options: [
+            { value: 'native', label: 'Native' },
+            { value: 'codex-sdk', label: 'Codex' }
+          ]
+        }
+      })
+    );
+
+    expect(setPendingSessionType).toHaveBeenCalledWith('codex-sdk');
+  });
+});

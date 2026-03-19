@@ -1,4 +1,4 @@
-import { deleteNcpSession as deleteNcpSessionApi } from '@/api/config';
+import { deleteNcpSession as deleteNcpSessionApi } from '@/api/ncp-session';
 import type { ChatSessionListManager } from '@/components/chat/managers/chat-session-list.manager';
 import type { ChatStreamActionsManager } from '@/components/chat/managers/chat-stream-actions.manager';
 import type { ChatUiManager } from '@/components/chat/managers/chat-ui.manager';

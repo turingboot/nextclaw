@@ -1,7 +1,6 @@
 import type { MarketplaceInstalledRecord } from "../../types.js";
 import {
   BUILTIN_CHANNEL_PLUGIN_ID_PREFIX,
-  CLAWBAY_CHANNEL_PLUGIN_NPM_SPEC,
   NEXTCLAW_PLUGIN_NPM_PREFIX
 } from "./constants.js";
 

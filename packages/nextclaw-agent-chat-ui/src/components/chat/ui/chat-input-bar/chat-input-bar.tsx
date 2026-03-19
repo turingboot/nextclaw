@@ -1,6 +1,5 @@
 import type { ChatInputBarProps } from '../../view-models/chat-ui.types';
 import { ChatInputBarTextarea } from './chat-input-bar-textarea';
-import { ChatInputBarSelectedItems } from './chat-input-bar-selected-items';
 import { ChatSlashMenu } from './chat-slash-menu';
 import { ChatInputBarToolbar } from './chat-input-bar-toolbar';
 
@@ -53,6 +52,8 @@ export function ChatInputBar(props: ChatInputBarProps) {
               value={props.value}
               placeholder={props.placeholder}
               disabled={props.disabled}
+              selectedItems={props.selectedItems.items}
+              onRemoveSelectedItem={props.selectedItems.onRemove}
               onValueChange={props.onValueChange}
               onKeyDown={props.onKeyDown}
             />
@@ -60,7 +61,6 @@ export function ChatInputBar(props: ChatInputBarProps) {
           </div>
 
           <InputBarHint hint={props.hint} />
-          <ChatInputBarSelectedItems items={props.selectedItems.items} onRemove={props.selectedItems.onRemove} />
           <ChatInputBarToolbar {...props.toolbar} />
         </div>
       </div>

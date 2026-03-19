@@ -42,6 +42,7 @@ import type {
   SessionHistoryView,
   SessionPatchUpdate
 } from "./types.js";
+import { applySessionPreferencePatch } from "./session-preference-patch.js";
 
 const MASK_MIN_LENGTH = 8;
 const EXTRA_SENSITIVE_PATH_PATTERNS = [/authorization/i, /cookie/i, /session/i, /bearer/i];
@@ -1154,7 +1155,11 @@ function isSessionTypeMutable(session: SessionLike): boolean {
 
 export class SessionPatchValidationError extends Error {
   constructor(
-    public readonly code: "SESSION_TYPE_INVALID" | "SESSION_TYPE_IMMUTABLE" | "SESSION_TYPE_UNAVAILABLE",
+    public readonly code:
+      | "SESSION_TYPE_INVALID"
+      | "SESSION_TYPE_IMMUTABLE"
+      | "SESSION_TYPE_UNAVAILABLE"
+      | "PREFERRED_THINKING_INVALID",
     message: string
   ) {
     super(message);
@@ -1326,23 +1331,12 @@ export function patchSession(
     sessionManager.clear(session);
   }
 
-  if (Object.prototype.hasOwnProperty.call(patch, "label")) {
-    const label = typeof patch.label === "string" ? patch.label.trim() : "";
-    if (label) {
-      session.metadata.label = label;
-    } else {
-      delete session.metadata.label;
-    }
-  }
-
-  if (Object.prototype.hasOwnProperty.call(patch, "preferredModel")) {
-    const preferredModel = typeof patch.preferredModel === "string" ? patch.preferredModel.trim() : "";
-    if (preferredModel) {
-      session.metadata.preferred_model = preferredModel;
-    } else {
-      delete session.metadata.preferred_model;
-    }
-  }
+  applySessionPreferencePatch({
+    metadata: session.metadata,
+    patch,
+    createInvalidThinkingError: (message) =>
+      new SessionPatchValidationError("PREFERRED_THINKING_INVALID", message)
+  });
 
   if (Object.prototype.hasOwnProperty.call(patch, "sessionType")) {
     const normalizedSessionType = normalizeSessionType(patch.sessionType);
