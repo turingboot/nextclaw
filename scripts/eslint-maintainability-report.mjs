@@ -209,7 +209,7 @@ const report = {
 if (options.json) {
   console.log(JSON.stringify(report, null, 2));
 } else {
-  console.log("ESLint maintainability report");
+  console.log("Workspace maintainability report");
   console.log(`Scanned workspaces: ${report.scannedWorkspaces.length}`);
   console.log(`Affected files: ${report.affectedFiles}`);
   console.log(`Total violations: ${report.totalViolations}`);

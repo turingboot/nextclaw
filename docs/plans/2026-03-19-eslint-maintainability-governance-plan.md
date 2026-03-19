@@ -257,7 +257,7 @@ skill 的核心判断不应该是“仓库里还有没有历史 warning”，而
 - 新增一份轻量配置模块，例如 `scripts/maintainability-thresholds.mjs`
 - 或新增一份 JSON/TS 配置文件，由以下位置共用：
   - `eslint.config.mjs`
-  - `scripts/eslint-line-limit-report.mjs`
+  - `scripts/eslint-maintainability-report.mjs`
   - `.codex/skills/post-edit-maintainability-guard/scripts/check-maintainability.mjs`
 
 至少要统一这些值：
@@ -290,7 +290,7 @@ skill 的核心判断不应该是“仓库里还有没有历史 warning”，而
 
 **Files:**
 
-- Modify: `scripts/eslint-line-limit-report.mjs`
+- Modify: `scripts/eslint-maintainability-report.mjs`
 
 **Outcome:**
 
@@ -361,7 +361,7 @@ skill 的核心判断不应该是“仓库里还有没有历史 warning”，而
 ### ESLint 验证
 
 ```bash
-pnpm lint:line-limits
+pnpm lint:maintainability:report
 pnpm exec eslint packages/nextclaw-openclaw-compat/src/plugins/loader.ts
 pnpm exec eslint packages/nextclaw/src/cli/commands/service.ts
 pnpm exec eslint packages/nextclaw-core/src/agent/loop.ts
