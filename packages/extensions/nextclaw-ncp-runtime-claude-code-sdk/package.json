@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "tsup --config tsup.config.ts",
+    "prepack": "pnpm run build",
     "lint": "eslint .",
     "tsc": "tsc -p tsconfig.json"
   },

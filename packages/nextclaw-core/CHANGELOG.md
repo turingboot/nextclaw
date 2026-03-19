@@ -1,5 +1,17 @@
 # nextclaw-core
 
+## 0.9.4
+
+### Patch Changes
+
+- Fix npm packaging so publish tarballs always include built `dist` output, and republish the remote access dependency chain above the broken 0.13.2 release.
+
+## 0.9.3
+
+### Patch Changes
+
+- 7e3aa0d: Guard OpenAI-compatible automatic `responses` fallback so DashScope models such as `qwen3-coder-next` stay on `chat/completions` instead of being misrouted to an unsupported API.
+
 ## 0.9.2
 
 ### Patch Changes

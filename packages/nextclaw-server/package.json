@@ -1,6 +1,6 @@
 {
   "name": "@nextclaw/server",
-  "version": "0.10.0",
+  "version": "0.10.3",
   "private": false,
   "description": "Nextclaw UI/API server.",
   "type": "module",
@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --out-dir dist",
+    "prepack": "pnpm run build",
     "lint": "eslint .",
     "tsc": "tsc -p tsconfig.json",
     "test": "vitest"

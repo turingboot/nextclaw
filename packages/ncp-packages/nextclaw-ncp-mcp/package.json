@@ -1,6 +1,6 @@
 {
   "name": "@nextclaw/ncp-mcp",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "private": false,
   "description": "Thin NCP adapter for exposing platform MCP tools inside NextClaw NCP runtimes.",
   "type": "module",
@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --out-dir dist",
+    "prepack": "pnpm run build",
     "lint": "cd ../../.. && pnpm exec eslint packages/ncp-packages/nextclaw-ncp-mcp --config packages/ncp-packages/nextclaw-ncp-mcp/eslint.config.mjs",
     "tsc": "tsc -p tsconfig.json",
     "test": "vitest run"

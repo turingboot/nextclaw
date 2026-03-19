@@ -1,5 +1,35 @@
 # nextclaw-server
 
+## 0.10.3
+
+### Patch Changes
+
+- Fix npm packaging so publish tarballs always include built `dist` output, and republish the remote access dependency chain above the broken 0.13.2 release.
+- Updated dependencies
+  - @nextclaw/core@0.9.4
+  - @nextclaw/runtime@0.2.4
+  - @nextclaw/openclaw-compat@0.3.7
+  - @nextclaw/mcp@0.1.3
+
+## 0.10.2
+
+### Patch Changes
+
+- Republish the remote access CLI and local auth bridge above the broken 0.13.1 / 0.10.1 npm versions so global installs regain the `remote` command.
+
+## 0.10.1
+
+### Patch Changes
+
+- d1162f2: Recover the linked MCP/server/nextclaw release chain so marketplace MCP APIs ship together with their consumers.
+- Ship the remote access CLI and local auth bridge in a repaired npm release, and make platform api base parsing tolerate `/v` vs `/v1`.
+- Updated dependencies [d1162f2]
+- Updated dependencies [7e3aa0d]
+  - @nextclaw/mcp@0.1.2
+  - @nextclaw/core@0.9.3
+  - @nextclaw/runtime@0.2.3
+  - @nextclaw/openclaw-compat@0.3.6
+
 ## 0.10.0
 
 ### Minor Changes

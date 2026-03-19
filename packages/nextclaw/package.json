@@ -1,6 +1,6 @@
 {
   "name": "nextclaw",
-  "version": "0.13.0",
+  "version": "0.13.3",
   "description": "Lightweight personal AI assistant with CLI, multi-provider routing, and channel integrations.",
   "private": false,
   "type": "module",
@@ -39,6 +39,7 @@
     "dev": "tsx watch --tsconfig tsconfig.json src/cli/index.ts",
     "dev:build": "tsx src/cli/index.ts",
     "build": "node scripts/sync-usage-template.mjs && tsup src/index.ts src/cli/index.ts --format esm --dts --out-dir dist && node scripts/copy-ui-dist.mjs",
+    "prepack": "pnpm run build",
     "start": "node dist/cli.js",
     "lint": "eslint .",
     "tsc": "tsc -p tsconfig.json",

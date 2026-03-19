@@ -1,5 +1,42 @@
 # @nextclaw/openclaw-compat
 
+## 0.3.7
+
+### Patch Changes
+
+- Fix npm packaging so publish tarballs always include built `dist` output, and republish the remote access dependency chain above the broken 0.13.2 release.
+- Updated dependencies
+  - @nextclaw/channel-runtime@0.2.4
+  - @nextclaw/core@0.9.4
+  - @nextclaw/channel-plugin-dingtalk@0.2.4
+  - @nextclaw/channel-plugin-discord@0.2.4
+  - @nextclaw/channel-plugin-email@0.2.4
+  - @nextclaw/channel-plugin-feishu@0.2.4
+  - @nextclaw/channel-plugin-mochat@0.2.4
+  - @nextclaw/channel-plugin-qq@0.2.4
+  - @nextclaw/channel-plugin-slack@0.2.4
+  - @nextclaw/channel-plugin-telegram@0.2.4
+  - @nextclaw/channel-plugin-wecom@0.2.4
+  - @nextclaw/channel-plugin-whatsapp@0.2.4
+
+## 0.3.6
+
+### Patch Changes
+
+- Updated dependencies [7e3aa0d]
+  - @nextclaw/core@0.9.3
+  - @nextclaw/channel-runtime@0.2.3
+  - @nextclaw/channel-plugin-dingtalk@0.2.3
+  - @nextclaw/channel-plugin-discord@0.2.3
+  - @nextclaw/channel-plugin-email@0.2.3
+  - @nextclaw/channel-plugin-feishu@0.2.3
+  - @nextclaw/channel-plugin-mochat@0.2.3
+  - @nextclaw/channel-plugin-qq@0.2.3
+  - @nextclaw/channel-plugin-slack@0.2.3
+  - @nextclaw/channel-plugin-telegram@0.2.3
+  - @nextclaw/channel-plugin-wecom@0.2.3
+  - @nextclaw/channel-plugin-whatsapp@0.2.3
+
 ## 0.3.5
 
 ### Patch Changes

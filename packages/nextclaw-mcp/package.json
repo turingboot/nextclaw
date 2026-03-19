@@ -1,6 +1,6 @@
 {
   "name": "@nextclaw/mcp",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "private": false,
   "description": "Platform-level MCP registry, lifecycle, and diagnostics for NextClaw.",
   "type": "module",
@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --out-dir dist",
+    "prepack": "pnpm run build",
     "lint": "cd ../.. && pnpm exec eslint packages/nextclaw-mcp --config eslint.config.mjs",
     "tsc": "tsc -p tsconfig.json",
     "test": "vitest run"

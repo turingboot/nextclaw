@@ -1,6 +1,6 @@
 {
   "name": "@nextclaw/core",
-  "version": "0.9.2",
+  "version": "0.9.4",
   "private": false,
   "description": "Nextclaw runtime core (agent, channels, providers, config).",
   "type": "module",
@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --out-dir dist && node scripts/copy-skills.mjs",
+    "prepack": "pnpm run build",
     "lint": "eslint .",
     "tsc": "tsc -p tsconfig.json",
     "test": "vitest"
