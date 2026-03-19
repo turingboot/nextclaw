@@ -34,7 +34,8 @@ export class LiteLLMProvider extends LLMProvider {
       apiBase: options.apiBase ?? null,
       defaultModel: options.defaultModel,
       extraHeaders: options.extraHeaders ?? null,
-      wireApi
+      wireApi,
+      enableResponsesFallback: providerSpec?.supportsResponsesApi !== false
     });
   }
 

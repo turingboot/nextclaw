@@ -194,6 +194,7 @@ export const builtinProviderPlugin: ProviderCatalogPlugin = {
       ],
       stripModelPrefix: false,
       modelOverrides: [],
+      supportsResponsesApi: false,
       logo: "dashscope.png"
     },
     {

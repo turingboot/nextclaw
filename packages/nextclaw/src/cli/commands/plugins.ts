@@ -3,7 +3,6 @@ import {
   loadOpenClawPlugins,
   resolveUninstallDirectoryTargets,
   type PluginChannelBinding,
-  type PluginNcpAgentRuntimeRegistration,
   type PluginRegistry
 } from "@nextclaw/openclaw-compat";
 import {

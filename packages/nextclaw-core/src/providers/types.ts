@@ -65,6 +65,7 @@ export type ProviderSpec = {
   supportsWireApi?: boolean;
   wireApiOptions?: WireApiMode[];
   defaultWireApi?: WireApiMode;
+  supportsResponsesApi?: boolean;
   logo?: string;
   apiBaseHelp?: LocalizedText;
   auth?: ProviderAuthSpec;

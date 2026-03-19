@@ -102,4 +102,39 @@ describe("OpenAICompatibleProvider responses payload parser", () => {
     expect(capturedBody).not.toBeNull();
     expect(capturedBody).not.toHaveProperty("reasoning");
   });
+
+  it("does not fall back to responses when responses fallback is disabled", async () => {
+    const provider = new OpenAICompatibleProvider({
+      apiKey: "sk-test",
+      apiBase: "http://127.0.0.1:9/v1",
+      defaultModel: "qwen3-coder-next",
+      enableResponsesFallback: false
+    }) as unknown as {
+      chat: (params: { messages: Array<Record<string, unknown>> }) => Promise<unknown>;
+      client: {
+        chat: {
+          completions: {
+            create: ReturnType<typeof vi.fn>;
+          };
+        };
+      };
+    };
+
+    const notFoundError = new Error("Cannot POST /chat/completions") as Error & { status?: number };
+    notFoundError.status = 404;
+    provider.client.chat.completions.create = vi.fn(async () => {
+      throw notFoundError;
+    });
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error("responses should not be called");
+    }) as unknown as typeof globalThis.fetch;
+
+    await expect(
+      provider.chat({
+        messages: [{ role: "user", content: "hello" }]
+      })
+    ).rejects.toThrow("Cannot POST /chat/completions");
+
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
 });

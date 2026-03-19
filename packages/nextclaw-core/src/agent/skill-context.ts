@@ -1,4 +1,4 @@
-import { SkillsLoader } from "./skills.js";
+import type { SkillsLoader } from "./skills.js";
 
 function wrapSkillTag(tagName: string, manifest: string): string {
   return [`<${tagName}>`, manifest, `</${tagName}>`].join("\n");

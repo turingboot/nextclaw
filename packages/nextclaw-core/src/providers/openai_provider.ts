@@ -1,15 +1,7 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions";
-import {
-  LLMProvider,
-  type LLMResponse,
-  type LLMStreamEvent,
-  type ToolCallRequest
-} from "./base.js";
-import {
-  ChatCompletionsPayloadError,
-  normalizeChatCompletionsResponse
-} from "./chat-completions-normalizer.js";
+import { LLMProvider, type LLMResponse, type LLMStreamEvent, type ToolCallRequest } from "./base.js";
+import { ChatCompletionsPayloadError, normalizeChatCompletionsResponse } from "./chat-completions-normalizer.js";
 import type { ThinkingLevel } from "../utils/thinking.js";
 import { mapThinkingLevelToOpenAIReasoningEffort } from "../utils/thinking.js";
 
@@ -19,6 +11,7 @@ export type OpenAIProviderOptions = {
   defaultModel: string;
   extraHeaders?: Record<string, string> | null;
   wireApi?: "auto" | "chat" | "responses" | null;
+  enableResponsesFallback?: boolean;
 };
 
 export class OpenAICompatibleProvider extends LLMProvider {
@@ -26,12 +19,14 @@ export class OpenAICompatibleProvider extends LLMProvider {
   private defaultModel: string;
   private extraHeaders?: Record<string, string> | null;
   private wireApi: "auto" | "chat" | "responses";
+  private enableResponsesFallback: boolean;
 
   constructor(options: OpenAIProviderOptions) {
     super(options.apiKey, options.apiBase);
     this.defaultModel = options.defaultModel;
     this.extraHeaders = options.extraHeaders ?? null;
     this.wireApi = options.wireApi ?? "auto";
+    this.enableResponsesFallback = options.enableResponsesFallback ?? true;
     this.client = new OpenAI({
       apiKey: options.apiKey ?? undefined,
       baseURL: options.apiBase ?? undefined,
@@ -524,6 +519,7 @@ export class OpenAICompatibleProvider extends LLMProvider {
   }
 
   private shouldFallbackToResponses(error: unknown): boolean {
+    if (!this.enableResponsesFallback) return false;
     const err = error as { status?: number; message?: string; code?: string };
     const status = err?.status;
     const message = err?.message ?? "";
