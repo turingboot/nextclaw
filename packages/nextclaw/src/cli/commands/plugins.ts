@@ -9,7 +9,6 @@ import {
 import {
   appendPluginCapabilityLines,
   buildReservedPluginLoadOptions,
-  RESERVED_PROVIDER_IDS,
 } from "./plugin-command-utils.js";
 import {
   applyDevFirstPartyPluginLoadPaths,

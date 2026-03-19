@@ -1,5 +1,4 @@
 import type { Context } from "hono";
-import { parseThinkingLevel } from "@nextclaw/core";
 import type {
   ChatSessionTypesView,
   SessionPatchUpdate,

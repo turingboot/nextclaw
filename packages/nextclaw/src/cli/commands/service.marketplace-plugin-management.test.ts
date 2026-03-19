@@ -2,6 +2,22 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import * as pluginMutations from "./plugin-mutation-actions.js";
 import { ServiceCommands } from "./service.js";
 
+const getServiceMethod = <T extends (...args: never[]) => unknown>(service: ServiceCommands, key: string): T => {
+  const method = Reflect.get(service as object, key);
+  if (typeof method !== "function") {
+    throw new Error(`Service method ${key} is not available`);
+  }
+  return method.bind(service) as T;
+};
+
+const setServiceField = (service: ServiceCommands, key: string, value: unknown): void => {
+  Reflect.set(service as object, key, value);
+};
+
+const getServiceField = <T>(service: ServiceCommands, key: string): T => {
+  return Reflect.get(service as object, key) as T;
+};
+
 describe("ServiceCommands marketplace plugin management", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -11,13 +27,16 @@ describe("ServiceCommands marketplace plugin management", () => {
     const service = new ServiceCommands({
       requestRestart: vi.fn().mockResolvedValue(undefined),
     });
-    const serviceAny = service as any;
     const installSpy = vi.spyOn(pluginMutations, "installPluginMutation").mockResolvedValue({
       message: "Installed plugin: codex",
     });
-    const runCliSpy = vi.spyOn(serviceAny, "runCliSubcommand");
+    const runCliSpy = vi.spyOn(service as never as { runCliSubcommand: () => Promise<string> }, "runCliSubcommand");
+    const installMarketplacePlugin = getServiceMethod<(spec: string) => Promise<{ message: string; output?: string }>>(
+      service,
+      "installMarketplacePlugin",
+    );
 
-    await expect(serviceAny.installMarketplacePlugin("@nextclaw/nextclaw-ncp-runtime-plugin-codex-sdk")).resolves.toEqual({
+    await expect(installMarketplacePlugin("@nextclaw/nextclaw-ncp-runtime-plugin-codex-sdk")).resolves.toEqual({
       message: "Installed plugin: codex",
     });
     expect(installSpy).toHaveBeenCalledWith("@nextclaw/nextclaw-ncp-runtime-plugin-codex-sdk");
@@ -28,8 +47,7 @@ describe("ServiceCommands marketplace plugin management", () => {
     const service = new ServiceCommands({
       requestRestart: vi.fn().mockResolvedValue(undefined),
     });
-    const serviceAny = service as any;
-    serviceAny.applyLiveConfigReload = vi.fn().mockResolvedValue(undefined);
+    setServiceField(service, "applyLiveConfigReload", vi.fn().mockResolvedValue(undefined));
     const enableSpy = vi.spyOn(pluginMutations, "enablePluginMutation").mockResolvedValue({
       message: 'Enabled plugin "codex".',
     });
@@ -40,15 +58,27 @@ describe("ServiceCommands marketplace plugin management", () => {
       message: 'Uninstalled plugin "codex". Removed: config entry.',
       warnings: [],
     });
-    const runCliSpy = vi.spyOn(serviceAny, "runCliSubcommand");
+    const runCliSpy = vi.spyOn(service as never as { runCliSubcommand: () => Promise<string> }, "runCliSubcommand");
+    const enableMarketplacePlugin = getServiceMethod<(id: string) => Promise<{ message: string; output?: string }>>(
+      service,
+      "enableMarketplacePlugin",
+    );
+    const disableMarketplacePlugin = getServiceMethod<(id: string) => Promise<{ message: string; output?: string }>>(
+      service,
+      "disableMarketplacePlugin",
+    );
+    const uninstallMarketplacePlugin = getServiceMethod<(id: string) => Promise<{ message: string; output?: string }>>(
+      service,
+      "uninstallMarketplacePlugin",
+    );
 
-    await expect(serviceAny.enableMarketplacePlugin("codex")).resolves.toEqual({
+    await expect(enableMarketplacePlugin("codex")).resolves.toEqual({
       message: 'Enabled plugin "codex".',
     });
-    await expect(serviceAny.disableMarketplacePlugin("codex")).resolves.toEqual({
+    await expect(disableMarketplacePlugin("codex")).resolves.toEqual({
       message: 'Disabled plugin "codex".',
     });
-    await expect(serviceAny.uninstallMarketplacePlugin("codex")).resolves.toEqual({
+    await expect(uninstallMarketplacePlugin("codex")).resolves.toEqual({
       message: 'Uninstalled plugin "codex". Removed: config entry.',
     });
 
@@ -58,6 +88,6 @@ describe("ServiceCommands marketplace plugin management", () => {
     expect(disableSpy).toHaveBeenNthCalledWith(2, "codex");
     expect(uninstallSpy).toHaveBeenCalledWith("codex", { force: true });
     expect(runCliSpy).not.toHaveBeenCalled();
-    expect(serviceAny.applyLiveConfigReload).toHaveBeenCalledTimes(4);
+    expect(getServiceField<{ (): Promise<void> }>(service, "applyLiveConfigReload")).toHaveBeenCalledTimes(4);
   });
 });
