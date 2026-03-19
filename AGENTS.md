@@ -266,9 +266,9 @@
   - 维护责任人：当前助手。
 - **post-edit-maintainability-guard-required**：
   - 约束/适用范围：凡本次任务触达项目代码、脚本、测试或影响运行链路的配置，收尾前必须执行项目内 skill `post-edit-maintainability-guard` 的自检；纯文档、措辞或元信息微调不适用，但必须明确说明“不适用”。
-  - 示例：修改 `packages/nextclaw/src/cli/commands/service.ts` 后，在最终回复前运行 `python3 .codex/skills/post-edit-maintainability-guard/scripts/check_maintainability.py`，并说明是否存在“新文件超预算 / 超限文件继续增长 / 穿越预算线”。
+  - 示例：修改 `packages/nextclaw/src/cli/commands/service.ts` 后，在最终回复前运行 `node .codex/skills/post-edit-maintainability-guard/scripts/check-maintainability.mjs`，并说明是否存在“新文件超预算 / 超限文件继续增长 / 穿越预算线”。
   - 反例：代码改完只跑功能验证，不做任何可维护性自检；或发现超长文件继续增长却不提示风险和拆分缝。
-  - 执行方式：默认在收尾阶段运行 `python3 .codex/skills/post-edit-maintainability-guard/scripts/check_maintainability.py`；如只需检查特定文件，可加 `--paths <file...>`；若出现阻塞项，优先继续拆分，否则需在结果中明确债务、原因与下一步拆分位点。
+  - 执行方式：默认在收尾阶段运行 `node .codex/skills/post-edit-maintainability-guard/scripts/check-maintainability.mjs`；如只需检查特定文件，可加 `--paths <file...>`；若出现阻塞项，优先继续拆分，否则需在结果中明确债务、原因与下一步拆分位点。
   - 维护责任人：当前助手。
 - **legacy-freeze-before-removal**：
   - 约束/适用范围：凡涉及 `nextclaw` chat 链路演进，默认停止给 legacy 链路新增任何功能、适配或产品增强；legacy 只允许做三类改动：阻塞 NCP 迁移的必要修复、删除 legacy 前必须完成的兼容性清理、以及用户明确要求的临时回滚保障。

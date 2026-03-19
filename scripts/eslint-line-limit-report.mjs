@@ -5,7 +5,13 @@ import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const targetRuleIds = new Set(["max-lines", "max-lines-per-function"]);
+const trackedRuleIds = new Set([
+  "max-lines",
+  "max-lines-per-function",
+  "max-statements",
+  "max-depth",
+  "sonarjs/cognitive-complexity"
+]);
 
 const args = process.argv.slice(2).filter((arg) => arg !== "--");
 const options = {
@@ -102,7 +108,7 @@ for (const result of results) {
   const relativeFilePath = toPosixPath(relative(rootDir, result.filePath));
   const workspace = detectWorkspace(result.filePath);
   for (const message of result.messages) {
-    if (targetRuleIds.has(message.ruleId ?? "")) {
+    if (trackedRuleIds.has(message.ruleId ?? "")) {
       violations.push({
         workspace,
         filePath: relativeFilePath,
@@ -158,7 +164,7 @@ nonTargetErrors.sort((left, right) => {
 });
 
 const violationsByRule = Object.fromEntries(
-  [...targetRuleIds]
+  [...trackedRuleIds]
     .sort((left, right) => left.localeCompare(right))
     .map((ruleId) => [ruleId, violations.filter((violation) => violation.ruleId === ruleId).length])
 );
@@ -203,7 +209,7 @@ const report = {
 if (options.json) {
   console.log(JSON.stringify(report, null, 2));
 } else {
-  console.log("ESLint line-limit report");
+  console.log("ESLint maintainability report");
   console.log(`Scanned workspaces: ${report.scannedWorkspaces.length}`);
   console.log(`Affected files: ${report.affectedFiles}`);
   console.log(`Total violations: ${report.totalViolations}`);
@@ -213,7 +219,7 @@ if (options.json) {
 
   if (report.totalViolations === 0) {
     console.log("");
-    console.log("No max-lines or max-lines-per-function violations found.");
+    console.log("No tracked maintainability violations found.");
   } else {
     for (const workspaceEntry of report.violationsByWorkspace) {
       console.log("");

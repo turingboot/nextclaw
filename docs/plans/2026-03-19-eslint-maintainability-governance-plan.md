@@ -258,7 +258,7 @@ skill 的核心判断不应该是“仓库里还有没有历史 warning”，而
 - 或新增一份 JSON/TS 配置文件，由以下位置共用：
   - `eslint.config.mjs`
   - `scripts/eslint-line-limit-report.mjs`
-  - `.codex/skills/post-edit-maintainability-guard/scripts/check_maintainability.py`
+  - `.codex/skills/post-edit-maintainability-guard/scripts/check-maintainability.mjs`
 
 至少要统一这些值：
 
@@ -303,7 +303,7 @@ skill 的核心判断不应该是“仓库里还有没有历史 warning”，而
 **Files:**
 
 - Modify: `.codex/skills/post-edit-maintainability-guard/SKILL.md`
-- Modify: `.codex/skills/post-edit-maintainability-guard/scripts/check_maintainability.py`
+- Modify: `.codex/skills/post-edit-maintainability-guard/scripts/check-maintainability.mjs`
 
 **Outcome:**
 
@@ -316,7 +316,7 @@ skill 的核心判断不应该是“仓库里还有没有历史 warning”，而
 
 **Files:**
 
-- Modify: `.codex/skills/post-edit-maintainability-guard/scripts/check_maintainability.py`
+- Modify: `.codex/skills/post-edit-maintainability-guard/scripts/check-maintainability.mjs`
 - Optional: `eslint.config.mjs`
 
 **Outcome:**
@@ -370,8 +370,8 @@ pnpm exec eslint packages/nextclaw-core/src/agent/loop.ts
 ### Maintainability skill 验证
 
 ```bash
-python3 .codex/skills/post-edit-maintainability-guard/scripts/check_maintainability.py --json --no-fail
-python3 .codex/skills/post-edit-maintainability-guard/scripts/check_maintainability.py --paths packages/nextclaw-openclaw-compat/src/plugins/loader.ts --json --no-fail
+node .codex/skills/post-edit-maintainability-guard/scripts/check-maintainability.mjs --json --no-fail
+node .codex/skills/post-edit-maintainability-guard/scripts/check-maintainability.mjs --paths packages/nextclaw-openclaw-compat/src/plugins/loader.ts --json --no-fail
 ```
 
 ## 最终判断

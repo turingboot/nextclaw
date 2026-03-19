@@ -1,10 +1,35 @@
 import js from "@eslint/js";
+import sonarjs from "eslint-plugin-sonarjs";
 import tsEslintPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import prettier from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
 
 const tsWorkspaceFiles = ["apps/**/*.{ts,tsx,mts,cts}", "packages/**/*.{ts,tsx,mts,cts}", "workers/**/*.{ts,tsx,mts,cts}"];
+const testFiles = [
+  "apps/**/*.test.{ts,tsx,mts,cts}",
+  "apps/**/*.spec.{ts,tsx,mts,cts}",
+  "packages/**/*.test.{ts,tsx,mts,cts}",
+  "packages/**/*.spec.{ts,tsx,mts,cts}",
+  "workers/**/*.test.{ts,tsx,mts,cts}",
+  "workers/**/*.spec.{ts,tsx,mts,cts}",
+  "apps/**/{__tests__,tests}/**/*.{ts,tsx,mts,cts}",
+  "packages/**/{__tests__,tests}/**/*.{ts,tsx,mts,cts}",
+  "workers/**/{__tests__,tests}/**/*.{ts,tsx,mts,cts}"
+];
+const uiComponentFiles = [
+  "packages/nextclaw-ui/src/components/**/*.tsx",
+  "packages/nextclaw-ui/src/App.tsx",
+  "packages/nextclaw-agent-chat-ui/src/components/**/*.tsx"
+];
+const orchestratorComplexityFiles = [
+  "packages/nextclaw/**/*.{ts,mts,cts}",
+  "packages/nextclaw-core/**/*.{ts,mts,cts}",
+  "packages/nextclaw-server/**/*.{ts,mts,cts}",
+  "packages/nextclaw-openclaw-compat/**/*.{ts,mts,cts}",
+  "workers/**/*.{ts,mts,cts}",
+  "packages/extensions/nextclaw-channel-runtime/**/*.{ts,mts,cts}"
+];
 
 const tsEslintRecommendedOverrideRules = tsEslintPlugin.configs["eslint-recommended"].overrides?.[0]?.rules ?? {};
 
@@ -20,6 +45,8 @@ const baseRules = {
     "warn",
     { max: 150, skipBlankLines: true, skipComments: true, IIFEs: true }
   ],
+  "max-statements": ["warn", 30],
+  "max-depth": ["warn", 4],
   "no-param-reassign": ["warn", { props: false }]
 };
 
@@ -30,6 +57,7 @@ export default [
       "**/dist/**",
       "dist/**",
       "**/*.d.ts",
+      "**/.wrangler/**",
       "apps/desktop/release/**",
       "packages/nextclaw/ui-dist/**"
     ]
@@ -52,6 +80,16 @@ export default [
       "@typescript-eslint": tsEslintPlugin
     },
     rules: baseRules
+  },
+  {
+    files: testFiles,
+    rules: {
+      "max-lines-per-function": [
+        "warn",
+        { max: 220, skipBlankLines: true, skipComments: true, IIFEs: true }
+      ],
+      "max-statements": ["warn", 45]
+    }
   },
   {
     files: [
@@ -108,16 +146,22 @@ export default [
     }
   },
   {
-    files: [
-      "packages/nextclaw-ui/src/components/**/*.tsx",
-      "packages/nextclaw-ui/src/App.tsx",
-      "packages/nextclaw-agent-chat-ui/src/components/**/*.tsx"
-    ],
+    files: uiComponentFiles,
     rules: {
       "max-lines-per-function": [
         "warn",
         { max: 300, skipBlankLines: true, skipComments: true, IIFEs: true }
-      ]
+      ],
+      "max-statements": ["warn", 60]
+    }
+  },
+  {
+    files: orchestratorComplexityFiles,
+    plugins: {
+      sonarjs
+    },
+    rules: {
+      "sonarjs/cognitive-complexity": ["warn", 18]
     }
   }
 ];
