@@ -4,9 +4,11 @@ import type { SessionEntryView, ThinkingLevel } from '@/api/types';
 import type { ChatModelOption } from '@/components/chat/chat-input.types';
 import { useChatSessionTypeState } from '@/components/chat/useChatSessionTypeState';
 import {
+  resolveRecentSessionPreferredThinking,
   resolveRecentSessionPreferredModel,
-  useSyncSelectedModel
-} from '@/components/chat/chat-page-runtime';
+  useSyncSelectedModel,
+  useSyncSelectedThinking
+} from '@/components/chat/chat-session-preference-governance';
 import {
   useChatCapabilities,
   useChatSessionTypes,
@@ -22,23 +24,12 @@ type UseChatPageDataParams = {
   query: string;
   selectedSessionKey: string | null;
   selectedAgentId: string;
+  currentSelectedModel: string;
   pendingSessionType: string;
   setPendingSessionType: Dispatch<SetStateAction<string>>;
   setSelectedModel: Dispatch<SetStateAction<string>>;
+  setSelectedThinkingLevel: Dispatch<SetStateAction<ThinkingLevel | null>>;
 };
-
-const THINKING_LEVEL_SET = new Set<string>(['off', 'minimal', 'low', 'medium', 'high', 'adaptive', 'xhigh']);
-
-function parseThinkingLevel(value: unknown): ThinkingLevel | null {
-  if (typeof value !== 'string') {
-    return null;
-  }
-  const normalized = value.trim().toLowerCase();
-  if (!normalized) {
-    return null;
-  }
-  return THINKING_LEVEL_SET.has(normalized) ? (normalized as ThinkingLevel) : null;
-}
 
 export function useChatPageData(params: UseChatPageDataParams) {
   const configQuery = useConfig();
@@ -110,6 +101,27 @@ export function useChatPageData(params: UseChatPageDataParams) {
       }),
     [params.selectedSessionKey, sessionTypeState.selectedSessionType, sessions]
   );
+  const currentModelOption = useMemo(
+    () => modelOptions.find((option) => option.value === params.currentSelectedModel),
+    [modelOptions, params.currentSelectedModel]
+  );
+  const supportedThinkingLevels = useMemo(
+    () => (currentModelOption?.thinkingCapability?.supported as ThinkingLevel[] | undefined) ?? [],
+    [currentModelOption?.thinkingCapability?.supported]
+  );
+  const defaultThinkingLevel = useMemo(
+    () => (currentModelOption?.thinkingCapability?.default as ThinkingLevel | null | undefined) ?? null,
+    [currentModelOption?.thinkingCapability?.default]
+  );
+  const recentSessionPreferredThinking = useMemo(
+    () =>
+      resolveRecentSessionPreferredThinking({
+        sessions,
+        selectedSessionKey: params.selectedSessionKey,
+        sessionType: sessionTypeState.selectedSessionType
+      }),
+    [params.selectedSessionKey, sessionTypeState.selectedSessionType, sessions]
+  );
 
   useSyncSelectedModel({
     modelOptions,
@@ -120,30 +132,17 @@ export function useChatPageData(params: UseChatPageDataParams) {
     defaultModel: configQuery.data?.agents.defaults.model,
     setSelectedModel: params.setSelectedModel
   });
+  useSyncSelectedThinking({
+    supportedThinkingLevels,
+    selectedSessionKey: params.selectedSessionKey,
+    selectedSessionExists: Boolean(selectedSession),
+    selectedSessionPreferredThinking: selectedSession?.preferredThinking ?? null,
+    fallbackPreferredThinking: recentSessionPreferredThinking ?? null,
+    defaultThinkingLevel,
+    setSelectedThinkingLevel: params.setSelectedThinkingLevel
+  });
 
   const historyMessages = useMemo(() => historyQuery.data?.messages ?? [], [historyQuery.data?.messages]);
-  const selectedSessionThinkingLevel = useMemo(() => {
-    if (!params.selectedSessionKey) {
-      return null;
-    }
-    const metadata = historyQuery.data?.metadata;
-    if (!metadata || typeof metadata !== 'object') {
-      return null;
-    }
-    const candidates = [
-      metadata.preferred_thinking,
-      metadata.thinking,
-      metadata.thinking_level,
-      metadata.thinkingLevel
-    ];
-    for (const value of candidates) {
-      const level = parseThinkingLevel(value);
-      if (level) {
-        return level;
-      }
-    }
-    return null;
-  }, [historyQuery.data?.metadata, params.selectedSessionKey]);
 
   return {
     configQuery,
@@ -159,7 +158,6 @@ export function useChatPageData(params: UseChatPageDataParams) {
     skillRecords,
     selectedSession,
     historyMessages,
-    selectedSessionThinkingLevel,
     ...sessionTypeState
   };
 }

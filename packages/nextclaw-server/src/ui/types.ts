@@ -206,6 +206,7 @@ export type SessionEntryView = {
   updatedAt: string;
   label?: string;
   preferredModel?: string;
+  preferredThinking?: ThinkingLevel | null;
   sessionType: string;
   sessionTypeMutable: boolean;
   messageCount: number;

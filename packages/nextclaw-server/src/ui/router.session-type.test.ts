@@ -114,6 +114,7 @@ describe("chat session type routes - listing", () => {
     const sessionManager = new SessionManager(".");
     const session = sessionManager.getOrCreate("agent:main:ui:direct:web-keep-codex");
     session.metadata.session_type = "codex-sdk";
+    session.metadata.preferred_thinking = "high";
     sessionManager.addMessage(session, "user", "hello");
     sessionManager.save(session);
 
@@ -137,7 +138,7 @@ describe("chat session type routes - listing", () => {
     const payload = await response.json() as {
       ok: boolean;
       data: {
-        sessions: Array<{ key: string; sessionType: string; sessionTypeMutable: boolean }>;
+        sessions: Array<{ key: string; sessionType: string; sessionTypeMutable: boolean; preferredThinking?: string | null }>;
       };
     };
     expect(payload.ok).toBe(true);
@@ -145,6 +146,7 @@ describe("chat session type routes - listing", () => {
     expect(target).toBeTruthy();
     expect(target?.sessionType).toBe("codex-sdk");
     expect(target?.sessionTypeMutable).toBe(false);
+    expect(target?.preferredThinking).toBe("high");
   });
 
 });

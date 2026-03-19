@@ -43,6 +43,7 @@ import type {
   SessionPatchUpdate
 } from "./types.js";
 import { applySessionPreferencePatch } from "./session-preference-patch.js";
+import { readSessionListMetadata } from "./session-list-metadata.js";
 
 const MASK_MIN_LENGTH = 8;
 const EXTRA_SENSITIVE_PATH_PATTERNS = [/authorization/i, /cookie/i, /session/i, /bearer/i];
@@ -1189,9 +1190,7 @@ export function listSessions(
       const messages = session?.messages ?? [];
       const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
       const metadata = item.metadata && typeof item.metadata === "object" ? (item.metadata as Record<string, unknown>) : {};
-      const label = typeof metadata.label === "string" ? metadata.label.trim() : "";
-      const preferredModel =
-        typeof metadata.preferred_model === "string" ? metadata.preferred_model.trim() : "";
+      const { label, preferredModel, preferredThinking } = readSessionListMetadata(metadata);
       const createdAt = typeof item.created_at === "string" ? item.created_at : new Date(0).toISOString();
       const updatedAt = typeof item.updated_at === "string" ? item.updated_at : createdAt;
       const sessionType = readSessionType({
@@ -1206,8 +1205,9 @@ export function listSessions(
         key,
         createdAt,
         updatedAt,
-        label: label || undefined,
-        preferredModel: preferredModel || undefined,
+        label,
+        preferredModel,
+        preferredThinking,
         sessionType,
         sessionTypeMutable,
         messageCount: messages.length,

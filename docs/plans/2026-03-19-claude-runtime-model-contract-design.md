@@ -26,6 +26,8 @@
 正确契约是：
 
 - `Claude` runtime 只承诺运行“当前认证方式 + 当前 gateway/proxy/provider 配置下，Claude SDK 实际声明自己支持的模型”
+- 在产品落地上，优先把 `Anthropic-format gateway` 定成一等路径
+- 第一优先默认方案直接采用 `LiteLLM`
 - 前端显示给用户的可选模型，应该是“NextClaw 全局模型目录”与“Claude runtime 运行时探测结果”的交集
 
 换句话说：
@@ -119,6 +121,22 @@
 - Claude runtime 可以无条件承诺支持 `NextClaw` 当前所有模型
 
 因为官方支持的是“经 Claude Code 兼容层后的 provider/gateway 路径”，不是“任意模型名天然可跑”。
+
+### 6. LiteLLM 是官方可接受且最适合 NextClaw 快速落地的默认 gateway
+
+官方 gateway 文档直接以 `LiteLLM` 作为示例。
+
+这意味着两件事：
+
+- `LiteLLM` 不是旁门左道，而是 Claude Code 官方接受的接入路径
+- 对 NextClaw 来说，优先选择 `LiteLLM` 做默认 gateway，比自研一层 `OpenAI -> Anthropic` 转换网关更快、更现实
+
+这里要强调的边界是：
+
+- 不是让 Claude Code 直接打 OpenAI `chat/completions`
+- 而是让 `LiteLLM` 对 Claude 暴露 `Anthropic Messages API`
+
+因此在产品方案上，应把 `LiteLLM` 视为 Claude 会话的默认推荐网关，而不是“可选实验方案”。
 
 ## 已确认不能直接承诺的事情
 
@@ -236,6 +254,30 @@ Claude 插件只负责：
 6. 用户选择 `Claude` 新建会话时，底部模型下拉默认就是“Claude 当前可用模型列表”，并自动选中推荐模型。
 7. 用户无需猜测是否能发，输入框默认就是可发送状态。
 
+### 新安装用户的默认推荐路径
+
+新用户不应被要求先理解：
+
+- Anthropic 原生直连
+- Bedrock
+- Vertex
+- gateway 兼容层
+
+默认推荐路径应直接是：
+
+1. 安装 Claude 插件
+2. 使用 `LiteLLM` 作为 Claude gateway
+3. 在 `Providers` 中新增或选择一个指向 LiteLLM 的 provider
+4. 填入 `apiBase` 和 `apiKey`
+5. 在这个 provider 下配置想暴露给 Claude 会话的模型
+6. 回到聊天页，直接创建 Claude 会话并开聊
+
+也就是说，产品文案和引导里应直接写：
+
+- “推荐：使用 LiteLLM 作为 Claude gateway”
+
+而不是把用户丢到一堆等价选项里自己猜。
+
 ### 新安装用户在现有 NextClaw 页面中的具体操作
 
 按当前产品导航，目标流程应具体落在这些页面与控件：
@@ -248,6 +290,7 @@ Claude 插件只负责：
    - `Setup required`
    - `Unsupported config`
 5. 如果是 `Setup required`，卡片上直接给 CTA：
+   - `Use LiteLLM gateway`
    - `Configure provider`
    - `Configure runtime`
 6. 用户完成配置后，返回 `/chat`
@@ -255,6 +298,32 @@ Claude 插件只负责：
 8. 若 Claude 已 ready，点击即直接创建 Claude 会话
 9. 会话底部模型下拉只展示 Claude 当前可用模型，并自动选中一个推荐模型
 10. 用户直接输入消息并发送
+
+### LiteLLM 路径下的具体产品使用步骤
+
+这是当前建议写进产品文案和帮助提示里的默认流程。
+
+1. 用户进入 `Settings -> Marketplace / Plugins`
+2. 安装并启用 `Claude` 插件
+3. 系统提示“推荐使用 LiteLLM 作为 Claude gateway”
+4. 用户进入 `Settings -> Providers`
+5. 新增一个 provider，例如 `litellm-claude`
+6. 配置：
+   - `apiBase = http://<your-litellm-host>:4000`
+   - `apiKey = <litellm key>`
+7. 在该 provider 下配置准备暴露给 Claude 会话的模型，例如：
+   - `claude-sonnet-4-5`
+   - `kimi-k2`
+   - `glm-5`
+8. 回到 `/chat`
+9. 点击左侧 `新任务` 右侧下拉，选择 `Claude`
+10. Claude 会话里默认模型优先选择该 provider 下的推荐模型
+11. 用户直接发送消息
+
+这条路径的核心好处是：
+
+- 用户只需要理解“Claude 会话推荐接 LiteLLM”
+- 不需要自己思考“我要不要先自研一个协议转换层”
 
 ### 聊天页内的目标体验
 
@@ -274,6 +343,22 @@ Claude 插件只负责：
 - 只有发消息后才知道模型不支持
 
 ## 推荐方案
+
+## 零、自顶向下的产品决策
+
+为了避免继续在实现上分散，先把产品决策定死：
+
+1. `Claude` 会话默认支持 `Anthropic-format gateway`
+2. 默认推荐 gateway 直接定为 `LiteLLM`
+3. 不自研第一版 OpenAI -> Anthropic 代理
+4. `Claude` 仍服从 NextClaw 的统一模型体系
+5. Claude 会话优先消费“当前 Claude gateway provider 下的模型”
+
+这意味着第一版产品语义应是：
+
+- 用户要用 Claude 会话，不必先理解 Anthropic 协议细节
+- 系统直接推荐 LiteLLM
+- 用户只要把 LiteLLM 接进来，就能让 Claude 会话跑该 gateway 暴露出来的模型
 
 ## 一、增加 Claude Runtime Capability Snapshot
 
@@ -343,6 +428,12 @@ type RuntimeReadinessReason =
 - 不破坏 NextClaw “统一模型心智”
 - 不让用户看到 Claude 当前根本跑不了的模型
 - 不需要在产品层硬编码“Claude 只能/不能用哪些 provider”
+
+同时加一条更激进的产品收敛：
+
+- 第一版 Claude 会话的模型来源，优先只展示“当前被标记为 Claude gateway provider 的模型”
+
+这样能避免把完全无关的 provider 模型都混进 Claude 下拉里。
 
 ## 三、发送前做组合校验，而不是发送后崩溃
 
@@ -493,6 +584,7 @@ type ChatRuntimeReadinessView = {
 
 需要增加：
 
+- `LiteLLM` 推荐入口或文案
 - 当前 Claude readiness 所依赖的 provider 是否已配置
 - 当前 `apiBase` 是否来自 Claude gateway 路径
 - 当前默认模型是否被 Claude runtime 支持
@@ -511,6 +603,7 @@ type ChatRuntimeReadinessView = {
 - 不新增第二套独立模型系统
 - 不把所有失败都转成模糊 toast
 - 不要求用户理解 capability / intersection / provider prefix 这些内部概念
+- 不在第一版就自研一套 OpenAI -> Anthropic 协议网关
 
 ## 能做 / 不能做 / 待验证
 
@@ -522,6 +615,7 @@ type ChatRuntimeReadinessView = {
 - 保持 `preferred_model` 作为 NextClaw 会话级单一真相
 - 在前端根据运行时能力过滤 Claude 可选模型
 - 在产品层把 readiness、推荐模型和配置 CTA 前置展示
+- 直接采用 LiteLLM 作为默认推荐 gateway 路径
 
 ## 已确认不能直接做成默认承诺
 
@@ -540,9 +634,12 @@ type ChatRuntimeReadinessView = {
 
 ### Phase 1
 
+- 在产品文案和配置引导中，把 LiteLLM 明确写成 Claude 默认推荐 gateway
 - Claude runtime 增加 capability snapshot 生产能力
 - 优先接 `supportedModels()`
+- Claude 插件配置显式支持 `apiBase` 作为 gateway 地址
 - 服务端补 readiness / supportedModels / recommendedModel 输出
+- Providers 页增加“Claude gateway provider”识别与推荐提示
 - 前端 `claude` 模型列表改成交集过滤
 - Claude 会话默认模型自动选择
 - 发送前增加组合校验
@@ -553,24 +650,44 @@ type ChatRuntimeReadinessView = {
 - 把 `supportsTools/resume/thinking` 从 `"unknown"` 逐步收敛成真实值
 - Marketplace 插件卡片增加 readiness 状态和 CTA
 - 聊天页“新任务”菜单增加 Claude readiness 展示
-- 需要时补最小真实冒烟矩阵
+- 如有必要，再考虑抽象出 LiteLLM 之外的其它 gateway 适配
 
-## 验证方案
+## 激进落地建议
 
-最低验证集建议：
+如果目标是“不要拖慢进度，先把产品路径打通”，那落地顺序应该是：
 
-1. 官方 Anthropic 直连
-- 获取 `supportedModels()`
-- 选择返回列表中的一个模型完成真实消息发送
+1. 直接把 `LiteLLM` 写进 Claude 文档、插件说明和设置引导
+2. 把 `apiBase` 定义成 Claude gateway 地址，而不是模糊 baseUrl
+3. Claude 会话默认围绕 `LiteLLM provider` 工作
+4. 能力探测只做最小必需：
+   - `ready`
+   - `supportedModels`
+   - `recommendedModel`
+5. 先打通“安装插件 -> 配 provider -> 创建 Claude 会话 -> 发送消息”这条主路径
 
-2. Bedrock 或 Vertex
-- 获取 `supportedModels()`
-- 验证返回模型集合非空时可成功发消息
+也就是说，第一版不是追求把所有 capability 全做透，而是先把产品入口和默认路径收敛住。
 
-3. 一个第三方 gateway 样例
-- 获取 `supportedModels()`
-- 若出现 Kimi / MiniMax / GLM-5 等模型，再验证其中一个真实消息发送
-- 对 tools / resume / thinking 单独记录“通过 / 不通过 / 未验证”
+## LiteLLM 使用方式
+
+在 NextClaw 里，LiteLLM 路径的使用方式建议直接写成产品标准流程：
+
+1. 部署一个 LiteLLM 服务
+2. 确保它对 Claude 暴露 `Anthropic Messages API`
+3. 在 `Providers` 中新增 provider：
+   - 名称示例：`litellm-claude`
+   - `apiBase`: LiteLLM 地址
+   - `apiKey`: LiteLLM key
+4. 在该 provider 下维护想要暴露给 Claude 的模型列表
+5. 在聊天页创建 `Claude` 会话
+6. 选择或自动带出 `litellm-claude/<model>`
+7. Claude runtime 会读取该 provider 的 `apiBase/apiKey/model`，经现有运行时环境变量桥接到 Claude SDK
+
+这条路径与当前代码结构是兼容的，因为现有 Claude runtime 已支持：
+
+- 读取 provider 级 `apiKey`
+- 读取 provider 级 `apiBase`
+- 把它们映射到 `ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL`
+- 对模型名做 provider 前缀剥离后传入 Claude SDK
 
 ## 最终结论
 
@@ -594,5 +711,7 @@ type ChatRuntimeReadinessView = {
 - Claude Code SDK overview: <https://docs.claude.com/en/docs/claude-code/sdk/sdk-overview>
 - Claude Code Bedrock / Vertex / proxies: <https://docs.claude.com/en/docs/claude-code/bedrock-vertex-proxies>
 - Claude Code LLM gateway: <https://docs.claude.com/en/docs/claude-code/llm-gateway>
+- LiteLLM: <https://docs.litellm.ai/>
+- LiteLLM repository: <https://github.com/BerriAI/litellm>
 - NextClaw Claude runtime plugin: [`packages/extensions/nextclaw-ncp-runtime-plugin-claude-code-sdk/src/index.ts`](../../packages/extensions/nextclaw-ncp-runtime-plugin-claude-code-sdk/src/index.ts)
 - NextClaw Codex runtime plugin: [`packages/extensions/nextclaw-ncp-runtime-plugin-codex-sdk/src/index.ts`](../../packages/extensions/nextclaw-ncp-runtime-plugin-codex-sdk/src/index.ts)

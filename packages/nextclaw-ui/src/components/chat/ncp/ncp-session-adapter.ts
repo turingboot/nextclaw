@@ -175,12 +175,14 @@ export function adaptNcpMessagesToUiMessages(messages: readonly NcpMessageView[]
 export function adaptNcpSessionSummary(summary: NcpSessionSummaryView): SessionEntryView {
   const label = readNcpSessionLabel(summary);
   const preferredModel = readNcpSessionPreferredModel(summary);
+  const preferredThinking = readNcpSessionPreferredThinking(summary);
   return {
     key: summary.sessionId,
     createdAt: summary.updatedAt,
     updatedAt: summary.updatedAt,
     ...(label ? { label } : {}),
     ...(preferredModel ? { preferredModel } : {}),
+    ...(preferredThinking ? { preferredThinking } : {}),
     sessionType: readNcpSessionType(summary),
     sessionTypeMutable: false,
     messageCount: summary.messageCount

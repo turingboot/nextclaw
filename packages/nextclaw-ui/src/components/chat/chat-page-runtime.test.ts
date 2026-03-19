@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { SessionEntryView } from '@/api/types';
-import { resolveRecentSessionPreferredModel, resolveSelectedModelValue } from '@/components/chat/chat-page-runtime';
+import type { SessionEntryView, ThinkingLevel } from '@/api/types';
+import {
+  resolveRecentSessionPreferredModel,
+  resolveRecentSessionPreferredThinking,
+  resolveSelectedModelValue,
+  resolveSelectedThinkingLevelValue
+} from '@/components/chat/chat-session-preference-governance';
 
 const modelOptions = [
   {
@@ -27,10 +32,15 @@ function createSession(overrides: Partial<SessionEntryView> & Pick<SessionEntryV
     messageCount: overrides.messageCount ?? 0,
     ...(overrides.label ? { label: overrides.label } : {}),
     ...(overrides.preferredModel ? { preferredModel: overrides.preferredModel } : {}),
+    ...(Object.prototype.hasOwnProperty.call(overrides, 'preferredThinking')
+      ? { preferredThinking: overrides.preferredThinking ?? null }
+      : {}),
     ...(overrides.lastRole ? { lastRole: overrides.lastRole } : {}),
     ...(overrides.lastTimestamp ? { lastTimestamp: overrides.lastTimestamp } : {})
   };
 }
+
+const thinkingLevels: ThinkingLevel[] = ['off', 'minimal', 'medium', 'high'];
 
 describe('resolveSelectedModelValue', () => {
   it('keeps the current selected model when it is still available', () => {
@@ -203,5 +213,89 @@ describe('resolveRecentSessionPreferredModel', () => {
         sessionType: 'codex'
       })
     ).toBe('anthropic/claude-sonnet-4');
+  });
+});
+
+describe('resolveSelectedThinkingLevelValue', () => {
+  it('keeps the current selected thinking when it is still valid', () => {
+    expect(
+      resolveSelectedThinkingLevelValue({
+        currentSelectedThinkingLevel: 'high',
+        supportedThinkingLevels: thinkingLevels,
+        selectedSessionPreferredThinking: 'medium',
+        fallbackPreferredThinking: 'minimal',
+        defaultThinkingLevel: 'off'
+      })
+    ).toBe('high');
+  });
+
+  it('prefers the persisted session thinking after switching sessions', () => {
+    expect(
+      resolveSelectedThinkingLevelValue({
+        currentSelectedThinkingLevel: 'high',
+        supportedThinkingLevels: thinkingLevels,
+        selectedSessionPreferredThinking: 'medium',
+        fallbackPreferredThinking: 'minimal',
+        defaultThinkingLevel: 'off',
+        preferSessionPreferredThinking: true
+      })
+    ).toBe('medium');
+  });
+
+  it('preserves the current valid thinking when a draft session materializes before metadata exists', () => {
+    expect(
+      resolveSelectedThinkingLevelValue({
+        currentSelectedThinkingLevel: 'high',
+        supportedThinkingLevels: thinkingLevels,
+        fallbackPreferredThinking: 'minimal',
+        defaultThinkingLevel: 'off',
+        preferSessionPreferredThinking: true,
+        preserveCurrentSelectedThinkingOnSessionChange: true
+      })
+    ).toBe('high');
+  });
+
+  it('falls back to the model default when no current or persisted thinking is valid', () => {
+    expect(
+      resolveSelectedThinkingLevelValue({
+        currentSelectedThinkingLevel: null,
+        supportedThinkingLevels: thinkingLevels,
+        fallbackPreferredThinking: null,
+        defaultThinkingLevel: 'medium'
+      })
+    ).toBe('medium');
+  });
+});
+
+describe('resolveRecentSessionPreferredThinking', () => {
+  it('returns the most recent preferred thinking from the same runtime', () => {
+    const sessions = [
+      createSession({
+        key: 'native-1',
+        sessionType: 'native',
+        preferredThinking: 'low',
+        updatedAt: '2026-03-18T01:00:00.000Z'
+      }),
+      createSession({
+        key: 'codex-1',
+        sessionType: 'codex',
+        preferredThinking: 'high',
+        updatedAt: '2026-03-18T03:00:00.000Z'
+      }),
+      createSession({
+        key: 'codex-2',
+        sessionType: 'codex',
+        preferredThinking: 'medium',
+        updatedAt: '2026-03-18T02:00:00.000Z'
+      })
+    ];
+
+    expect(
+      resolveRecentSessionPreferredThinking({
+        sessions,
+        selectedSessionKey: 'draft',
+        sessionType: 'codex'
+      })
+    ).toBe('high');
   });
 });

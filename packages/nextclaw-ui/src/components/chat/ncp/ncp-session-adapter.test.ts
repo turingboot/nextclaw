@@ -22,6 +22,7 @@ describe('adaptNcpSessionSummary', () => {
         metadata: {
           label: 'NCP Planning Thread',
           model: 'openai/gpt-5',
+          preferred_thinking: 'medium',
           session_type: 'native'
         }
       })
@@ -31,6 +32,7 @@ describe('adaptNcpSessionSummary', () => {
       key: 'ncp-session-1',
       label: 'NCP Planning Thread',
       preferredModel: 'openai/gpt-5',
+      preferredThinking: 'medium',
       sessionType: 'native',
       sessionTypeMutable: false,
       messageCount: 3

@@ -18,13 +18,13 @@ export function LegacyChatPage({ view }: ChatPageProps) {
   const selectedSessionKey = useChatSessionListStore((state) => state.snapshot.selectedSessionKey);
   const selectedAgentId = useChatSessionListStore((state) => state.snapshot.selectedAgentId);
   const pendingSessionType = useChatInputStore((state) => state.snapshot.pendingSessionType);
+  const currentSelectedModel = useChatInputStore((state) => state.snapshot.selectedModel);
   const { confirm, ConfirmDialog } = useConfirmDialog();
   const location = useLocation();
   const navigate = useNavigate();
   const { sessionId: routeSessionIdParam } = useParams<{ sessionId?: string }>();
   const threadRef = useRef<HTMLDivElement | null>(null);
   const selectedSessionKeyRef = useRef<string | null>(selectedSessionKey);
-  const thinkingHydratedSessionKeyRef = useRef<string | null>(null);
   const routeSessionKey = useMemo(
     () => parseSessionKeyFromRoute(routeSessionIdParam),
     [routeSessionIdParam]
@@ -40,7 +40,6 @@ export function LegacyChatPage({ view }: ChatPageProps) {
     skillRecords,
     selectedSession,
     historyMessages,
-    selectedSessionThinkingLevel,
     sessionTypeOptions,
     defaultSessionType,
     selectedSessionType,
@@ -51,9 +50,11 @@ export function LegacyChatPage({ view }: ChatPageProps) {
     query,
     selectedSessionKey,
     selectedAgentId,
+    currentSelectedModel,
     pendingSessionType,
     setPendingSessionType: presenter.chatInputManager.setPendingSessionType,
-    setSelectedModel: presenter.chatInputManager.setSelectedModel
+    setSelectedModel: presenter.chatInputManager.setSelectedModel,
+    setSelectedThinkingLevel: presenter.chatInputManager.setSelectedThinkingLevel
   });
   const {
     uiMessages,
@@ -138,14 +139,6 @@ export function LegacyChatPage({ view }: ChatPageProps) {
   }, [presenter, sessionsQuery.refetch]);
 
   useEffect(() => {
-    const shouldHydrateThinkingFromHistory =
-      !isSending &&
-      !isAwaitingAssistantOutput &&
-      !historyQuery.isLoading &&
-      isProviderStateResolved &&
-      modelOptions.length > 0 &&
-      selectedSessionKey !== thinkingHydratedSessionKeyRef.current;
-
     presenter.chatInputManager.syncSnapshot({
       isProviderStateResolved,
       defaultSessionType,
@@ -158,18 +151,11 @@ export function LegacyChatPage({ view }: ChatPageProps) {
       modelOptions,
       sessionTypeOptions,
       selectedSessionType,
-      ...(shouldHydrateThinkingFromHistory ? { selectedThinkingLevel: selectedSessionThinkingLevel } : {}),
       canEditSessionType,
       sessionTypeUnavailable,
       skillRecords,
       isSkillsLoading: installedSkillsQuery.isLoading
     });
-    if (shouldHydrateThinkingFromHistory) {
-      thinkingHydratedSessionKeyRef.current = selectedSessionKey;
-    }
-    if (!selectedSessionKey) {
-      thinkingHydratedSessionKeyRef.current = null;
-    }
     presenter.chatSessionListManager.syncSnapshot({
       sessions,
       query,
@@ -216,7 +202,6 @@ export function LegacyChatPage({ view }: ChatPageProps) {
     query,
     selectedSession,
     selectedSessionKey,
-    selectedSessionThinkingLevel,
     selectedSessionType,
     sessionRunStatusByKey,
     sessionTypeOptions,

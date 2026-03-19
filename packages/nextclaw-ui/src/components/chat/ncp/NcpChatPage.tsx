@@ -65,13 +65,13 @@ export function NcpChatPage({ view }: ChatPageProps) {
   const selectedSessionKey = useChatSessionListStore((state) => state.snapshot.selectedSessionKey);
   const selectedAgentId = useChatSessionListStore((state) => state.snapshot.selectedAgentId);
   const pendingSessionType = useChatInputStore((state) => state.snapshot.pendingSessionType);
+  const currentSelectedModel = useChatInputStore((state) => state.snapshot.selectedModel);
   const { confirm, ConfirmDialog } = useConfirmDialog();
   const location = useLocation();
   const navigate = useNavigate();
   const { sessionId: routeSessionIdParam } = useParams<{ sessionId?: string }>();
   const threadRef = useRef<HTMLDivElement | null>(null);
   const selectedSessionKeyRef = useRef<string | null>(selectedSessionKey);
-  const thinkingHydratedSessionKeyRef = useRef<string | null>(null);
   const routeSessionKey = useMemo(
     () => parseSessionKeyFromRoute(routeSessionIdParam),
     [routeSessionIdParam]
@@ -85,7 +85,6 @@ export function NcpChatPage({ view }: ChatPageProps) {
     sessions,
     skillRecords,
     selectedSession,
-    selectedSessionThinkingLevel,
     sessionTypeOptions,
     defaultSessionType,
     selectedSessionType,
@@ -95,9 +94,11 @@ export function NcpChatPage({ view }: ChatPageProps) {
   } = useNcpChatPageData({
     query,
     selectedSessionKey,
+    currentSelectedModel,
     pendingSessionType,
     setPendingSessionType: presenter.chatInputManager.setPendingSessionType,
-    setSelectedModel: presenter.chatInputManager.setSelectedModel
+    setSelectedModel: presenter.chatInputManager.setSelectedModel,
+    setSelectedThinkingLevel: presenter.chatInputManager.setSelectedThinkingLevel
   });
   const refetchSessions = sessionsQuery.refetch;
 
@@ -276,14 +277,6 @@ export function NcpChatPage({ view }: ChatPageProps) {
   }, [presenter, sessionsQuery.refetch]);
 
   useEffect(() => {
-    const shouldHydrateThinkingFromSession =
-      !isSending &&
-      !isAwaitingAssistantOutput &&
-      !agent.isHydrating &&
-      isProviderStateResolved &&
-      modelOptions.length > 0 &&
-      selectedSessionKey !== thinkingHydratedSessionKeyRef.current;
-
     presenter.chatInputManager.syncSnapshot({
       isProviderStateResolved,
       defaultSessionType,
@@ -296,18 +289,11 @@ export function NcpChatPage({ view }: ChatPageProps) {
       modelOptions,
       sessionTypeOptions,
       selectedSessionType,
-      ...(shouldHydrateThinkingFromSession ? { selectedThinkingLevel: selectedSessionThinkingLevel } : {}),
       canEditSessionType,
       sessionTypeUnavailable,
       skillRecords,
       isSkillsLoading: installedSkillsQuery.isLoading
     });
-    if (shouldHydrateThinkingFromSession) {
-      thinkingHydratedSessionKeyRef.current = selectedSessionKey;
-    }
-    if (!selectedSessionKey) {
-      thinkingHydratedSessionKeyRef.current = null;
-    }
     presenter.chatSessionListManager.syncSnapshot({
       sessions,
       query,
@@ -352,7 +338,6 @@ export function NcpChatPage({ view }: ChatPageProps) {
     query,
     selectedSession,
     selectedSessionKey,
-    selectedSessionThinkingLevel,
     selectedSessionType,
     sessionRunStatusByKey,
     sessionTypeOptions,

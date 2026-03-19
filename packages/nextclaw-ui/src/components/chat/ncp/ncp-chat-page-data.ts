@@ -1,16 +1,15 @@
 import { useMemo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import type { SessionEntryView } from '@/api/types';
+import type { SessionEntryView, ThinkingLevel } from '@/api/types';
 import type { ChatModelOption } from '@/components/chat/chat-input.types';
-import {
-  adaptNcpSessionSummaries,
-  readNcpSessionPreferredThinking
-} from '@/components/chat/ncp/ncp-session-adapter';
+import { adaptNcpSessionSummaries } from '@/components/chat/ncp/ncp-session-adapter';
 import { useChatSessionTypeState } from '@/components/chat/useChatSessionTypeState';
 import {
+  resolveRecentSessionPreferredThinking,
   resolveRecentSessionPreferredModel,
-  useSyncSelectedModel
-} from '@/components/chat/chat-page-runtime';
+  useSyncSelectedModel,
+  useSyncSelectedThinking
+} from '@/components/chat/chat-session-preference-governance';
 import {
   useConfig,
   useConfigMeta,
@@ -23,9 +22,11 @@ import { buildProviderModelCatalog, composeProviderModel, resolveModelThinkingCa
 type UseNcpChatPageDataParams = {
   query: string;
   selectedSessionKey: string | null;
+  currentSelectedModel: string;
   pendingSessionType: string;
   setPendingSessionType: Dispatch<SetStateAction<string>>;
   setSelectedModel: Dispatch<SetStateAction<string>>;
+  setSelectedThinkingLevel: Dispatch<SetStateAction<ThinkingLevel | null>>;
 };
 
 function filterSessionsByQuery(sessions: SessionEntryView[], query: string): SessionEntryView[] {
@@ -94,19 +95,10 @@ export function useNcpChatPageData(params: UseNcpChatPageDataParams) {
     () => allSessions.find((session) => session.key === params.selectedSessionKey) ?? null,
     [allSessions, params.selectedSessionKey]
   );
-  const selectedSessionSummary = useMemo(
-    () => sessionSummaries.find((session) => session.sessionId === params.selectedSessionKey) ?? null,
-    [params.selectedSessionKey, sessionSummaries]
-  );
   const skillRecords = useMemo(
     () => installedSkillsQuery.data?.records ?? [],
     [installedSkillsQuery.data?.records]
   );
-  const selectedSessionThinkingLevel = useMemo(
-    () => (selectedSessionSummary ? readNcpSessionPreferredThinking(selectedSessionSummary) : null),
-    [selectedSessionSummary]
-  );
-
   const sessionTypeState = useChatSessionTypeState({
     selectedSession,
     selectedSessionKey: params.selectedSessionKey,
@@ -123,6 +115,27 @@ export function useNcpChatPageData(params: UseNcpChatPageDataParams) {
       }),
     [allSessions, params.selectedSessionKey, sessionTypeState.selectedSessionType]
   );
+  const currentModelOption = useMemo(
+    () => modelOptions.find((option) => option.value === params.currentSelectedModel),
+    [modelOptions, params.currentSelectedModel]
+  );
+  const supportedThinkingLevels = useMemo(
+    () => (currentModelOption?.thinkingCapability?.supported as ThinkingLevel[] | undefined) ?? [],
+    [currentModelOption?.thinkingCapability?.supported]
+  );
+  const defaultThinkingLevel = useMemo(
+    () => (currentModelOption?.thinkingCapability?.default as ThinkingLevel | null | undefined) ?? null,
+    [currentModelOption?.thinkingCapability?.default]
+  );
+  const recentSessionPreferredThinking = useMemo(
+    () =>
+      resolveRecentSessionPreferredThinking({
+        sessions: allSessions,
+        selectedSessionKey: params.selectedSessionKey,
+        sessionType: sessionTypeState.selectedSessionType
+      }),
+    [allSessions, params.selectedSessionKey, sessionTypeState.selectedSessionType]
+  );
 
   useSyncSelectedModel({
     modelOptions,
@@ -132,6 +145,15 @@ export function useNcpChatPageData(params: UseNcpChatPageDataParams) {
     fallbackPreferredModel: recentSessionPreferredModel,
     defaultModel: configQuery.data?.agents.defaults.model,
     setSelectedModel: params.setSelectedModel
+  });
+  useSyncSelectedThinking({
+    supportedThinkingLevels,
+    selectedSessionKey: params.selectedSessionKey,
+    selectedSessionExists: Boolean(selectedSession),
+    selectedSessionPreferredThinking: selectedSession?.preferredThinking ?? null,
+    fallbackPreferredThinking: recentSessionPreferredThinking ?? null,
+    defaultThinkingLevel,
+    setSelectedThinkingLevel: params.setSelectedThinkingLevel
   });
 
   return {
@@ -146,7 +168,6 @@ export function useNcpChatPageData(params: UseNcpChatPageDataParams) {
     sessions,
     skillRecords,
     selectedSession,
-    selectedSessionThinkingLevel,
     ...sessionTypeState
   };
 }
