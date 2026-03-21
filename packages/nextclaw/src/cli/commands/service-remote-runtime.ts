@@ -1,6 +1,6 @@
 import type { Config } from "@nextclaw/core";
 import { RemoteServiceModule } from "@nextclaw/remote";
-import { readServiceState, writeServiceState, type ServiceState } from "../utils.js";
+import { readServiceState, resolveUiApiBase, writeServiceState, type ServiceState } from "../utils.js";
 import {
   buildNextclawConfiguredRemoteState,
   createNextclawRemoteConnector,
@@ -17,14 +17,16 @@ type ManagedServiceSnapshot = {
 };
 
 export function createManagedRemoteModule(params: {
-  config: Config;
+  loadConfig: () => Config;
+  uiEnabled: boolean;
   localOrigin: string;
 }): RemoteServiceModule | null {
-  if (!params.config.ui.enabled) {
+  if (!params.uiEnabled) {
     return null;
   }
   return new RemoteServiceModule({
-    config: params.config,
+    loadConfig: params.loadConfig,
+    uiEnabled: params.uiEnabled,
     localOrigin: params.localOrigin,
     statusStore: createNextclawRemoteStatusStore("service"),
     createConnector: (logger) => createNextclawRemoteConnector({ logger }),
@@ -33,6 +35,17 @@ export function createManagedRemoteModule(params: {
       warn: (message) => console.warn(`[remote] ${message}`),
       error: (message) => console.error(`[remote] ${message}`)
     }
+  });
+}
+
+export function createManagedRemoteModuleForUi(params: {
+  loadConfig: () => Config;
+  uiConfig: Pick<Config["ui"], "enabled" | "host" | "port">;
+}): RemoteServiceModule | null {
+  return createManagedRemoteModule({
+    loadConfig: params.loadConfig,
+    uiEnabled: params.uiConfig.enabled,
+    localOrigin: resolveUiApiBase(params.uiConfig.host, params.uiConfig.port)
   });
 }
 

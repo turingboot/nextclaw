@@ -1,10 +1,11 @@
 export const REMOTE_LABELS: Record<string, { zh: string; en: string }> = {
   remotePageTitle: { zh: '远程访问', en: 'Remote Access' },
   remotePageDescription: {
-    zh: '只管理这台设备是否可在 NextClaw Web 中被查看和打开。',
-    en: 'Manage whether this device can be viewed and opened in NextClaw Web.'
+    zh: '让这台设备出现在 NextClaw Platform 的设备列表里，并从网页中打开它。',
+    en: 'Make this device appear in your NextClaw Platform device list and open it from the web.'
   },
   remoteOpenWeb: { zh: '前往 NextClaw Web', en: 'Open NextClaw Web' },
+  remoteOpenDeviceList: { zh: '查看我的设备', en: 'View My Devices' },
   remoteOpenWebHint: {
     zh: '开启后，这台设备会出现在 NextClaw Web 中，你可以在那里点击打开并继续使用。',
     en: 'Once enabled, this device appears in NextClaw Web, where you can open it and keep working.'
@@ -41,8 +42,17 @@ export const REMOTE_LABELS: Record<string, { zh: string; en: string }> = {
   },
   remoteStatusIssueTitle: { zh: '远程连接当前有异常', en: 'The remote connection needs attention' },
   remoteStatusIssueDescription: {
-    zh: '账号和设备配置都还在，但连接器当前没有稳定在线。你可以重新连接。',
-    en: 'Your account and device settings are still there, but the connector is not stably online right now. Reconnect it.'
+    zh: '账号和设备配置都还在，但当前没有稳定连上平台。你可以重新连接，或先去设备列表确认这台设备的状态。',
+    en: 'Your account and device settings are still there, but this device is not stably connected to the platform right now. Reconnect it or check the device list first.'
+  },
+  remoteStatusIssueDetailTitle: { zh: '当前提示', en: 'Current Hint' },
+  remoteStatusIssueDetailGeneric: {
+    zh: '连接曾经建立，但随后被平台侧主动关闭。常见原因包括登录态失效、平台侧中继不可用，或云端配额暂时触顶。',
+    en: 'The connection was established and then closed by the platform. Common causes include an expired session, an unavailable relay, or a temporary cloud quota limit.'
+  },
+  remoteStatusIssueDetailServiceStopped: {
+    zh: '本地托管服务没有在运行，所以远程连接不会保持在线。',
+    en: 'The local managed service is not running, so the remote connection cannot stay online.'
   },
   remoteSignInAndEnable: { zh: '登录并开启远程访问', en: 'Sign In and Enable Remote Access' },
   remoteEnableNow: { zh: '开启远程访问', en: 'Enable Remote Access' },
@@ -75,6 +85,7 @@ export const REMOTE_LABELS: Record<string, { zh: string; en: string }> = {
   remoteAccountEntryTitle: { zh: 'NextClaw 账号', en: 'NextClaw Account' },
   remoteAccountEntryDisconnected: { zh: '未登录，点击连接', en: 'Not signed in. Click to connect.' },
   remoteAccountEntryConnected: { zh: '已连接到 NextClaw', en: 'Connected to NextClaw' },
+  remoteAccountEntryManage: { zh: '账号与设备入口', en: 'Account and Device Entry' },
   accountPanelTitle: { zh: 'NextClaw 账号', en: 'NextClaw Account' },
   accountPanelDescription: {
     zh: '远程访问依赖这个账号登录。后续 token、授权和更多云端能力也会基于它展开。',
@@ -92,8 +103,8 @@ export const REMOTE_LABELS: Record<string, { zh: string; en: string }> = {
   },
   remoteOverviewTitle: { zh: '连接总览', en: 'Connection Overview' },
   remoteOverviewDescription: {
-    zh: '快速确认平台账号、托管服务和远程连接器状态。',
-    en: 'Quickly verify platform account, managed service, and connector state.'
+    zh: '只保留普通用户真正需要知道的信息。',
+    en: 'Keep only the information ordinary users actually need.'
   },
   remoteAccountConnected: { zh: '平台已登录', en: 'Platform Connected' },
   remoteAccountNotConnected: { zh: '平台未登录', en: 'Platform Not Connected' },
@@ -114,6 +125,12 @@ export const REMOTE_LABELS: Record<string, { zh: string; en: string }> = {
     zh: '保存远程访问开关、设备名和平台 API Base。',
     en: 'Save remote access state, device name, and platform API base.'
   },
+  remoteDeviceSectionTitle: { zh: '设备信息', en: 'Device Info' },
+  remoteDeviceSectionDescription: {
+    zh: '开启之后，这台设备会在平台网页的设备列表中出现。',
+    en: 'Once enabled, this device will appear in the platform web device list.'
+  },
+  remoteDeviceNameAuto: { zh: '未命名设备', en: 'Unnamed Device' },
   remoteEnabled: { zh: '启用远程访问', en: 'Enable Remote Access' },
   remoteEnabledHelp: {
     zh: '保存后需要启动或重启后台服务，新的远程配置才会真正生效。',

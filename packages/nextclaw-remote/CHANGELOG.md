@@ -1,5 +1,31 @@
 # @nextclaw/remote
 
+## 0.1.12
+
+### Patch Changes
+
+- Updated dependencies
+  - @nextclaw/core@0.9.6
+  - @nextclaw/server@0.10.16
+
+## 0.1.11
+
+### Patch Changes
+
+- Fix remote access to bind status and repair actions to the current UI process runtime instead of a stale managed service snapshot.
+
+  Ensure `serve` and dev UI sessions start the remote runtime whenever the current process actually has UI enabled, even if `config.ui.enabled` is false.
+
+- Updated dependencies
+  - @nextclaw/server@0.10.15
+
+## 0.1.10
+
+### Patch Changes
+
+- Updated dependencies
+  - @nextclaw/server@0.10.14
+
 ## 0.1.9
 
 ### Patch Changes

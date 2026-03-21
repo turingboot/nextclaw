@@ -1,5 +1,47 @@
 # nextclaw
 
+## 0.13.20
+
+### Patch Changes
+
+- Add an `enabled` switch for providers so disabled providers stay configured but are excluded from routing, model selection, and runtime diagnostics.
+
+  Expose the provider enabled state through the server and UI config views, and show disabled providers clearly in the Providers page.
+
+- Updated dependencies
+  - @nextclaw/core@0.9.6
+  - @nextclaw/mcp@0.1.16
+  - @nextclaw/server@0.10.16
+  - @nextclaw/openclaw-compat@0.3.9
+  - @nextclaw/remote@0.1.12
+  - @nextclaw/runtime@0.2.6
+  - @nextclaw/ncp-mcp@0.1.16
+
+## 0.13.19
+
+### Patch Changes
+
+- Fix remote access to bind status and repair actions to the current UI process runtime instead of a stale managed service snapshot.
+
+  Ensure `serve` and dev UI sessions start the remote runtime whenever the current process actually has UI enabled, even if `config.ui.enabled` is false.
+
+- Updated dependencies
+  - @nextclaw/remote@0.1.11
+  - @nextclaw/mcp@0.1.15
+  - @nextclaw/server@0.10.15
+  - @nextclaw/ncp-mcp@0.1.15
+
+## 0.13.18
+
+### Patch Changes
+
+- Align the remote access UI with the existing product style, remove leftover advanced controls from the main flow, expose the device list entry directly, and surface clearer disconnected hints.
+- Updated dependencies
+  - @nextclaw/mcp@0.1.14
+  - @nextclaw/server@0.10.14
+  - @nextclaw/ncp-mcp@0.1.14
+  - @nextclaw/remote@0.1.10
+
 ## 0.13.17
 
 ### Patch Changes

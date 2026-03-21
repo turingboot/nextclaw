@@ -1,0 +1,104 @@
+import { loadConfig, resolveConfigSecrets, saveConfig } from "@nextclaw/core";
+import { setPluginRuntimeBridge } from "@nextclaw/openclaw-compat";
+import type { getPluginChannelBindings } from "@nextclaw/openclaw-compat";
+import type { GatewayAgentRuntimePool } from "./agent-runtime-pool.js";
+import { mergePluginConfigView, toPluginConfigView } from "./plugins.js";
+
+type InstallPluginRuntimeBridgeParams = {
+  runtimePool: GatewayAgentRuntimePool;
+  runtimeConfigPath: string;
+  pluginChannelBindings: ReturnType<typeof getPluginChannelBindings>;
+};
+
+type PluginRuntimeDispatchContext = {
+  BodyForAgent?: unknown;
+  Body?: unknown;
+  SessionKey?: unknown;
+  OriginatingChannel?: unknown;
+  OriginatingTo?: unknown;
+  SenderId?: unknown;
+  AccountId?: unknown;
+  AgentId?: unknown;
+  Model?: unknown;
+  AgentModel?: unknown;
+};
+
+export function installPluginRuntimeBridge(params: InstallPluginRuntimeBridgeParams): void {
+  const { runtimePool, runtimeConfigPath, pluginChannelBindings } = params;
+
+  setPluginRuntimeBridge({
+    loadConfig: () =>
+      toPluginConfigView(resolveConfigSecrets(loadConfig(), { configPath: runtimeConfigPath }), pluginChannelBindings),
+    writeConfigFile: async (nextConfigView) => {
+      if (!nextConfigView || typeof nextConfigView !== "object" || Array.isArray(nextConfigView)) {
+        throw new Error("plugin runtime writeConfigFile expects an object config");
+      }
+      const current = loadConfig();
+      const next = mergePluginConfigView(current, nextConfigView, pluginChannelBindings);
+      saveConfig(next);
+    },
+    dispatchReplyWithBufferedBlockDispatcher: async ({ ctx, dispatcherOptions }) => {
+      const request = resolvePluginRuntimeRequest(ctx as PluginRuntimeDispatchContext);
+      if (!request) {
+        return;
+      }
+
+      try {
+        const response = await runtimePool.processDirect(request);
+        const replyText = typeof response === "string" ? response : String(response ?? "");
+        if (replyText.trim()) {
+          await dispatcherOptions.deliver({ text: replyText }, { kind: "final" });
+        }
+      } catch (error) {
+        dispatcherOptions.onError?.(error);
+        throw error;
+      }
+    }
+  });
+}
+
+function resolvePluginRuntimeRequest(ctx: PluginRuntimeDispatchContext) {
+  const bodyForAgent = typeof ctx.BodyForAgent === "string" ? ctx.BodyForAgent : "";
+  const body = typeof ctx.Body === "string" ? ctx.Body : "";
+  const content = (bodyForAgent || body).trim();
+  if (!content) {
+    return null;
+  }
+
+  const sessionKey = typeof ctx.SessionKey === "string" && ctx.SessionKey.trim().length > 0 ? ctx.SessionKey : undefined;
+  const channel =
+    typeof ctx.OriginatingChannel === "string" && ctx.OriginatingChannel.trim().length > 0
+      ? ctx.OriginatingChannel
+      : "cli";
+  const chatId =
+    typeof ctx.OriginatingTo === "string" && ctx.OriginatingTo.trim().length > 0
+      ? ctx.OriginatingTo
+      : typeof ctx.SenderId === "string" && ctx.SenderId.trim().length > 0
+        ? ctx.SenderId
+        : "direct";
+  const agentId = typeof ctx.AgentId === "string" ? ctx.AgentId : undefined;
+  const modelOverride = resolveModelOverride(ctx);
+  const accountId = typeof ctx.AccountId === "string" && ctx.AccountId.trim().length > 0 ? ctx.AccountId : undefined;
+
+  return {
+    content,
+    sessionKey,
+    channel,
+    chatId,
+    agentId,
+    metadata: {
+      ...(accountId ? { account_id: accountId } : {}),
+      ...(modelOverride ? { model: modelOverride } : {})
+    }
+  };
+}
+
+function resolveModelOverride(ctx: PluginRuntimeDispatchContext): string | undefined {
+  if (typeof ctx.Model === "string" && ctx.Model.trim().length > 0) {
+    return ctx.Model.trim();
+  }
+  if (typeof ctx.AgentModel === "string" && ctx.AgentModel.trim().length > 0) {
+    return ctx.AgentModel.trim();
+  }
+  return undefined;
+}

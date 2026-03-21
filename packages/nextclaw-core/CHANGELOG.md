@@ -1,5 +1,13 @@
 # nextclaw-core
 
+## 0.9.6
+
+### Patch Changes
+
+- Add an `enabled` switch for providers so disabled providers stay configured but are excluded from routing, model selection, and runtime diagnostics.
+
+  Expose the provider enabled state through the server and UI config views, and show disabled providers clearly in the Providers page.
+
 ## 0.9.5
 
 ### Patch Changes

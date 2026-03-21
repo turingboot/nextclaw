@@ -14,381 +14,44 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MaskedInput } from '@/components/common/MaskedInput';
-import { KeyValueEditor } from '@/components/common/KeyValueEditor';
 import { getLanguage, t } from '@/lib/i18n';
 import { hintForPath } from '@/lib/config-hints';
-import type { ProviderConfigView, ProviderConfigUpdate, ProviderConnectionTestRequest, ThinkingLevel } from '@/api/types';
-import { CircleDotDashed, Plus, X, Trash2, ChevronDown, Settings2 } from 'lucide-react';
+import type { ProviderConfigUpdate, ProviderConnectionTestRequest, ThinkingLevel } from '@/api/types';
+import { CircleDotDashed, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CONFIG_DETAIL_CARD_CLASS, CONFIG_EMPTY_DETAIL_CARD_CLASS } from './config-layout';
+import { ProviderAdvancedSettingsSection } from './provider-advanced-settings-section';
+import { ProviderAuthSection } from './provider-auth-section';
 import { ProviderEnabledField } from './provider-enabled-field';
+import {
+  applyEnabledPatch,
+  EMPTY_PROVIDER_CONFIG,
+  formatThinkingLevelLabel,
+  headersEqual,
+  modelListsEqual,
+  modelThinkingEqual,
+  normalizeHeaders,
+  normalizeModelList,
+  normalizeModelThinkingConfig,
+  normalizeModelThinkingForModels,
+  resolveEditableModels,
+  resolvePreferredAuthMethodId,
+  serializeModelsForSave,
+  shouldUsePillSelector,
+  THINKING_LEVELS,
+  toProviderLocalModelId,
+  type ModelThinkingConfig,
+  type WireApiType
+} from './provider-form-support';
+import { ProviderModelsSection } from './provider-models-section';
+import type { PillSelectOption } from './provider-pill-selector';
 import { ProviderStatusBadge } from './provider-status-badge';
-
-type WireApiType = 'auto' | 'chat' | 'responses';
-type ModelThinkingConfig = Record<string, { supported: ThinkingLevel[]; default?: ThinkingLevel | null }>;
 
 type ProviderFormProps = {
   providerName?: string;
   onProviderDeleted?: (providerName: string) => void;
 };
-
-type ProviderAuthMethodOption = {
-  id: string;
-};
-
-type PillSelectOption = {
-  value: string;
-  label: string;
-};
-
-const EMPTY_PROVIDER_CONFIG: ProviderConfigView = {
-  enabled: true,
-  displayName: '',
-  apiKeySet: false,
-  apiKeyMasked: undefined,
-  apiBase: null,
-  extraHeaders: null,
-  wireApi: null,
-  models: [],
-  modelThinking: {}
-};
-const THINKING_LEVELS: ThinkingLevel[] = ['off', 'minimal', 'low', 'medium', 'high', 'adaptive', 'xhigh'];
-const THINKING_LEVEL_SET = new Set<string>(THINKING_LEVELS);
-
-function normalizeHeaders(input: Record<string, string> | null | undefined): Record<string, string> | null {
-  if (!input) {
-    return null;
-  }
-  const entries = Object.entries(input)
-    .map(([key, value]) => [key.trim(), value] as const)
-    .filter(([key]) => key.length > 0);
-  if (entries.length === 0) {
-    return null;
-  }
-  return Object.fromEntries(entries);
-}
-
-function headersEqual(
-  left: Record<string, string> | null | undefined,
-  right: Record<string, string> | null | undefined
-): boolean {
-  const a = normalizeHeaders(left);
-  const b = normalizeHeaders(right);
-  if (a === null && b === null) {
-    return true;
-  }
-  if (!a || !b) {
-    return false;
-  }
-  const aEntries = Object.entries(a).sort(([ak], [bk]) => ak.localeCompare(bk));
-  const bEntries = Object.entries(b).sort(([ak], [bk]) => ak.localeCompare(bk));
-  if (aEntries.length !== bEntries.length) {
-    return false;
-  }
-  return aEntries.every(([key, value], index) => key === bEntries[index][0] && value === bEntries[index][1]);
-}
-
-function normalizeModelList(input: string[] | null | undefined): string[] {
-  if (!input || input.length === 0) {
-    return [];
-  }
-  const deduped = new Set<string>();
-  for (const item of input) {
-    const trimmed = item.trim();
-    if (trimmed) {
-      deduped.add(trimmed);
-    }
-  }
-  return [...deduped];
-}
-
-function stripProviderPrefix(model: string, prefix: string): string {
-  const trimmed = model.trim();
-  if (!trimmed || !prefix.trim()) {
-    return trimmed;
-  }
-  const fullPrefix = `${prefix.trim()}/`;
-  if (trimmed.startsWith(fullPrefix)) {
-    return trimmed.slice(fullPrefix.length);
-  }
-  return trimmed;
-}
-
-function toProviderLocalModelId(model: string, aliases: string[]): string {
-  let normalized = model.trim();
-  if (!normalized) {
-    return '';
-  }
-  for (const alias of aliases) {
-    const cleanAlias = alias.trim();
-    if (!cleanAlias) {
-      continue;
-    }
-    normalized = stripProviderPrefix(normalized, cleanAlias);
-  }
-  return normalized.trim();
-}
-
-function modelListsEqual(left: string[], right: string[]): boolean {
-  if (left.length !== right.length) {
-    return false;
-  }
-  return left.every((item, index) => item === right[index]);
-}
-
-function mergeModelLists(base: string[], extra: string[]): string[] {
-  const merged = [...base];
-  for (const item of extra) {
-    if (!merged.includes(item)) {
-      merged.push(item);
-    }
-  }
-  return merged;
-}
-
-function resolveEditableModels(defaultModels: string[], savedModels: string[]): string[] {
-  if (savedModels.length === 0) {
-    return defaultModels;
-  }
-  const looksLikeLegacyCustomList = savedModels.every((model) => !defaultModels.includes(model));
-  if (looksLikeLegacyCustomList) {
-    return mergeModelLists(defaultModels, savedModels);
-  }
-  return savedModels;
-}
-
-function serializeModelsForSave(models: string[], defaultModels: string[]): string[] {
-  if (modelListsEqual(models, defaultModels)) {
-    return [];
-  }
-  return models;
-}
-
-function applyEnabledPatch(payload: ProviderConfigUpdate, enabled: boolean, currentEnabled: boolean): void {
-  if (enabled !== currentEnabled) {
-    payload.enabled = enabled;
-  }
-}
-
-function parseThinkingLevel(value: unknown): ThinkingLevel | null {
-  if (typeof value !== 'string') {
-    return null;
-  }
-  const normalized = value.trim().toLowerCase();
-  if (!normalized) {
-    return null;
-  }
-  return THINKING_LEVEL_SET.has(normalized) ? (normalized as ThinkingLevel) : null;
-}
-
-function normalizeThinkingLevels(values: unknown): ThinkingLevel[] {
-  if (!Array.isArray(values)) {
-    return [];
-  }
-  const deduped: ThinkingLevel[] = [];
-  for (const value of values) {
-    const level = parseThinkingLevel(value);
-    if (!level || deduped.includes(level)) {
-      continue;
-    }
-    deduped.push(level);
-  }
-  return deduped;
-}
-
-function normalizeModelThinkingConfig(
-  input: ProviderConfigView['modelThinking'],
-  aliases: string[]
-): ModelThinkingConfig {
-  if (!input) {
-    return {};
-  }
-  const normalized: ModelThinkingConfig = {};
-  for (const [rawModel, rawValue] of Object.entries(input)) {
-    const model = toProviderLocalModelId(rawModel, aliases);
-    if (!model) {
-      continue;
-    }
-    const supported = normalizeThinkingLevels(rawValue?.supported);
-    if (supported.length === 0) {
-      continue;
-    }
-    const defaultLevel = parseThinkingLevel(rawValue?.default);
-    normalized[model] =
-      defaultLevel && supported.includes(defaultLevel)
-        ? { supported, default: defaultLevel }
-        : { supported };
-  }
-  return normalized;
-}
-
-function normalizeModelThinkingForModels(modelThinking: ModelThinkingConfig, models: string[]): ModelThinkingConfig {
-  const modelSet = new Set(models.map((item) => item.trim()).filter(Boolean));
-  const normalized: ModelThinkingConfig = {};
-  for (const [model, entry] of Object.entries(modelThinking)) {
-    if (!modelSet.has(model)) {
-      continue;
-    }
-    const supported = normalizeThinkingLevels(entry.supported);
-    if (supported.length === 0) {
-      continue;
-    }
-    const defaultLevel = parseThinkingLevel(entry.default);
-    normalized[model] =
-      defaultLevel && supported.includes(defaultLevel)
-        ? { supported, default: defaultLevel }
-        : { supported };
-  }
-  return normalized;
-}
-
-function modelThinkingEqual(left: ModelThinkingConfig, right: ModelThinkingConfig): boolean {
-  const leftKeys = Object.keys(left).sort();
-  const rightKeys = Object.keys(right).sort();
-  if (leftKeys.length !== rightKeys.length) {
-    return false;
-  }
-  for (let index = 0; index < leftKeys.length; index += 1) {
-    const key = leftKeys[index];
-    if (key !== rightKeys[index]) {
-      return false;
-    }
-    const leftEntry = left[key];
-    const rightEntry = right[key];
-    if (!leftEntry || !rightEntry) {
-      return false;
-    }
-    const leftSupported = [...leftEntry.supported].sort();
-    const rightSupported = [...rightEntry.supported].sort();
-    if (!modelListsEqual(leftSupported, rightSupported)) {
-      return false;
-    }
-    if ((leftEntry.default ?? null) !== (rightEntry.default ?? null)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function formatThinkingLevelLabel(level: ThinkingLevel): string {
-  if (level === 'off') {
-    return t('chatThinkingLevelOff');
-  }
-  if (level === 'minimal') {
-    return t('chatThinkingLevelMinimal');
-  }
-  if (level === 'low') {
-    return t('chatThinkingLevelLow');
-  }
-  if (level === 'medium') {
-    return t('chatThinkingLevelMedium');
-  }
-  if (level === 'high') {
-    return t('chatThinkingLevelHigh');
-  }
-  if (level === 'adaptive') {
-    return t('chatThinkingLevelAdaptive');
-  }
-  return t('chatThinkingLevelXhigh');
-}
-
-function resolvePreferredAuthMethodId(params: {
-  providerName?: string;
-  methods: ProviderAuthMethodOption[];
-  defaultMethodId?: string;
-  language: 'zh' | 'en';
-}): string {
-  const { providerName, methods, defaultMethodId, language } = params;
-  if (methods.length === 0) {
-    return '';
-  }
-
-  const methodIdMap = new Map<string, string>();
-  for (const method of methods) {
-    const methodId = method.id.trim();
-    if (methodId) {
-      methodIdMap.set(methodId.toLowerCase(), methodId);
-    }
-  }
-
-  const pick = (...candidates: string[]): string | undefined => {
-    for (const candidate of candidates) {
-      const resolved = methodIdMap.get(candidate.toLowerCase());
-      if (resolved) {
-        return resolved;
-      }
-    }
-    return undefined;
-  };
-
-  const normalizedDefault = defaultMethodId?.trim();
-  if (providerName === 'minimax-portal') {
-    if (language === 'zh') {
-      return pick('cn', 'china-mainland') ?? pick(normalizedDefault ?? '') ?? methods[0]?.id ?? '';
-    }
-    if (language === 'en') {
-      return pick('global', 'intl', 'international') ?? pick(normalizedDefault ?? '') ?? methods[0]?.id ?? '';
-    }
-  }
-
-  if (normalizedDefault) {
-    const matchedDefault = pick(normalizedDefault);
-    if (matchedDefault) {
-      return matchedDefault;
-    }
-  }
-
-  if (language === 'zh') {
-    return pick('cn') ?? methods[0]?.id ?? '';
-  }
-  if (language === 'en') {
-    return pick('global') ?? methods[0]?.id ?? '';
-  }
-
-  return methods[0]?.id ?? '';
-}
-
-function shouldUsePillSelector(params: {
-  required: boolean;
-  hasDefault: boolean;
-  optionCount: number;
-}): boolean {
-  return params.required && params.hasDefault && params.optionCount > 1 && params.optionCount <= 3;
-}
-
-function PillSelector(props: {
-  value: string;
-  onChange: (value: string) => void;
-  options: PillSelectOption[];
-}) {
-  const { value, onChange, options } = props;
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((option) => {
-        const selected = option.value === value;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-            aria-pressed={selected}
-            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-              selected
-                ? 'border-primary bg-primary text-white shadow-sm'
-                : 'border-gray-200 bg-white text-gray-700 hover:border-primary/40 hover:text-primary'
-            }`}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormProps) {
   const queryClient = useQueryClient();
@@ -943,76 +606,22 @@ export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormPr
             <p className="text-xs text-gray-500">{t('leaveBlankToKeepUnchanged')}</p>
           </div>
 
-          {providerAuth?.kind === 'device_code' && (
-            <div className="space-y-2 rounded-xl border border-primary/20 bg-primary-50/50 p-3">
-              <Label className="text-sm font-medium text-gray-900">
-                {providerAuth.displayName || t('providerAuthSectionTitle')}
-              </Label>
-              {providerAuthNote ? (
-                <p className="text-xs text-gray-600">{providerAuthNote}</p>
-              ) : null}
-              {providerAuthMethods.length > 1 ? (
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium text-gray-700">{t('providerAuthMethodLabel')}</Label>
-                  {shouldUseAuthMethodPills ? (
-                    <PillSelector
-                      value={resolvedAuthMethodId}
-                      onChange={setAuthMethodId}
-                      options={providerAuthMethodOptions}
-                    />
-                  ) : (
-                    <Select value={resolvedAuthMethodId} onValueChange={setAuthMethodId}>
-                      <SelectTrigger className="h-8 rounded-lg bg-white">
-                        <SelectValue placeholder={t('providerAuthMethodPlaceholder')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {providerAuthMethodOptions.map((method) => (
-                          <SelectItem key={method.value} value={method.value}>
-                            {method.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  {selectedAuthMethodHint ? (
-                    <p className="text-xs text-gray-500">{selectedAuthMethodHint}</p>
-                  ) : null}
-                </div>
-              ) : null}
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleStartProviderAuth}
-                  disabled={startProviderAuth.isPending || Boolean(authSessionId)}
-                >
-                  {startProviderAuth.isPending
-                    ? t('providerAuthStarting')
-                    : authSessionId
-                      ? t('providerAuthAuthorizing')
-                      : t('providerAuthAuthorizeInBrowser')}
-                </Button>
-                {providerAuth.supportsCliImport ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleImportProviderAuthFromCli}
-                    disabled={importProviderAuthFromCli.isPending}
-                  >
-                    {importProviderAuthFromCli.isPending ? t('providerAuthImporting') : t('providerAuthImportFromCli')}
-                  </Button>
-                ) : null}
-                {authSessionId ? (
-                  <span className="text-xs text-gray-500">{t('providerAuthSessionLabel')}: {authSessionId.slice(0, 8)}…</span>
-                ) : null}
-              </div>
-              {authStatusMessage ? (
-                <p className="text-xs text-gray-600">{authStatusMessage}</p>
-              ) : null}
-            </div>
-          )}
+          <ProviderAuthSection
+            providerAuth={providerAuth}
+            providerAuthNote={providerAuthNote}
+            providerAuthMethodOptions={providerAuthMethodOptions}
+            providerAuthMethodsCount={providerAuthMethods.length}
+            selectedAuthMethodHint={selectedAuthMethodHint}
+            shouldUseAuthMethodPills={shouldUseAuthMethodPills}
+            resolvedAuthMethodId={resolvedAuthMethodId}
+            onAuthMethodChange={setAuthMethodId}
+            onStartProviderAuth={handleStartProviderAuth}
+            onImportProviderAuthFromCli={handleImportProviderAuthFromCli}
+            startPending={startProviderAuth.isPending}
+            importPending={importProviderAuthFromCli.isPending}
+            authSessionId={authSessionId}
+            authStatusMessage={authStatusMessage}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="apiBase" className="text-sm font-medium text-gray-900">
@@ -1029,217 +638,41 @@ export function ProviderForm({ providerName, onProviderDeleted }: ProviderFormPr
             <p className="text-xs text-gray-500">{apiBaseHelpText}</p>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium text-gray-900">
-                {t('providerModelsTitle')}
-              </Label>
-              {!showModelInput && (
-                <button
-                  type="button"
-                  onClick={() => setShowModelInput(true)}
-                  className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
-                >
-                  <Plus className="h-3 w-3" />
-                  {t('providerAddModel')}
-                </button>
-              )}
-            </div>
+          <ProviderModelsSection
+            models={models}
+            modelThinking={modelThinking}
+            modelDraft={modelDraft}
+            showModelInput={showModelInput}
+            onModelDraftChange={setModelDraft}
+            onShowModelInputChange={setShowModelInput}
+            onAddModel={handleAddModel}
+            onRemoveModel={(modelName) => {
+              setModels((prev) => prev.filter((name) => name !== modelName));
+              setModelThinking((prev) => {
+                const next = { ...prev };
+                delete next[modelName];
+                return next;
+              });
+            }}
+            onToggleModelThinkingLevel={toggleModelThinkingLevel}
+            onSetModelThinkingDefault={setModelThinkingDefault}
+            thinkingLevels={THINKING_LEVELS}
+            formatThinkingLevelLabel={formatThinkingLevelLabel}
+          />
 
-            {showModelInput && (
-              <div className="flex items-center gap-2">
-                <Input
-                  value={modelDraft}
-                  onChange={(event) => setModelDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      handleAddModel();
-                    }
-                    if (event.key === 'Escape') {
-                      setShowModelInput(false);
-                      setModelDraft('');
-                    }
-                  }}
-                  placeholder={t('providerModelInputPlaceholder')}
-                  className="flex-1 rounded-xl"
-                  autoFocus
-                />
-                <Button type="button" size="sm" onClick={handleAddModel} disabled={modelDraft.trim().length === 0}>
-                  {t('add')}
-                </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => { setShowModelInput(false); setModelDraft(''); }}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-
-            {models.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center">
-                <p className="text-sm text-gray-500">{t('providerModelsEmptyShort')}</p>
-                {!showModelInput && (
-                  <button
-                    type="button"
-                    onClick={() => setShowModelInput(true)}
-                    className="mt-2 text-sm text-primary hover:text-primary/80 font-medium"
-                  >
-                    {t('providerAddFirstModel')}
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {models.map((modelName) => {
-                  const thinkingEntry = modelThinking[modelName];
-                  const supportedLevels = thinkingEntry?.supported ?? [];
-                  const defaultThinkingLevel = thinkingEntry?.default ?? null;
-                  return (
-                    <div
-                      key={modelName}
-                      className="group inline-flex max-w-full items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5"
-                    >
-                      <span className="max-w-[140px] truncate text-sm text-gray-800 sm:max-w-[220px]">{modelName}</span>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button
-                            type="button"
-                            className="inline-flex h-5 w-5 items-center justify-center rounded-full text-gray-400 transition-opacity hover:bg-gray-100 hover:text-gray-600 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
-                            aria-label={t('providerModelThinkingTitle')}
-                            title={t('providerModelThinkingTitle')}
-                          >
-                            <Settings2 className="h-3 w-3" />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80 space-y-3">
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-800">{t('providerModelThinkingTitle')}</p>
-                            <p className="text-xs text-gray-500">{t('providerModelThinkingHint')}</p>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {THINKING_LEVELS.map((level) => {
-                              const selected = supportedLevels.includes(level);
-                              return (
-                                <button
-                                  key={level}
-                                  type="button"
-                                  onClick={() => toggleModelThinkingLevel(modelName, level)}
-                                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                    selected
-                                      ? 'border-primary bg-primary text-white'
-                                      : 'border-gray-200 bg-white text-gray-600 hover:border-primary/40 hover:text-primary'
-                                  }`}
-                                >
-                                  {formatThinkingLevelLabel(level)}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-gray-700">{t('providerModelThinkingDefault')}</Label>
-                            <Select
-                              value={defaultThinkingLevel ?? '__none__'}
-                              onValueChange={(value) =>
-                                setModelThinkingDefault(
-                                  modelName,
-                                  value === '__none__' ? null : (value as ThinkingLevel)
-                                )
-                              }
-                              disabled={supportedLevels.length === 0}
-                            >
-                              <SelectTrigger className="h-8 rounded-lg bg-white text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="__none__">{t('providerModelThinkingDefaultNone')}</SelectItem>
-                                {supportedLevels.map((level) => (
-                                  <SelectItem key={level} value={level}>
-                                    {formatThinkingLevelLabel(level)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {supportedLevels.length === 0 ? (
-                              <p className="text-xs text-gray-500">{t('providerModelThinkingNoSupported')}</p>
-                            ) : null}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setModels((prev) => prev.filter((name) => name !== modelName));
-                          setModelThinking((prev) => {
-                            const next = { ...prev };
-                            delete next[modelName];
-                            return next;
-                          });
-                        }}
-                        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-gray-400 transition-opacity hover:bg-gray-100 hover:text-gray-600 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
-                        aria-label={t('remove')}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Advanced Settings - Collapsible */}
-          <div className="border-t border-gray-100 pt-4">
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex w-full items-center justify-between text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <span className="flex items-center gap-1.5">
-                <Settings2 className="h-3.5 w-3.5" />
-                {t('providerAdvancedSettings')}
-              </span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
-            </button>
-
-            {showAdvanced && (
-              <div className="mt-4 space-y-5">
-                {providerSpec.supportsWireApi && (
-                  <div className="space-y-2">
-                    <Label htmlFor="wireApi" className="text-sm font-medium text-gray-900">
-                      {wireApiHint?.label ?? t('wireApi')}
-                    </Label>
-                    {shouldUseWireApiPills ? (
-                      <PillSelector
-                        value={wireApi}
-                        onChange={(v) => setWireApi(v as WireApiType)}
-                        options={wireApiSelectOptions}
-                      />
-                    ) : (
-                      <Select value={wireApi} onValueChange={(v) => setWireApi(v as WireApiType)}>
-                        <SelectTrigger className="rounded-xl">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {wireApiSelectOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-900">
-                    {extraHeadersHint?.label ?? t('extraHeaders')}
-                  </Label>
-                  <KeyValueEditor value={extraHeaders} onChange={setExtraHeaders} />
-                  <p className="text-xs text-gray-500">{t('providerExtraHeadersHelpShort')}</p>
-                </div>
-              </div>
-            )}
-          </div>
+          <ProviderAdvancedSettingsSection
+            showAdvanced={showAdvanced}
+            onShowAdvancedChange={setShowAdvanced}
+            supportsWireApi={Boolean(providerSpec.supportsWireApi)}
+            wireApiLabel={wireApiHint?.label ?? t('wireApi')}
+            wireApi={wireApi}
+            onWireApiChange={setWireApi}
+            shouldUseWireApiPills={shouldUseWireApiPills}
+            wireApiSelectOptions={wireApiSelectOptions}
+            extraHeadersLabel={extraHeadersHint?.label ?? t('extraHeaders')}
+            extraHeaders={extraHeaders}
+            onExtraHeadersChange={setExtraHeaders}
+          />
         </div>
 
         <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">

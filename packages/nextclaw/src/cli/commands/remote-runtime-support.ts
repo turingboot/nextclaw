@@ -12,6 +12,8 @@ import {
 import { getPackageVersion, isProcessRunning, readServiceState, updateServiceState } from "../utils.js";
 import { resolvePlatformApiBase } from "./platform-api-base.js";
 
+let currentProcessRemoteRuntimeState: RemoteRuntimeState | null = null;
+
 export function hasRunningNextclawManagedService(): boolean {
   const state = readServiceState();
   return Boolean(state && isProcessRunning(state.pid));
@@ -53,6 +55,11 @@ export function createNextclawRemoteConnector(params: {
 export function createNextclawRemoteStatusStore(mode: RemoteRuntimeState["mode"]): RemoteStatusStore {
   return new RemoteStatusStore(mode, {
     writeRemoteState: (next) => {
+      currentProcessRemoteRuntimeState = next;
+      const serviceState = readServiceState();
+      if (!serviceState || serviceState.pid !== process.pid) {
+        return;
+      }
       updateServiceState((state) => ({
         ...state,
         remote: next
@@ -66,7 +73,7 @@ export function buildNextclawConfiguredRemoteState(config: Config): RemoteRuntim
 }
 
 export function readCurrentNextclawRemoteRuntimeState(): RemoteRuntimeState | null {
-  return readServiceState()?.remote ?? null;
+  return currentProcessRemoteRuntimeState ?? readServiceState()?.remote ?? null;
 }
 
 export function resolveNextclawRemoteStatusSnapshot(config: Config): RemoteStatusSnapshot {

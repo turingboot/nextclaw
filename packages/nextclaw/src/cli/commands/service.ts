@@ -6,6 +6,7 @@ import {
   startPluginChannelGateways,
   stopPluginChannelGateways
 } from "@nextclaw/openclaw-compat";
+import type { RemoteServiceModule } from "@nextclaw/remote";
 import { startUiServer, type UiServerEvent } from "@nextclaw/server";
 import { appendFileSync, closeSync, cpSync, existsSync, mkdirSync, openSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -36,12 +37,11 @@ import {
 import {
   loadPluginRegistry,
   logPluginDiagnostics,
-  mergePluginConfigView,
   type NextclawExtensionRegistry,
   toExtensionRegistry,
-  toPluginConfigView
 } from "./plugins.js";
 import { ServiceMarketplaceInstaller } from "./service-marketplace-installer.js";
+import { installPluginRuntimeBridge } from "./service-plugin-runtime-bridge.js";
 import { reloadServicePlugins } from "./service-plugin-reload.js";
 import {
   logPluginGatewayDiagnostics,
@@ -54,7 +54,7 @@ import { GatewayAgentRuntimePool } from "./agent-runtime-pool.js";
 import { resolveCliSubcommandEntry } from "./cli-subcommand-launch.js";
 import { createUiNcpAgent, type UiNcpAgentHandle } from "./ncp/create-ui-ncp-agent.js";
 import {
-  createManagedRemoteModule,
+  createManagedRemoteModuleForUi,
   writeInitialManagedServiceState,
   writeReadyManagedServiceState
 } from "./service-remote-runtime.js";
@@ -141,7 +141,10 @@ export class ServiceCommands {
 
     const uiConfig = resolveUiConfig(config, options.uiOverrides);
     const uiStaticDir = options.uiStaticDir === undefined ? resolveUiStaticDir() : options.uiStaticDir;
-    const localOrigin = resolveUiApiBase(uiConfig.host, uiConfig.port);
+    const remoteModule = createManagedRemoteModuleForUi({
+      loadConfig: () => resolveConfigSecrets(loadConfig(), { configPath: runtimeConfigPath }),
+      uiConfig
+    });
     if (!provider) {
       console.warn("Warning: No API key configured. The gateway is running, but agent replies are disabled until provider config is set.");
     }
@@ -232,71 +235,10 @@ export class ServiceCommands {
     reloader.setReloadMcp(async ({ config: nextConfig }) => { await this.liveUiNcpAgent?.applyMcpConfig?.(nextConfig); });
 
     let pluginChannelBindings = getPluginChannelBindings(pluginRegistry);
-    setPluginRuntimeBridge({
-      loadConfig: () =>
-        toPluginConfigView(resolveConfigSecrets(loadConfig(), { configPath: runtimeConfigPath }), pluginChannelBindings),
-      writeConfigFile: async (nextConfigView) => {
-        if (!nextConfigView || typeof nextConfigView !== "object" || Array.isArray(nextConfigView)) {
-          throw new Error("plugin runtime writeConfigFile expects an object config");
-        }
-        const current = loadConfig();
-        const next = mergePluginConfigView(current, nextConfigView, pluginChannelBindings);
-        saveConfig(next);
-      },
-      dispatchReplyWithBufferedBlockDispatcher: async ({ ctx, dispatcherOptions }) => {
-        const bodyForAgent = typeof ctx.BodyForAgent === "string" ? ctx.BodyForAgent : "";
-        const body = typeof ctx.Body === "string" ? ctx.Body : "";
-        const content = (bodyForAgent || body).trim();
-        if (!content) {
-          return;
-        }
-
-        const sessionKey =
-          typeof ctx.SessionKey === "string" && ctx.SessionKey.trim().length > 0 ? ctx.SessionKey : undefined;
-        const channel =
-          typeof ctx.OriginatingChannel === "string" && ctx.OriginatingChannel.trim().length > 0
-            ? ctx.OriginatingChannel
-            : "cli";
-        const chatId =
-          typeof ctx.OriginatingTo === "string" && ctx.OriginatingTo.trim().length > 0
-            ? ctx.OriginatingTo
-            : typeof ctx.SenderId === "string" && ctx.SenderId.trim().length > 0
-              ? ctx.SenderId
-              : "direct";
-        const modelOverride =
-          typeof (ctx as { Model?: unknown }).Model === "string" && (ctx as { Model?: string }).Model?.trim().length
-            ? (ctx as { Model: string }).Model.trim()
-            : typeof (ctx as { AgentModel?: unknown }).AgentModel === "string" &&
-                (ctx as { AgentModel?: string }).AgentModel?.trim().length
-              ? (ctx as { AgentModel: string }).AgentModel.trim()
-              : undefined;
-
-        try {
-          const response = await runtimePool.processDirect({
-            content,
-            sessionKey,
-            channel,
-            chatId,
-            agentId:
-              typeof (ctx as { AgentId?: unknown }).AgentId === "string"
-                ? (ctx as { AgentId: string }).AgentId
-                : undefined,
-            metadata: {
-              ...(typeof ctx.AccountId === "string" && ctx.AccountId.trim().length > 0
-                ? { account_id: ctx.AccountId }
-                : {}),
-              ...(modelOverride ? { model: modelOverride } : {})
-            }
-          });
-          const replyText = typeof response === "string" ? response : String(response ?? "");
-          if (replyText.trim()) {
-            await dispatcherOptions.deliver({ text: replyText }, { kind: "final" });
-          }
-        } catch (error) {
-          dispatcherOptions.onError?.(error);
-          throw error;
-        }
-      }
+    installPluginRuntimeBridge({
+      runtimePool,
+      runtimeConfigPath,
+      pluginChannelBindings
     });
 
     cron.onJob = async (job) => {
@@ -350,9 +292,8 @@ export class ServiceCommands {
           cfg: resolveConfigSecrets(loadConfig(), { configPath: runtimeConfigPath }),
           accountId,
         }),
+      remoteModule
     );
-
-    const remoteModule = createManagedRemoteModule({ config, localOrigin });
     await startGatewaySupportServices({
       cronJobs: cron.status().jobs,
       remoteModule,
@@ -1114,16 +1055,13 @@ export class ServiceCommands {
     getConfig: () => Config,
     getExtensionRegistry: () => NextclawExtensionRegistry | undefined,
     resolveMessageToolHints: (params: { channel: string; accountId?: string | null }) => string[],
+    remoteModule: RemoteServiceModule | null
   ): Promise<void> {
     if (!uiConfig.enabled) {
       return;
     }
     const resolveStopCapability = (params: {
-      sessionKey?: string;
-      agentId?: string;
-      channel?: string;
-      chatId?: string;
-      metadata?: Record<string, unknown>;
+      sessionKey?: string; agentId?: string; channel?: string; chatId?: string; metadata?: Record<string, unknown>;
     }) => runtimePool.supportsTurnAbort({
       sessionKey: params.sessionKey,
       agentId: params.agentId,
@@ -1171,12 +1109,7 @@ export class ServiceCommands {
       };
     };
 
-    const buildTurnResult = (params: {
-      reply: string;
-      sessionKey: string;
-      inferredAgentId?: string;
-      model?: string;
-    }) => ({
+    const buildTurnResult = (params: { reply: string; sessionKey: string; inferredAgentId?: string; model?: string }) => ({
       reply: params.reply,
       sessionKey: params.sessionKey,
       ...(params.inferredAgentId ? { agentId: params.inferredAgentId } : {}),
@@ -1233,7 +1166,12 @@ export class ServiceCommands {
       applyLiveConfigReload: this.applyLiveConfigReload ?? undefined, runCliSubcommand: (args) => this.runCliSubcommand(args),
       installBuiltinSkill: (slug, force) => this.installBuiltinMarketplaceSkill(slug, force)
     }).createInstaller();
-    const remoteAccess = createRemoteAccessHost({ serviceCommands: this, requestRestart: this.deps.requestRestart });
+    const remoteAccess = createRemoteAccessHost({
+      serviceCommands: this,
+      requestRestart: this.deps.requestRestart,
+      uiConfig,
+      remoteModule
+    });
     const uiServer = startUiServer({
       host: uiConfig.host,
       port: uiConfig.port,

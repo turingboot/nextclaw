@@ -8,7 +8,8 @@ export class RemoteServiceModule {
 
   constructor(
     private readonly deps: {
-      config: Config;
+      loadConfig: () => Config;
+      uiEnabled: boolean;
       localOrigin: string;
       statusStore: RemoteStatusWriter;
       createConnector: (logger: RemoteLogger) => RemoteConnector;
@@ -17,7 +18,16 @@ export class RemoteServiceModule {
   ) {}
 
   start(): Promise<void> | null {
-    if (!this.deps.config.remote.enabled) {
+    if (this.runTask) {
+      return this.runTask;
+    }
+
+    if (!this.deps.uiEnabled) {
+      return null;
+    }
+
+    const config = this.deps.loadConfig();
+    if (!config.remote.enabled) {
       this.deps.statusStore.write({
         enabled: false,
         state: "disabled",
@@ -42,19 +52,20 @@ export class RemoteServiceModule {
     this.runTask = connector.run({
       mode: "service",
       signal: this.abortController.signal,
-      autoReconnect: this.deps.config.remote.autoReconnect,
+      autoReconnect: config.remote.autoReconnect,
       localOrigin: this.deps.localOrigin,
       statusStore: this.deps.statusStore
     });
 
     void this.runTask.catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
+      const latestConfig = this.deps.loadConfig();
       this.deps.statusStore.write({
         enabled: true,
         state: "error",
-        deviceName: this.deps.config.remote.deviceName || undefined,
+        deviceName: latestConfig.remote.deviceName || undefined,
         deviceId: undefined,
-        platformBase: this.deps.config.remote.platformApiBase || undefined,
+        platformBase: latestConfig.remote.platformApiBase || undefined,
         localOrigin: this.deps.localOrigin,
         lastError: message
       });
@@ -62,6 +73,11 @@ export class RemoteServiceModule {
     });
 
     return this.runTask;
+  }
+
+  async restart(): Promise<void> {
+    await this.stop();
+    this.start();
   }
 
   async stop(): Promise<void> {

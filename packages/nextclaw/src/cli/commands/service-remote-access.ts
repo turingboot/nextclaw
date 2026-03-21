@@ -1,7 +1,9 @@
+import type { Config } from "@nextclaw/core";
 import type { RequestRestartParams } from "../types.js";
 import { RemoteAccessHost } from "./remote-access-host.js";
 import { PlatformAuthCommands } from "./platform-auth.js";
 import { RemoteCommands } from "./remote.js";
+import type { RemoteServiceModule } from "@nextclaw/remote";
 
 type ManagedServiceRestartOptions = {
   uiPort?: number;
@@ -33,11 +35,28 @@ export function createRemoteAccessHost(params: {
     stopService: () => Promise<void>;
   };
   requestRestart: (params: RequestRestartParams) => Promise<void>;
+  uiConfig: Pick<Config["ui"], "host" | "port">;
+  remoteModule: RemoteServiceModule | null;
 }): RemoteAccessHost {
+  const currentLocalOrigin = `http://127.0.0.1:${params.uiConfig.port}`;
   return new RemoteAccessHost({
     serviceCommands: params.serviceCommands,
     requestManagedServiceRestart: (options) => requestManagedServiceRestart(params.requestRestart, options),
-    remoteCommands: new RemoteCommands(),
-    platformAuthCommands: new PlatformAuthCommands()
+    remoteCommands: new RemoteCommands({ currentLocalOrigin }),
+    platformAuthCommands: new PlatformAuthCommands(),
+    currentUi: params.uiConfig,
+    remoteRuntimeController: params.remoteModule
+      ? {
+        start: async () => {
+          params.remoteModule?.start();
+        },
+        stop: async () => {
+          await params.remoteModule?.stop();
+        },
+        restart: async () => {
+          await params.remoteModule?.restart();
+        }
+      }
+      : null
   });
 }

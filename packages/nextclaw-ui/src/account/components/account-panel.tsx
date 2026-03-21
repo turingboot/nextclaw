@@ -50,13 +50,11 @@ export function AccountPanel() {
             <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
               <AccountValueRow label={t('remoteAccountEmail')} value={status.account.email} />
               <AccountValueRow label={t('remoteAccountRole')} value={status.account.role} />
-              <AccountValueRow label={t('remotePublicPlatform')} value={status.platformBase ?? status.account.platformBase} />
-              <AccountValueRow label={t('remoteApiBase')} value={status.account.apiBase} />
             </div>
             <div className="flex flex-wrap gap-3">
               <Button onClick={() => void presenter.accountManager.openNextClawWeb()}>
                 <SquareArrowOutUpRight className="mr-2 h-4 w-4" />
-                {t('remoteOpenWeb')}
+                {t('remoteOpenDeviceList')}
               </Button>
               <Button variant="outline" onClick={() => void presenter.accountManager.logout()}>
                 <LogOut className="mr-2 h-4 w-4" />
@@ -69,11 +67,12 @@ export function AccountPanel() {
             <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
               <p className="text-sm font-medium text-gray-900">{t('accountPanelSignedOutTitle')}</p>
               <p className="mt-1 text-sm text-gray-600">{t('accountPanelSignedOutDescription')}</p>
-              <div className="mt-3 border-t border-white/80 pt-3">
-                <AccountValueRow label={t('remoteBrowserAuthSession')} value={authSessionId} />
-                <AccountValueRow label={t('remoteBrowserAuthExpiresAt')} value={authExpiresAt ? formatDateTime(authExpiresAt) : '-'} />
-                <AccountValueRow label={t('remotePublicPlatform')} value={status?.platformBase ?? status?.account.platformBase} />
-              </div>
+              {authSessionId ? (
+                <div className="mt-3 border-t border-white/80 pt-3">
+                  <AccountValueRow label={t('remoteBrowserAuthSession')} value={authSessionId} />
+                  <AccountValueRow label={t('remoteBrowserAuthExpiresAt')} value={authExpiresAt ? formatDateTime(authExpiresAt) : '-'} />
+                </div>
+              ) : null}
             </div>
             {authStatusMessage ? <p className="text-sm text-gray-600">{authStatusMessage}</p> : null}
             <div className="flex flex-wrap gap-3">

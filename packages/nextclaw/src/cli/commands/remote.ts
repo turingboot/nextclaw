@@ -72,6 +72,8 @@ async function probeLocalUi(localOrigin: string): Promise<{ ok: boolean; detail:
 }
 
 export class RemoteCommands {
+  constructor(private readonly deps: { currentLocalOrigin?: string } = {}) {}
+
   updateConfig(params: {
     enabled?: boolean;
     apiBase?: string;
@@ -125,10 +127,14 @@ export class RemoteCommands {
   getStatusView(): RemoteCommandStatusView {
     const config = loadConfig(getConfigPath());
     const snapshot = resolveNextclawRemoteStatusSnapshot(config);
+    const resolvedLocalOrigin =
+      snapshot.runtime?.localOrigin ??
+      this.deps.currentLocalOrigin ??
+      resolveConfiguredLocalOrigin(config);
     return {
       configuredEnabled: snapshot.configuredEnabled,
       runtime: snapshot.runtime,
-      localOrigin: resolveConfiguredLocalOrigin(config),
+      localOrigin: resolvedLocalOrigin,
       deviceName: snapshot.runtime?.deviceName ?? normalizeOptionalString(config.remote.deviceName) ?? hostname(),
       platformBase:
         snapshot.runtime?.platformBase ??
@@ -168,7 +174,10 @@ export class RemoteCommands {
   async getDoctorView(): Promise<RemoteCommandDoctorView> {
     const config = loadConfig(getConfigPath());
     const snapshot = resolveNextclawRemoteStatusSnapshot(config);
-    const localOrigin = resolveConfiguredLocalOrigin(config);
+    const localOrigin =
+      snapshot.runtime?.localOrigin ??
+      this.deps.currentLocalOrigin ??
+      resolveConfiguredLocalOrigin(config);
     const localUi = await probeLocalUi(localOrigin);
     const token = normalizeOptionalString(config.providers.nextclaw?.apiKey);
     const platformApiBase =

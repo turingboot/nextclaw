@@ -1,5 +1,19 @@
 # @nextclaw/ui
 
+## 0.9.8
+
+### Patch Changes
+
+- Add an `enabled` switch for providers so disabled providers stay configured but are excluded from routing, model selection, and runtime diagnostics.
+
+  Expose the provider enabled state through the server and UI config views, and show disabled providers clearly in the Providers page.
+
+## 0.9.7
+
+### Patch Changes
+
+- Align the remote access UI with the existing product style, remove leftover advanced controls from the main flow, expose the device list entry directly, and surface clearer disconnected hints.
+
 ## 0.9.6
 
 ### Patch Changes

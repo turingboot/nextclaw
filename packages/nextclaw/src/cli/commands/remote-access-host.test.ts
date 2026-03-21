@@ -80,6 +80,14 @@ describe("RemoteAccessHost service control", () => {
   });
 
   it("routes current-process restart through the managed service restart coordinator", async () => {
+    saveConfig(ConfigSchema.parse({
+      ui: {
+        enabled: true,
+        host: "0.0.0.0",
+        port: 19199,
+        open: false
+      }
+    }));
     vi.spyOn(utils, "readServiceState").mockReturnValue({
       pid: process.pid,
       startedAt: "2026-03-20T00:00:00.000Z",
@@ -91,12 +99,6 @@ describe("RemoteAccessHost service control", () => {
     });
     vi.spyOn(utils, "isProcessRunning").mockReturnValue(true);
     const { host, serviceCommands } = createHost();
-    vi.spyOn(host as never, "resolveManagedUiOverrides" as never).mockReturnValue({
-      enabled: true,
-      host: "0.0.0.0",
-      open: false,
-      port: 19199
-    });
 
     const result = await host.controlService("restart");
 
@@ -113,6 +115,14 @@ describe("RemoteAccessHost service control", () => {
   });
 
   it("restarts an external managed service by stopping then starting it", async () => {
+    saveConfig(ConfigSchema.parse({
+      ui: {
+        enabled: true,
+        host: "0.0.0.0",
+        port: 19199,
+        open: false
+      }
+    }));
     vi.spyOn(utils, "readServiceState").mockReturnValue({
       pid: process.pid + 1,
       startedAt: "2026-03-20T00:00:00.000Z",
@@ -124,12 +134,6 @@ describe("RemoteAccessHost service control", () => {
     });
     vi.spyOn(utils, "isProcessRunning").mockReturnValue(true);
     const { host, serviceCommands } = createHost();
-    vi.spyOn(host as never, "resolveManagedUiOverrides" as never).mockReturnValue({
-      enabled: true,
-      host: "0.0.0.0",
-      open: false,
-      port: 19199
-    });
 
     const result = await host.controlService("restart");
 

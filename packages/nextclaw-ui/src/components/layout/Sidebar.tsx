@@ -183,15 +183,17 @@ export function Sidebar({ mode }: SidebarProps) {
         {mode === 'settings' ? (
           <button
             onClick={() => presenter.accountManager.openAccountPanel()}
-            className="mb-2 w-full rounded-2xl border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:bg-gray-50"
+            className="mb-2 w-full rounded-xl px-3 py-2.5 text-left transition-all duration-base text-gray-600 hover:bg-[#e4e7ef] hover:text-gray-900"
           >
             <div className="flex items-start gap-3">
-              <div className={cn('mt-0.5 rounded-full p-2', accountConnected ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600')}>
-                <KeyRound className="h-4 w-4" />
-              </div>
+              <KeyRound className={cn('mt-0.5 h-[17px] w-[17px]', accountConnected ? 'text-emerald-600' : 'text-gray-400')} />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-900">{accountEmail || t('remoteAccountEntryTitle')}</p>
-                <p className="mt-1 text-xs text-gray-500">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="truncate text-[14px] font-medium text-gray-900">
+                    {accountEmail || t('remoteAccountEntryManage')}
+                  </p>
+                </div>
+                <p className="mt-1 truncate text-xs text-gray-500">
                   {accountConnected ? t('remoteAccountEntryConnected') : t('remoteAccountEntryDisconnected')}
                 </p>
               </div>

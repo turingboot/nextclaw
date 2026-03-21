@@ -143,6 +143,7 @@ function ensureBuiltinNextclawKey(config: Config): boolean {
 
   if (!provider) {
     provider = {
+      enabled: true,
       displayName: "",
       apiKey: "",
       apiBase: null,

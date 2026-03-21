@@ -6,7 +6,7 @@ import {
   ensureRemoteStatus,
   refreshRemoteStatus,
   resolveRemotePlatformApiBase,
-  resolveRemotePlatformBase
+  resolveRemoteWebBase
 } from '@/remote/remote-access.query';
 import { formatDateTime, t } from '@/lib/i18n';
 import { toast } from 'sonner';
@@ -98,12 +98,12 @@ export class AccountManager {
 
   openNextClawWeb = async () => {
     const status = await ensureRemoteStatus();
-    const platformBase = resolveRemotePlatformBase(status);
-    if (!platformBase) {
+    const webBase = resolveRemoteWebBase(status);
+    if (!webBase) {
       toast.error(t('remoteOpenWebUnavailable'));
       return;
     }
-    window.open(platformBase, '_blank', 'noopener,noreferrer');
+    window.open(webBase, '_blank', 'noopener,noreferrer');
   };
 
   private scheduleBrowserAuthPoll = () => {
