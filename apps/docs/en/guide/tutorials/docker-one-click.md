@@ -11,7 +11,7 @@ Goal: start with one command and get URLs you can open immediately.
   - Docker image registry (to pull `node:22-bookworm-slim`)
   - npm registry (to install `nextclaw`)
 - Default ports are available:
-  - UI: `18891`
+  - UI: `55667`
   - Gateway: `18890`
 
 ## One-Click Command
@@ -25,8 +25,8 @@ curl -fsSL https://nextclaw.io/install-docker.sh | bash
 When startup succeeds, output looks like:
 
 ```text
-UI: http://127.0.0.1:18891
-API: http://127.0.0.1:18891/api
+UI: http://127.0.0.1:55667
+API: http://127.0.0.1:55667/api
 Gateway (direct): http://127.0.0.1:18890
 Data dir: /Users/<you>/.nextclaw-docker
 Container: nextclaw

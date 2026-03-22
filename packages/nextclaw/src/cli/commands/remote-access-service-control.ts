@@ -112,7 +112,7 @@ async function controlManagedService(
 
   if (currentProcess) {
     if (action === "restart") {
-      await deps.requestManagedServiceRestart({ uiPort: uiOverrides.port ?? 18791 });
+      await deps.requestManagedServiceRestart({ uiPort: uiOverrides.port ?? 55667 });
     } else {
       scheduleManagedSelfStop();
     }

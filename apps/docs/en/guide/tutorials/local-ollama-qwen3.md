@@ -73,12 +73,12 @@ Why use `hosted_vllm/` prefix:
 ## 4) Start NextClaw and open UI
 
 ```bash
-nextclaw start --ui-port 18891
+nextclaw start --ui-port 55667
 ```
 
 Open:
 
-- `http://127.0.0.1:18891`
+- `http://127.0.0.1:55667`
 
 Stop when needed:
 

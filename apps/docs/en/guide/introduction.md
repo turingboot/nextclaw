@@ -24,7 +24,7 @@ npm i -g nextclaw
 nextclaw start
 ```
 
-Open `http://127.0.0.1:18791` in your browser.
+Open `http://127.0.0.1:55667` in your browser.
 
 ## Suggested reading order
 

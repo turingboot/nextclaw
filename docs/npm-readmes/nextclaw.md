@@ -14,9 +14,9 @@ npm i -g nextclaw
 nextclaw start
 ```
 
-Then open `http://127.0.0.1:18791`.
+Then open `http://127.0.0.1:55667`.
 
-On a VPS, NextClaw serves plain HTTP on `18791`. Use `http://<server-ip>:18791` directly for a quick check, or put Nginx/Caddy in front for `80/443`. `https://` must be terminated by the reverse proxy, not by NextClaw itself.
+On a VPS, NextClaw serves plain HTTP on `55667`. Use `http://<server-ip>:55667` directly for a quick check, or put Nginx/Caddy in front for `80/443`. `https://` must be terminated by the reverse proxy, not by NextClaw itself.
 
 ## Common commands
 

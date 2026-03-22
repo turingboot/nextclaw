@@ -1,6 +1,6 @@
 import type { ApiResponse } from './types';
 
-const DEFAULT_API_BASE = 'http://127.0.0.1:18791';
+const DEFAULT_API_BASE = 'http://127.0.0.1:55667';
 const API_BASE = (() => {
   const envBase = import.meta.env.VITE_API_BASE?.trim();
   if (envBase) {

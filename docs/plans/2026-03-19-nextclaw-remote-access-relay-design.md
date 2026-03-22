@@ -15,7 +15,7 @@
 
 最优方向不是：
 
-- 直接暴露本地 `18791`
+- 直接暴露本地 `55667`
 - 在 `platform-console` 里重做一套远程版聊天/配置/marketplace
 - 为 remote access 单独设计第二套业务 API
 
@@ -112,7 +112,7 @@ Local NextClaw
 形式：
 
 ```text
-http(s)://<home-ip-or-domain>:18791
+http(s)://<home-ip-or-domain>:55667
 ```
 
 优点：

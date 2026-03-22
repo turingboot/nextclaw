@@ -101,7 +101,7 @@ function Get-RuntimeScriptPath {
 }
 
 function Get-FreeRuntimePort {
-  for ($port = 18791; $port -le 18840; $port++) {
+  for ($port = 55667; $port -le 55716; $port++) {
     $listener = $null
     try {
       $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $port)
@@ -135,7 +135,7 @@ function Invoke-RuntimeFallback {
 
   $runtimePort = Get-FreeRuntimePort
   if ($runtimePort -le 0) {
-    Write-Host "[desktop-smoke] runtime fallback failed: no available port in 18791-18840."
+    Write-Host "[desktop-smoke] runtime fallback failed: no available port in 55667-55716."
     return $false
   }
 

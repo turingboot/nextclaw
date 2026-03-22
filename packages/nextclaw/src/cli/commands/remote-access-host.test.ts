@@ -33,6 +33,10 @@ function createHost() {
   return { host, serviceCommands, remoteCommands };
 }
 
+function createPlatformToken(payload: Record<string, unknown>): string {
+  return `nca.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.sig`;
+}
+
 describe("RemoteAccessHost service control", () => {
   let tempHome = "";
 
@@ -67,7 +71,7 @@ describe("RemoteAccessHost service control", () => {
     remoteCommands.getStatusView.mockReturnValue({
       configuredEnabled: false,
       runtime: null,
-      localOrigin: "http://127.0.0.1:18791",
+      localOrigin: "http://127.0.0.1:55667",
       deviceName: "test-device",
       platformBase: "https://ai-gateway-api.nextclaw.io/v1"
     });
@@ -77,6 +81,47 @@ describe("RemoteAccessHost service control", () => {
 
     expect(status.account.loggedIn).toBe(false);
     expect(status.account.email).toBeUndefined();
+  });
+
+  it("does not treat an expired platform session token as logged in", () => {
+    saveConfig(ConfigSchema.parse({
+      providers: {
+        nextclaw: {
+          apiKey: createPlatformToken({
+            email: "expired@example.com",
+            role: "user",
+            exp: Math.floor(Date.now() / 1000) - 60
+          }),
+          apiBase: "https://ai-gateway-api.nextclaw.io/v1"
+        }
+      }
+    }));
+    const { host, remoteCommands } = createHost();
+    remoteCommands.getStatusView.mockReturnValue({
+      configuredEnabled: true,
+      runtime: {
+        enabled: true,
+        mode: "service",
+        state: "disconnected",
+        deviceId: null,
+        deviceName: null,
+        platformBase: "https://ai-gateway-api.nextclaw.io",
+        localOrigin: "http://127.0.0.1:55667",
+        lastConnectedAt: null,
+        lastError: "Invalid or expired token.",
+        updatedAt: "2026-03-22T00:00:00.000Z"
+      },
+      localOrigin: "http://127.0.0.1:55667",
+      deviceName: "test-device",
+      platformBase: "https://ai-gateway-api.nextclaw.io"
+    });
+    vi.spyOn(utils, "readServiceState").mockReturnValue(null);
+
+    const status = host.getStatus();
+
+    expect(status.account.loggedIn).toBe(false);
+    expect(status.account.email).toBeUndefined();
+    expect(status.runtime?.lastError).toBe("Invalid or expired token.");
   });
 
   it("routes current-process restart through the managed service restart coordinator", async () => {

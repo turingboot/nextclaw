@@ -1499,8 +1499,8 @@ class LandingPage {
 
     const startupSequence: Array<{ text: string; icon?: string; color?: string }> = [
       { text: this.copy.terminalStarted, icon: '✓', color: '#8eb079' },
-      { text: 'UI:  http://127.0.0.1:18791', icon: '→', color: '#7eb6d4' },
-      { text: 'API: http://127.0.0.1:18791/api', icon: '→', color: '#7eb6d4' }
+      { text: 'UI:  http://127.0.0.1:55667', icon: '→', color: '#7eb6d4' },
+      { text: 'API: http://127.0.0.1:55667/api', icon: '→', color: '#7eb6d4' }
     ];
 
     const isStale = (): boolean => runId !== this.terminalAnimationRunId;

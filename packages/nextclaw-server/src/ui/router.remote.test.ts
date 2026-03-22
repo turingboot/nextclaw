@@ -32,11 +32,11 @@ function createRemoteHost(): UiRemoteAccessHost {
       service: {
         running: true,
         pid: 1234,
-        uiUrl: "http://127.0.0.1:18791",
-        uiPort: 18791,
+        uiUrl: "http://127.0.0.1:55667",
+        uiPort: 55667,
         currentProcess: false
       },
-      localOrigin: "http://127.0.0.1:18791",
+      localOrigin: "http://127.0.0.1:55667",
       configuredEnabled: true,
       platformBase: "https://ai-gateway-api.nextclaw.io",
       runtime: {
@@ -46,7 +46,7 @@ function createRemoteHost(): UiRemoteAccessHost {
         deviceId: "device-123",
         deviceName: "demo-device",
         platformBase: "https://ai-gateway-api.nextclaw.io",
-        localOrigin: "http://127.0.0.1:18791",
+        localOrigin: "http://127.0.0.1:55667",
         lastConnectedAt: "2026-03-20T00:00:00.000Z",
         lastError: null,
         updatedAt: "2026-03-20T00:00:00.000Z"
@@ -65,7 +65,7 @@ function createRemoteHost(): UiRemoteAccessHost {
         running: false,
         currentProcess: false
       },
-      localOrigin: "http://127.0.0.1:18791",
+      localOrigin: "http://127.0.0.1:55667",
       configuredEnabled: true,
       runtime: null
     })),
@@ -93,7 +93,7 @@ function createRemoteHost(): UiRemoteAccessHost {
         running: false,
         currentProcess: false
       },
-      localOrigin: "http://127.0.0.1:18791",
+      localOrigin: "http://127.0.0.1:55667",
       configuredEnabled: true,
       runtime: null
     })),
@@ -110,7 +110,7 @@ function createRemoteHost(): UiRemoteAccessHost {
         running: false,
         currentProcess: false
       },
-      localOrigin: "http://127.0.0.1:18791",
+      localOrigin: "http://127.0.0.1:55667",
       configuredEnabled: false,
       runtime: null
     })),

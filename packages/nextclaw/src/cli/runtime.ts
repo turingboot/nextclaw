@@ -178,7 +178,7 @@ export class CliRuntime {
       const uiPort =
         typeof state.uiPort === "number" && Number.isFinite(state.uiPort)
           ? state.uiPort
-          : 18791;
+          : 55667;
 
       console.log(
         `Applying changes (${reason}): restarting ${APP_NAME} background service...`,
@@ -226,7 +226,7 @@ export class CliRuntime {
     const uiPort =
       typeof state.uiPort === "number" && Number.isFinite(state.uiPort)
         ? state.uiPort
-        : 18791;
+        : 55667;
     const delayMs =
       typeof params.delayMs === "number" && Number.isFinite(params.delayMs)
         ? Math.max(0, Math.floor(params.delayMs))

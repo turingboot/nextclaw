@@ -58,7 +58,7 @@ export class DiagnosticsCommands {
           const base = report.process.running && report.endpoints.uiUrl ? report.endpoints.uiUrl : report.endpoints.configuredUiUrl;
           return Number(new URL(base).port || 80);
         } catch {
-          return 18791;
+          return 55667;
         }
       })()
     });

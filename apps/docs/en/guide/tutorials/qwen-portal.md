@@ -20,12 +20,12 @@ This tutorial helps you finish four things:
 If you use NextClaw from CLI, start the local UI first:
 
 ```bash
-nextclaw start --ui-port 18891
+nextclaw start --ui-port 55667
 ```
 
 Then open:
 
-- `http://127.0.0.1:18891`
+- `http://127.0.0.1:55667`
 
 ## 1) Open the Providers page
 

@@ -38,7 +38,7 @@ nextclaw start
 
 ## 4. 打开 UI 并完成首次配置
 
-浏览器访问 **http://127.0.0.1:18791**，按以下顺序完成初始化：
+浏览器访问 **http://127.0.0.1:55667**，按以下顺序完成初始化：
 
 1. 添加 Provider（如 Qwen Portal / MiniMax / OpenRouter / OpenAI）
    - 如果你安装后不知道先选哪条路，先看：[安装后第一步：先选接入方式（Qwen Portal 或 API Key）](/zh/guide/tutorials/provider-options)
@@ -63,7 +63,7 @@ nextclaw stop
 
 可先尝试使用官方安装包重装 Node.js；若仍报错，再参考 npm 官方文档配置全局目录权限。
 
-### `http://127.0.0.1:18791` 打不开
+### `http://127.0.0.1:55667` 打不开
 
 1. 先运行 `nextclaw status` 确认服务是否已启动。
 2. 若未启动，执行：

@@ -12,7 +12,7 @@ If you just installed NextClaw and are not sure what to do first, this page solv
 ## Prerequisites
 
 - NextClaw is installed.
-- You can open `http://127.0.0.1:18791` locally.
+- You can open `http://127.0.0.1:55667` locally.
 - For API key path, you have a vendor account.
 
 ## 30-second decision
@@ -28,7 +28,7 @@ If you just installed NextClaw and are not sure what to do first, this page solv
    ```bash
    nextclaw start
    ```
-2. Open `http://127.0.0.1:18791`.
+2. Open `http://127.0.0.1:55667`.
 3. Go to `Providers` and select `Qwen Portal`.
 4. Click `Authorize in Browser`, then finish login/authorization.
 5. Return to NextClaw, choose a model, and send:
@@ -71,7 +71,7 @@ Recommendations:
 
 ### Step 4. In the already-open NextClaw page, navigate to MiniMax
 
-Assume NextClaw UI is already open at `http://127.0.0.1:18791`.
+Assume NextClaw UI is already open at `http://127.0.0.1:55667`.
 
 Use this path: `Settings -> Providers -> All Providers -> MiniMax`.
 

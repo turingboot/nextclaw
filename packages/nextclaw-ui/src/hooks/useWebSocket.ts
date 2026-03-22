@@ -36,7 +36,7 @@ export function useWebSocket(queryClient?: QueryClient) {
     const wsUrl = (() => {
       const base = API_BASE?.replace(/\/$/, '');
       if (!base) {
-        return 'ws://127.0.0.1:18791/ws';
+        return 'ws://127.0.0.1:55667/ws';
       }
       try {
         const resolved = new URL(base, window.location.origin);

@@ -8,6 +8,7 @@ import type {
   RemotePlatformClientDeps,
   RemoteRunContext
 } from "./types.js";
+import { readPlatformSessionTokenState } from "./platform-session-token.js";
 
 function ensureDir(path: string): void {
   mkdirSync(path, { recursive: true });
@@ -145,8 +146,15 @@ export class RemotePlatformClient {
     const providers = config.providers as Record<string, { apiBase?: string | null; apiKey?: string }>;
     const nextclawProvider = providers.nextclaw;
     const token = typeof nextclawProvider?.apiKey === "string" ? nextclawProvider.apiKey.trim() : "";
-    if (!token) {
+    const tokenState = readPlatformSessionTokenState(token);
+    if (tokenState.reason === "missing") {
       throw new Error('NextClaw platform token is missing. Run "nextclaw login" first.');
+    }
+    if (tokenState.reason === "expired") {
+      throw new Error('NextClaw platform token expired. Run "nextclaw login" or browser sign-in again.');
+    }
+    if (tokenState.reason === "malformed") {
+      throw new Error('NextClaw platform token is invalid. Run "nextclaw login" again.');
     }
     const configuredApiBase =
       normalizeOptionalString(config.remote.platformApiBase)
@@ -156,7 +164,7 @@ export class RemotePlatformClient {
       throw new Error("Platform API base is missing. Pass --api-base, run nextclaw login, or set remote.platformApiBase.");
     }
     const platformBase = this.deps.resolvePlatformBase(rawApiBase);
-    return { platformBase, token, config };
+    return { platformBase, token: token.trim(), config };
   }
 
   private resolveLocalOrigin(
@@ -174,7 +182,7 @@ export class RemotePlatformClient {
     const configuredPort =
       typeof config.ui?.port === "number" && Number.isFinite(config.ui.port)
         ? config.ui.port
-        : 18791;
+        : 55667;
     return `http://127.0.0.1:${configuredPort}`;
   }
 

@@ -25,9 +25,9 @@ RUN pnpm -C packages/nextclaw-core build \
   && pnpm -C packages/nextclaw build
 
 ENV NEXTCLAW_HOME=/data
-ENV NEXTCLAW_UI_PORT=18791
+ENV NEXTCLAW_UI_PORT=55667
 
 VOLUME ["/data"]
-EXPOSE 18790 18791
+EXPOSE 18790 55667
 
-CMD ["sh", "-lc", "node /app/packages/nextclaw/dist/cli/index.js serve --ui-port ${NEXTCLAW_UI_PORT:-18791}"]
+CMD ["sh", "-lc", "node /app/packages/nextclaw/dist/cli/index.js serve --ui-port ${NEXTCLAW_UI_PORT:-55667}"]

@@ -534,12 +534,12 @@ export class ServiceCommands {
           const port = Number(parsed.port || 80);
           return {
             host: existing.uiHost ?? parsed.hostname,
-            port: Number.isFinite(port) ? port : existing.uiPort ?? 18791
+            port: Number.isFinite(port) ? port : existing.uiPort ?? 55667
           };
         } catch {
           return {
             host: existing.uiHost ?? "127.0.0.1",
-            port: existing.uiPort ?? 18791
+            port: existing.uiPort ?? 55667
           };
         }
       })();

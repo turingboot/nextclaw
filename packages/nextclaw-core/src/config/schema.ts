@@ -355,7 +355,7 @@ export const UiNcpConfigSchema = z.object({
 export const UiConfigSchema = z.object({
   enabled: z.boolean().default(false),
   host: z.string().default("0.0.0.0"),
-  port: z.number().int().default(18791),
+  port: z.number().int().default(55667),
   open: z.boolean().default(false),
   auth: z.object({
     enabled: z.boolean().default(false),

@@ -24,7 +24,7 @@ export type ServiceState = {
 };
 
 export function resolveUiConfig(config: Config, overrides?: Partial<Config["ui"]>): Config["ui"] {
-  const base = config.ui ?? { enabled: false, host: "127.0.0.1", port: 18791, open: false };
+  const base = config.ui ?? { enabled: false, host: "127.0.0.1", port: 55667, open: false };
   return { ...base, ...(overrides ?? {}) };
 }
 

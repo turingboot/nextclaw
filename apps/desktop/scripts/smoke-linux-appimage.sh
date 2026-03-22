@@ -111,7 +111,7 @@ port_in_use() {
 
 pick_runtime_port() {
   local port
-  for ((port=18791; port<=18840; port++)); do
+  for ((port=55667; port<=55716; port++)); do
     if ! port_in_use "${port}"; then
       echo "${port}"
       return 0
@@ -156,7 +156,7 @@ fi
 
 RUNTIME_PORT="$(pick_runtime_port || true)"
 if [[ -z "${RUNTIME_PORT}" ]]; then
-  echo "[desktop-smoke] no available port in 18791-18840" >&2
+  echo "[desktop-smoke] no available port in 55667-55716" >&2
   exit 1
 fi
 

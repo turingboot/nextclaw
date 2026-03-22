@@ -73,12 +73,12 @@ hosted_vllm/qwen3:1.7b
 ## 4）启动 NextClaw 并打开 UI
 
 ```bash
-nextclaw start --ui-port 18891
+nextclaw start --ui-port 55667
 ```
 
 浏览器打开：
 
-- `http://127.0.0.1:18891`
+- `http://127.0.0.1:55667`
 
 需要停止时：
 

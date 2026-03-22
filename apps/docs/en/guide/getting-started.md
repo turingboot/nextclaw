@@ -38,7 +38,7 @@ nextclaw start
 
 ## 4. Open the UI and Complete First-Time Setup
 
-Open **http://127.0.0.1:18791** in your browser, then:
+Open **http://127.0.0.1:55667** in your browser, then:
 
 1. Add a provider (such as Qwen Portal / MiniMax / OpenRouter / OpenAI)
    - If you are unsure which path to choose after install, follow: [First Step After Install: Choose Provider Path (Qwen Portal or API Key)](/en/guide/tutorials/provider-options)
@@ -63,7 +63,7 @@ Node.js is not installed correctly, or the terminal session was not restarted. R
 
 Try reinstalling Node.js using the official installer first. If it persists, follow npm official docs to configure a user-level global directory.
 
-### `http://127.0.0.1:18791` cannot be opened
+### `http://127.0.0.1:55667` cannot be opened
 
 1. Run `nextclaw status` to confirm the service is running.
 2. If it is not running, start it:

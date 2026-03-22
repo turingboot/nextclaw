@@ -11,7 +11,7 @@
   - Docker 镜像源（拉取 `node:22-bookworm-slim`）
   - npm registry（安装 `nextclaw`）
 - 默认端口未被占用：
-  - UI：`18891`
+  - UI：`55667`
   - Gateway：`18890`
 
 ## 一键部署命令
@@ -25,8 +25,8 @@ curl -fsSL https://nextclaw.io/install-docker.sh | bash
 脚本完成后会输出类似：
 
 ```text
-UI: http://127.0.0.1:18891
-API: http://127.0.0.1:18891/api
+UI: http://127.0.0.1:55667
+API: http://127.0.0.1:55667/api
 Gateway (direct): http://127.0.0.1:18890
 Data dir: /Users/<you>/.nextclaw-docker
 Container: nextclaw

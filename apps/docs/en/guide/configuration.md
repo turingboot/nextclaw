@@ -8,7 +8,7 @@ This page is beginner-first: you do not need to edit config files to get started
 nextclaw start
 ```
 
-Open `http://127.0.0.1:18791`.
+Open `http://127.0.0.1:55667`.
 
 ## 2. Add one provider
 

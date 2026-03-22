@@ -1,5 +1,6 @@
 import { getConfigPath, loadConfig, saveConfig, type Config } from "@nextclaw/core";
 import {
+  readPlatformSessionTokenState,
   type RemoteConnectCommandOptions,
   type RemoteDoctorCommandOptions,
   type RemoteEnableCommandOptions,
@@ -43,16 +44,12 @@ function normalizeOptionalString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function isPlatformSessionToken(value: string | undefined): boolean {
-  return typeof value === "string" && value.startsWith("nca.");
-}
-
 function resolveConfiguredLocalOrigin(config: Config): string {
   const state = readServiceState();
   if (state && isProcessRunning(state.pid) && Number.isFinite(state.uiPort)) {
     return `http://127.0.0.1:${state.uiPort}`;
   }
-  const port = typeof config.ui.port === "number" && Number.isFinite(config.ui.port) ? config.ui.port : 18791;
+  const port = typeof config.ui.port === "number" && Number.isFinite(config.ui.port) ? config.ui.port : 55667;
   return `http://127.0.0.1:${port}`;
 }
 
@@ -69,6 +66,36 @@ async function probeLocalUi(localOrigin: string): Promise<{ ok: boolean; detail:
       detail: error instanceof Error ? error.message : String(error)
     };
   }
+}
+
+function describePlatformTokenCheck(token: string | undefined): RemoteCommandDoctorCheck {
+  const tokenState = readPlatformSessionTokenState(token);
+  if (tokenState.valid) {
+    return {
+      name: "platform-token",
+      ok: true,
+      detail: "platform session token configured"
+    };
+  }
+  if (tokenState.reason === "expired") {
+    return {
+      name: "platform-token",
+      ok: false,
+      detail: 'platform session token expired; run remote browser login or "nextclaw login" again'
+    };
+  }
+  if (tokenState.reason === "malformed") {
+    return {
+      name: "platform-token",
+      ok: false,
+      detail: 'platform session token invalid; run remote browser login or "nextclaw login" again'
+    };
+  }
+  return {
+    name: "platform-token",
+    ok: false,
+    detail: 'run remote browser login or "nextclaw login" first'
+  };
 }
 
 export class RemoteCommands {
@@ -189,13 +216,7 @@ export class RemoteCommands {
         ok: snapshot.configuredEnabled,
         detail: snapshot.configuredEnabled ? "enabled in config" : "disabled in config"
       },
-      {
-        name: "platform-token",
-        ok: isPlatformSessionToken(token),
-        detail: isPlatformSessionToken(token)
-          ? "platform session token configured"
-          : 'run remote browser login or "nextclaw login" first'
-      },
+      describePlatformTokenCheck(token),
       {
         name: "platform-api-base",
         ok: Boolean(platformApiBase),

@@ -181,14 +181,14 @@ boolean → toggle/switch; password → masked input (optional “show”); text
 
 ## 9. APIs and data (summary)
 
-- **Base URL:** `http://127.0.0.1:18791` (overridable via env for the app).  
+- **Base URL:** `http://127.0.0.1:55667` (overridable via env for the app).  
 - **GET /api/config** — Full config: `agents.defaults` (model, workspace, ...), `providers` (per-provider: apiKeySet, apiBase, extraHeaders, wireApi), `channels` (per-channel key-value).  
 - **GET /api/config/meta** — Lists: `providers[]` (name, displayName, defaultApiBase, supportsWireApi, …), `channels[]` (name, displayName, enabled, tutorialUrl).  
 - **PUT /api/config/model** — Body: `{ model: string }`.  
 - **PUT /api/config/providers/:provider** — Body: optional apiKey, apiBase, extraHeaders, wireApi.  
 - **PUT /api/config/channels/:channel** — Body: channel-specific key-value (see section 8).  
 - **POST /api/config/actions/:actionId/execute** — unified action execution endpoint. Body includes optional `scope` and `draftConfig`.
-- **WebSocket** `ws://127.0.0.1:18791/ws` — On event `config.updated`, the app should refetch config (and meta if needed) so the UI reflects server state. Other events (e.g. `connection.open`, `error`) may be used for connection state or logging; **no requirement to show connection status in the UI** in the current spec.
+- **WebSocket** `ws://127.0.0.1:55667/ws` — On event `config.updated`, the app should refetch config (and meta if needed) so the UI reflects server state. Other events (e.g. `connection.open`, `error`) may be used for connection state or logging; **no requirement to show connection status in the UI** in the current spec.
 
 ---
 

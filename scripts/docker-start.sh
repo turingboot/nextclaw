@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/docker/compose.yml"
 
-UI_PORT="${NEXTCLAW_DOCKER_UI_PORT:-18791}"
+UI_PORT="${NEXTCLAW_DOCKER_UI_PORT:-55667}"
 API_PORT="${NEXTCLAW_DOCKER_API_PORT:-18790}"
 DATA_DIR="${NEXTCLAW_DOCKER_DATA_DIR:-${HOME}/.nextclaw-docker}"
 CONTAINER_NAME="${NEXTCLAW_DOCKER_CONTAINER_NAME:-nextclaw}"
@@ -17,7 +17,7 @@ usage() {
 Usage: scripts/docker-start.sh [options]
 
 Options:
-  --ui-port <port>          Host/UI port (default: 18791)
+  --ui-port <port>          Host/UI port (default: 55667)
   --api-port <port>         Host gateway API port (default: 18790)
   --data-dir <path>         Data directory mounted to /data (default: ~/.nextclaw-docker)
   --container-name <name>   Docker container name (default: nextclaw)

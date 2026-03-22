@@ -314,7 +314,7 @@ ApiResponse<Record<string, unknown>>
 `PUT /api/config/ui`
 
 ```json
-{ "host": "127.0.0.1", "port": 18791, "open": true }
+{ "host": "127.0.0.1", "port": 55667, "open": true }
 ```
 
 响应：

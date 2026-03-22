@@ -20,7 +20,7 @@ nextclaw skills install weather
 
 ## 2）在 UI 里选择 Skill
 
-1. 启动并打开 UI（默认 `http://127.0.0.1:18791`）。
+1. 启动并打开 UI（默认 `http://127.0.0.1:55667`）。
 2. 进入聊天页，在输入框下方点 `Skills`。
 3. 勾选刚安装的 skill，再发送消息。
 

@@ -20,12 +20,12 @@
 如果你是通过 CLI 使用 NextClaw，可以先启动本地 UI：
 
 ```bash
-nextclaw start --ui-port 18891
+nextclaw start --ui-port 55667
 ```
 
 然后在浏览器打开：
 
-- `http://127.0.0.1:18891`
+- `http://127.0.0.1:55667`
 
 ## 1）打开 Providers 页面
 

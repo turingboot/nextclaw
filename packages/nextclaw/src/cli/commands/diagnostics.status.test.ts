@@ -31,8 +31,8 @@ describe("DiagnosticsCommands status", () => {
       endpoints: {
         uiUrl: null,
         apiUrl: null,
-        configuredUiUrl: "http://127.0.0.1:18791",
-        configuredApiUrl: "http://127.0.0.1:18791/api"
+        configuredUiUrl: "http://127.0.0.1:55667",
+        configuredApiUrl: "http://127.0.0.1:55667/api"
       },
       health: {
         managed: { state: "unreachable", detail: "service not running" },

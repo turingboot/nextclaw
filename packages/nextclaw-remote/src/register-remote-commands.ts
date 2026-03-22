@@ -45,7 +45,7 @@ export function registerRemoteCommands(program: Command, runtime: RemoteCommandR
     .command("connect")
     .description("Foreground debug mode: register this machine and keep the connector online")
     .option("--api-base <url>", "Platform API base (supports /v1 suffix)")
-    .option("--local-origin <url>", "Local NextClaw UI origin (default: active service or http://127.0.0.1:18791)")
+    .option("--local-origin <url>", "Local NextClaw UI origin (default: active service or http://127.0.0.1:55667)")
     .option("--name <name>", "Device display name")
     .option("--once", "Connect once without auto-reconnect", false)
     .action(async (opts) => runtime.connect(opts));

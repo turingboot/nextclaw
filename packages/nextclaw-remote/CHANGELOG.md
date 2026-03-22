@@ -1,5 +1,14 @@
 # @nextclaw/remote
 
+## 0.1.15
+
+### Patch Changes
+
+- Align the default NextClaw UI port to 55667 across core config, remote access, CLI runtime, UI fallbacks, Docker defaults, smoke scripts, and user-facing docs.
+- Updated dependencies
+  - @nextclaw/core@0.9.8
+  - @nextclaw/server@0.10.19
+
 ## 0.1.14
 
 ### Patch Changes

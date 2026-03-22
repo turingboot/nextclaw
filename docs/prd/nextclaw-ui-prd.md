@@ -161,7 +161,7 @@
 ## 6. 数据与接口
 
 ### API Base
-- 默认：`http://127.0.0.1:18791`
+- 默认：`http://127.0.0.1:55667`
 - 可通过 `VITE_API_BASE` 覆盖
 
 ### REST API
@@ -173,7 +173,7 @@
 - `POST /api/config/actions/:actionId/execute`
 
 ### WebSocket
-- `ws://127.0.0.1:18791/ws`
+- `ws://127.0.0.1:55667/ws`
 - 事件：
   - `connection.open`
   - `config.updated`（触发刷新）

@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP_NAME="nextclaw"
 CONTAINER_NAME="${NEXTCLAW_DOCKER_CONTAINER_NAME:-nextclaw}"
-UI_PORT="${NEXTCLAW_DOCKER_UI_PORT:-18891}"
+UI_PORT="${NEXTCLAW_DOCKER_UI_PORT:-55667}"
 API_PORT="${NEXTCLAW_DOCKER_API_PORT:-18890}"
 DATA_DIR="${NEXTCLAW_DOCKER_DATA_DIR:-${HOME}/.nextclaw-docker}"
 DOCKER_IMAGE="${NEXTCLAW_DOCKER_IMAGE:-node:22-bookworm-slim}"
@@ -29,7 +29,7 @@ usage() {
 Usage: install-docker.sh [options]
 
 Options:
-  --ui-port <port>          UI port (default: 18891)
+  --ui-port <port>          UI port (default: 55667)
   --api-port <port>         Gateway API port mapped to host (default: 18890)
   --data-dir <path>         Persistent data directory mounted to /data (default: ~/.nextclaw-docker)
   --container-name <name>   Docker container name (default: nextclaw)

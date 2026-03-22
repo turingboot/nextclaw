@@ -32,7 +32,7 @@
 
 | 命令 | 说明 |
 |------|------|
-| `nextclaw start` | 后台启动助理服务 + UI（默认 0.0.0.0，端口 18791） |
+| `nextclaw start` | 后台启动助理服务 + UI（默认 0.0.0.0，端口 55667） |
 | `nextclaw restart` | 重启后台服务（可带 start 参数） |
 | `nextclaw stop` | 停止后台服务 |
 | `nextclaw serve` | 前台运行助理服务 + UI |
@@ -214,7 +214,7 @@ Agent 主循环中注册的默认工具（`nextclaw-core` `agent/loop.ts` + `age
 
 ## 11. UI 与 API
 
-- **Web UI**：默认 `http://127.0.0.1:18791`，可配 `ui.host`/`ui.port`/`ui.open`；start 时默认绑定 0.0.0.0。
+- **Web UI**：默认 `http://127.0.0.1:55667`，可配 `ui.host`/`ui.port`/`ui.open`；start 时默认绑定 0.0.0.0。
 - **能力**：模型与默认 Agent、Provider、Channel、路由与运行时（agents.list、bindings、session）的配置与展示。
 - **API**：配置读写、模型/Provider/Channel 更新、WebSocket 推送配置变更。
 - **通道服务端口**：默认 18790（渠道回调与内部通信）。

@@ -64,9 +64,9 @@ npm i -g nextclaw
 nextclaw start
 ```
 
-浏览器打开 **http://127.0.0.1:18791** → 设置 Provider 与模型 → 开始对话。
+浏览器打开 **http://127.0.0.1:55667** → 设置 Provider 与模型 → 开始对话。
 
-如果部署在云服务器上，NextClaw 对外提供的是 `18791` 端口的纯 HTTP 服务。你可以先用 `http://<服务器IP>:18791` 直连验证；如果要走 `80/443` 或 `https://`，请用 Nginx/Caddy 做反向代理和 TLS 终止，不要让 NextClaw 直接承担 HTTPS。
+如果部署在云服务器上，NextClaw 对外提供的是 `55667` 端口的纯 HTTP 服务。你可以先用 `http://<服务器IP>:55667` 直连验证；如果要走 `80/443` 或 `https://`，请用 Nginx/Caddy 做反向代理和 TLS 终止，不要让 NextClaw 直接承担 HTTPS。
 
 ```bash
 nextclaw stop    # 停止服务

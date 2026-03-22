@@ -203,7 +203,7 @@ find_runtime_script() {
 }
 
 pick_runtime_port() {
-  local base_port=18791
+  local base_port=55667
   local max_port=18840
   local port
 
@@ -228,7 +228,7 @@ run_runtime_fallback() {
   local runtime_port
   runtime_port="$(pick_runtime_port || true)"
   if [[ -z "${runtime_port}" ]]; then
-    echo "[desktop-smoke] runtime fallback failed: no available port in 18791-18840." >&2
+    echo "[desktop-smoke] runtime fallback failed: no available port in 55667-55716." >&2
     return 1
   fi
 

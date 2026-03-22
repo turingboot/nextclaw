@@ -47,19 +47,19 @@
   "ui": {
     "enabled": false,
     "host": "127.0.0.1",
-    "port": 18791,
+    "port": 55667,
     "open": true
   }
 }
 ```
 
 - `host`：默认 127.0.0.1，仅本地访问。
-- `port`：默认 18791，可自定义。
+- `port`：默认 55667，可自定义。
 - `open`：是否自动打开浏览器（仅 `nextclaw ui` 默认 true）。
 
 CLI 参数建议：
 
-- `nextclaw ui --host 127.0.0.1 --port 18791 --no-open`
+- `nextclaw ui --host 127.0.0.1 --port 55667 --no-open`
 - `nextclaw gateway --ui`（可选：在 gateway 上也启用 UI）
 
 ## UI Server（Hono）设计

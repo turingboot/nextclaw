@@ -21,7 +21,7 @@
 
 ### B. 配置与管理 UI
 
-- 内置 Web UI（默认 `http://127.0.0.1:18791`）
+- 内置 Web UI（默认 `http://127.0.0.1:55667`）
 - 聚合配置：模型、Providers、Channels
 - UI 后端 API：配置读取、模型修改、Provider 更新、Channel 更新
 - WebSocket 推送配置变更，前端自动刷新视图

@@ -45,7 +45,7 @@ const FIELD_PLACEHOLDERS: Record<string, string> = {
   "gateway.host": "0.0.0.0",
   "gateway.port": "18790",
   "ui.host": "0.0.0.0",
-  "ui.port": "18791",
+  "ui.port": "55667",
   "remote.platformApiBase": "https://ai-gateway-api.nextclaw.io/v1",
   "remote.deviceName": "My NextClaw Workstation",
   "providers.*.displayName": "Custom Relay A",

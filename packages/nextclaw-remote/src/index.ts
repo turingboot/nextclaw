@@ -6,3 +6,4 @@ export * from "./remote-relay-bridge.js";
 export * from "./remote-connector.js";
 export * from "./remote-status-store.js";
 export * from "./remote-service-module.js";
+export * from "./platform-session-token.js";

@@ -1,4 +1,5 @@
 import { getConfigPath, loadConfig } from "@nextclaw/core";
+import { readPlatformSessionTokenState } from "@nextclaw/remote";
 import type {
   RemoteAccessView,
   RemoteAccountView,
@@ -28,24 +29,6 @@ function normalizeOptionalString(value: unknown): string | null {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
-}
-
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  const segments = token.split(".");
-  if (segments.length < 2) {
-    return null;
-  }
-  try {
-    const raw = Buffer.from(segments[1]!, "base64url").toString("utf-8");
-    const parsed = JSON.parse(raw) as unknown;
-    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}
-
-function isPlatformSessionToken(token: string | null): token is string {
-  return typeof token === "string" && token.startsWith("nca.");
 }
 
 function toRemoteRuntimeView(runtime: ReturnType<RemoteCommands["getStatusView"]>["runtime"]): RemoteRuntimeView | null {
@@ -179,14 +162,15 @@ export class RemoteAccessHost implements UiRemoteAccessHost {
     apiBase: string | null;
     platformBase: string | null;
   }): RemoteAccountView {
-    if (!isPlatformSessionToken(params.token)) {
+    const tokenState = readPlatformSessionTokenState(params.token);
+    if (!tokenState.valid) {
       return {
         loggedIn: false,
         apiBase: params.apiBase,
         platformBase: params.platformBase
       };
     }
-    const payload = decodeJwtPayload(params.token);
+    const payload = tokenState.payload;
     const email = typeof payload?.email === "string" ? payload.email : undefined;
     const role = typeof payload?.role === "string" ? payload.role : undefined;
     return {

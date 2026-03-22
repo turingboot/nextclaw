@@ -20,7 +20,7 @@ After install, you should see `skills/<slug>/SKILL.md` in your workspace.
 
 ## 2) Select the skill in UI
 
-1. Start and open UI (default `http://127.0.0.1:18791`).
+1. Start and open UI (default `http://127.0.0.1:55667`).
 2. Open chat page and click `Skills` under the input box.
 3. Select the installed skill, then send a message.
 
