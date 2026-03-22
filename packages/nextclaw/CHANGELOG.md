@@ -1,5 +1,16 @@
 # nextclaw
 
+## 0.13.26
+
+### Patch Changes
+
+- Publish the remote instance registration compatibility fix so released CLI builds understand the new platform `instance` payload and registration route.
+- Updated dependencies
+  - @nextclaw/mcp@0.1.22
+  - @nextclaw/remote@0.1.18
+  - @nextclaw/server@0.10.22
+  - @nextclaw/ncp-mcp@0.1.22
+
 ## 0.13.25
 
 ### Patch Changes

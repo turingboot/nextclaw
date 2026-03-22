@@ -27,15 +27,21 @@ function toApiUrl(path: string): string {
   return path.startsWith('/') ? `${apiBase}${path}` : `${apiBase}/${path}`;
 }
 
-function normalizeHostedPlatformUrl(url: string): string {
-  if (!apiBase) {
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+}
+
+function normalizeDevelopmentHostedUrl(url: string): string {
+  if (typeof window === 'undefined') {
     return url;
   }
   try {
-    const platformOrigin = new URL(apiBase).origin;
     const parsed = new URL(url);
-    parsed.protocol = new URL(platformOrigin).protocol;
-    parsed.host = new URL(platformOrigin).host;
+    if (!isLoopbackHostname(window.location.hostname) || !isLoopbackHostname(parsed.hostname)) {
+      return url;
+    }
+    parsed.protocol = window.location.protocol;
+    parsed.host = window.location.host;
     return parsed.toString();
   } catch {
     return url;
@@ -143,7 +149,7 @@ export async function openRemoteInstance(token: string, instanceId: string): Pro
   const session = unwrap(data);
   return {
     ...session,
-    openUrl: normalizeHostedPlatformUrl(session.openUrl)
+    openUrl: normalizeDevelopmentHostedUrl(session.openUrl)
   };
 }
 
@@ -157,7 +163,7 @@ export async function fetchRemoteShareGrants(token: string, instanceId: string):
   return {
     items: result.items.map((grant) => ({
       ...grant,
-      shareUrl: normalizeHostedPlatformUrl(grant.shareUrl)
+      shareUrl: normalizeDevelopmentHostedUrl(grant.shareUrl)
     }))
   };
 }
@@ -178,7 +184,22 @@ export async function createRemoteShareGrant(
   const grant = unwrap(data);
   return {
     ...grant,
-    shareUrl: normalizeHostedPlatformUrl(grant.shareUrl)
+    shareUrl: normalizeDevelopmentHostedUrl(grant.shareUrl)
+  };
+}
+
+export async function openRemoteShare(grantToken: string): Promise<RemoteAccessSession> {
+  const data = await request<ApiEnvelope<RemoteAccessSession>>(
+    `/platform/share/${encodeURIComponent(grantToken)}/open`,
+    {
+      method: 'POST',
+      body: JSON.stringify({})
+    }
+  );
+  const session = unwrap(data);
+  return {
+    ...session,
+    openUrl: normalizeDevelopmentHostedUrl(session.openUrl)
   };
 }
 

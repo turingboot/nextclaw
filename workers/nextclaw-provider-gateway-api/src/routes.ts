@@ -35,7 +35,7 @@ import {
   listRemoteInstancesHandler,
   listRemoteShareGrantsHandler,
   openRemoteInstanceHandler,
-  openRemoteShareHandler,
+  openRemoteShareSessionHandler,
   listRemoteDevicesHandler,
   openRemoteDeviceHandler,
   openRemoteSessionRedirectHandler,
@@ -66,7 +66,7 @@ function registerRemoteAccessRoutes(app: Hono<{ Bindings: Env }>): void {
   app.get("/platform/remote/devices", listRemoteDevicesHandler);
   app.post("/platform/remote/devices/register", registerRemoteDeviceHandler);
   app.post("/platform/remote/devices/:deviceId/open", openRemoteDeviceHandler);
-  app.get("/platform/share/:grantToken", openRemoteShareHandler);
+  app.post("/platform/share/:grantToken/open", openRemoteShareSessionHandler);
   app.get("/platform/remote/open", openRemoteSessionRedirectHandler);
   app.get("/platform/remote/connect", remoteConnectorWebSocketHandler);
 }

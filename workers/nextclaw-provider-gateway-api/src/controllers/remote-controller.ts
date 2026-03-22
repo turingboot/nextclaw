@@ -47,6 +47,26 @@ import {
   sanitizeResponseHeaders,
 } from "../utils/platform-utils";
 
+function requireRemoteAccessUrl(
+  c: Context<{ Bindings: Env }>,
+  sessionId: string,
+  token: string
+): string | Response {
+  const openUrl = buildRemoteAccessUrl(c, sessionId, token);
+  if (!openUrl) {
+    return apiError(c, 503, "REMOTE_ACCESS_DOMAIN_UNAVAILABLE", "Remote access public domain is not configured.");
+  }
+  return openUrl;
+}
+
+function requireRemoteShareUrl(c: Context<{ Bindings: Env }>, grantToken: string): string | Response {
+  const shareUrl = buildRemoteShareUrl(c, grantToken);
+  if (!shareUrl) {
+    return apiError(c, 503, "REMOTE_SHARE_URL_UNAVAILABLE", "NextClaw Web base URL is not configured.");
+  }
+  return shareUrl;
+}
+
 export async function registerRemoteInstanceHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
   await ensurePlatformBootstrap(c.env);
   const auth = await requireAuthUser(c);
@@ -143,7 +163,10 @@ export async function openRemoteInstanceHandler(c: Context<{ Bindings: Env }>): 
     ownerUserId: auth.user.id,
     instanceId: instance.id
   });
-  const openUrl = buildRemoteAccessUrl(c, session.id, session.token);
+  const openUrl = requireRemoteAccessUrl(c, session.id, session.token);
+  if (openUrl instanceof Response) {
+    return openUrl;
+  }
 
   await appendAuditLog(c.env.NEXTCLAW_PLATFORM_DB, {
     actorUserId: auth.user.id,
@@ -183,10 +206,18 @@ export async function listRemoteShareGrantsHandler(c: Context<{ Bindings: Env }>
   }
 
   const rows = await listRemoteShareGrantsByInstanceId(c.env.NEXTCLAW_PLATFORM_DB, instanceId);
+  const items = rows.map((row) => {
+    const shareUrl = requireRemoteShareUrl(c, row.token);
+    return shareUrl instanceof Response ? shareUrl : toRemoteShareGrantView(row, shareUrl);
+  });
+  const failure = items.find((item) => item instanceof Response);
+  if (failure instanceof Response) {
+    return failure;
+  }
   return c.json({
     ok: true,
     data: {
-      items: rows.map((row) => toRemoteShareGrantView(row, buildRemoteShareUrl(c, row.token)))
+      items
     }
   });
 }
@@ -237,6 +268,11 @@ export async function createRemoteShareGrantHandler(c: Context<{ Bindings: Env }
     metadataJson: null
   });
 
+  const shareUrl = requireRemoteShareUrl(c, token);
+  if (shareUrl instanceof Response) {
+    return shareUrl;
+  }
+
   return c.json({
     ok: true,
     data: toRemoteShareGrantView({
@@ -250,7 +286,7 @@ export async function createRemoteShareGrantHandler(c: Context<{ Bindings: Env }
       created_at: nowIso,
       updated_at: nowIso,
       active_session_count: 0
-    }, buildRemoteShareUrl(c, token))
+    }, shareUrl)
   });
 }
 
@@ -276,15 +312,19 @@ export async function revokeRemoteShareGrantHandler(c: Context<{ Bindings: Env }
   const revokedAt = new Date().toISOString();
   await revokeRemoteShareGrant(c.env.NEXTCLAW_PLATFORM_DB, grant.id, revokedAt);
   await closeRemoteAccessSessionsByGrantId(c.env.NEXTCLAW_PLATFORM_DB, grant.id, revokedAt);
+  const shareUrl = requireRemoteShareUrl(c, grant.token);
+  if (shareUrl instanceof Response) {
+    return shareUrl;
+  }
 
   await appendAuditLog(c.env.NEXTCLAW_PLATFORM_DB, {
     actorUserId: auth.user.id,
     action: "remote.share_grant.revoked",
     targetType: "remote_share_grant",
     targetId: grant.id,
-    beforeJson: JSON.stringify(toRemoteShareGrantView(grant, buildRemoteShareUrl(c, grant.token))),
+    beforeJson: JSON.stringify(toRemoteShareGrantView(grant, shareUrl)),
     afterJson: JSON.stringify({
-      ...toRemoteShareGrantView(grant, buildRemoteShareUrl(c, grant.token)),
+      ...toRemoteShareGrantView(grant, shareUrl),
       status: "revoked",
       revokedAt,
       activeSessionCount: 0
@@ -302,34 +342,28 @@ export async function revokeRemoteShareGrantHandler(c: Context<{ Bindings: Env }
   });
 }
 
-export async function openRemoteShareHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
+export async function openRemoteShareSessionHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
   await ensurePlatformBootstrap(c.env);
   const grantToken = optionalTrimmedString(c.req.param("grantToken") ?? "");
   if (!grantToken) {
-    return new Response("Missing share token.", {
-      status: 400,
-      headers: { "content-type": "text/plain; charset=utf-8" }
-    });
+    return apiError(c, 400, "INVALID_GRANT_TOKEN", "Missing share token.");
   }
 
   const grant = await getRemoteShareGrantByToken(c.env.NEXTCLAW_PLATFORM_DB, grantToken);
   if (!grant || grant.status !== "active" || grant.revoked_at || isExpiredAt(grant.expires_at)) {
-    return new Response("Remote share link is no longer available.", {
-      status: 410,
-      headers: { "content-type": "text/plain; charset=utf-8" }
-    });
+    return apiError(c, 410, "GRANT_NOT_AVAILABLE", "Remote share link is no longer available.");
   }
 
   const instance = await getRemoteInstanceById(c.env.NEXTCLAW_PLATFORM_DB, grant.instance_id);
   if (!instance || instance.status !== "online") {
-    return new Response("Remote instance is offline.", {
-      status: 409,
-      headers: { "content-type": "text/plain; charset=utf-8" }
-    });
+    return apiError(c, 409, "INSTANCE_OFFLINE", "Remote instance is offline.");
   }
 
   const session = await createShareOpenSession({ c, grant });
-  const openUrl = buildRemoteAccessUrl(c, session.id, session.token);
+  const openUrl = requireRemoteAccessUrl(c, session.id, session.token);
+  if (openUrl instanceof Response) {
+    return openUrl;
+  }
 
   await appendAuditLog(c.env.NEXTCLAW_PLATFORM_DB, {
     actorUserId: grant.owner_user_id,
@@ -347,11 +381,9 @@ export async function openRemoteShareHandler(c: Context<{ Bindings: Env }>): Pro
     metadataJson: JSON.stringify({ shareGrantId: grant.id })
   });
 
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: openUrl
-    }
+  return c.json({
+    ok: true,
+    data: toRemoteAccessSessionView(session, openUrl)
   });
 }
 

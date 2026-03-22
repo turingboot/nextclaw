@@ -333,23 +333,27 @@ async function main() {
     if (!shareUrl || !grantId) {
       throw new Error(`Missing share grant payload: ${JSON.stringify(createdShare.body)}`);
     }
-    const localShareUrl = new URL(shareUrl);
-    localShareUrl.protocol = "http:";
-    localShareUrl.host = `127.0.0.1:${backendPort}`;
-    const shareRedirectResponse = await fetchWithRetry(localShareUrl, { redirect: "manual" }, "share redirect");
-    if (shareRedirectResponse.status !== 302) {
-      throw new Error(
-        `Expected share redirect status 302, got ${shareRedirectResponse.status}, shareUrl=${shareUrl}, localShareUrl=${localShareUrl}, body=${await shareRedirectResponse.text()}`
-      );
+    const sharePath = new URL(shareUrl).pathname;
+    const grantToken = sharePath.split("/").filter(Boolean).at(-1);
+    if (!grantToken) {
+      throw new Error(`Missing grant token in share URL: ${shareUrl}`);
     }
-    const shareOpenLocation = shareRedirectResponse.headers.get("location");
-    if (!shareOpenLocation) {
-      throw new Error("Missing share redirect location.");
+    const shareOpenApiResponse = await requestJson({
+      method: "POST",
+      url: `${base}/platform/share/${encodeURIComponent(grantToken)}/open`,
+      expectedStatus: 200
+    });
+    const sharedOpenUrl = shareOpenApiResponse.body?.data?.openUrl;
+    if (!sharedOpenUrl) {
+      throw new Error(`Missing openUrl in share open response: ${JSON.stringify(shareOpenApiResponse.body)}`);
     }
-    const shareOpenResponse = await fetchWithRetry(shareOpenLocation, { redirect: "manual" }, "share open redirect");
+    const localSharedOpenUrl = new URL(sharedOpenUrl);
+    localSharedOpenUrl.protocol = "http:";
+    localSharedOpenUrl.host = `127.0.0.1:${backendPort}`;
+    const shareOpenResponse = await fetchWithRetry(localSharedOpenUrl, { redirect: "manual" }, "share open redirect");
     if (shareOpenResponse.status !== 302) {
       throw new Error(
-        `Expected open redirect status 302 from share, got ${shareOpenResponse.status}, location=${shareOpenLocation}, body=${await shareOpenResponse.text()}`
+        `Expected open redirect status 302 from share, got ${shareOpenResponse.status}, sharedOpenUrl=${sharedOpenUrl}, localSharedOpenUrl=${localSharedOpenUrl}, body=${await shareOpenResponse.text()}`
       );
     }
     const sharedSessionCookie = extractCookie(shareOpenResponse.headers.get("set-cookie"));
@@ -381,9 +385,13 @@ async function main() {
       throw new Error(`Expected revoked shared session response, got ${JSON.stringify(revokedSharedProbe.body)}`);
     }
 
-    const revokedShareOpen = await fetchWithRetry(localShareUrl, { redirect: "manual" }, "revoked share redirect");
-    if (revokedShareOpen.status !== 410) {
-      throw new Error(`Expected revoked share URL to return 410, got ${revokedShareOpen.status}`);
+    const revokedShareOpenApi = await requestJson({
+      method: "POST",
+      url: `${base}/platform/share/${encodeURIComponent(grantToken)}/open`,
+      expectedStatus: 410
+    });
+    if (revokedShareOpenApi.status !== 410) {
+      throw new Error(`Expected revoked share open API to return 410, got ${revokedShareOpenApi.status}`);
     }
 
     console.log("[remote-relay-smoke] stop connector and verify offline transition...");

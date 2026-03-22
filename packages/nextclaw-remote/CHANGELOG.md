@@ -1,5 +1,13 @@
 # @nextclaw/remote
 
+## 0.1.18
+
+### Patch Changes
+
+- Publish the remote instance registration compatibility fix so released CLI builds understand the new platform `instance` payload and registration route.
+- Updated dependencies
+  - @nextclaw/server@0.10.22
+
 ## 0.1.17
 
 ### Patch Changes

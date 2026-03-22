@@ -3,14 +3,28 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchMe } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { LoginPage } from '@/pages/LoginPage';
+import { SharePage } from '@/pages/SharePage';
 import { UserDashboardPage } from '@/pages/UserDashboardPage';
 import { useAuthStore } from '@/store/auth';
 
+function readShareTokenFromLocation(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const match = window.location.pathname.match(/^\/share\/([^/]+)\/?$/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 export default function App(): JSX.Element {
+  const shareToken = readShareTokenFromLocation();
   const token = useAuthStore((state) => state.token);
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
+
+  if (shareToken) {
+    return <SharePage grantToken={shareToken} />;
+  }
 
   const meQuery = useQuery({
     queryKey: ['me', token],

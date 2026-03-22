@@ -2,6 +2,7 @@ export type Env = {
   DASHSCOPE_API_KEY?: string;
   DASHSCOPE_API_BASE?: string;
   AUTH_TOKEN_SECRET?: string;
+  NEXTCLAW_WEB_BASE_URL?: string;
   REMOTE_ACCESS_BASE_DOMAIN?: string;
   PLATFORM_AUTH_EMAIL_PROVIDER?: string;
   PLATFORM_AUTH_EMAIL_FROM?: string;

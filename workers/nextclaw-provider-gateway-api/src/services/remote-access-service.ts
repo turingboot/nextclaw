@@ -50,23 +50,35 @@ function readRemoteAccessBaseDomain(c: Context<{ Bindings: Env }>): string | nul
   return optionalTrimmedString(c.env.REMOTE_ACCESS_BASE_DOMAIN ?? "");
 }
 
+function readWebBaseUrl(c: Context<{ Bindings: Env }>): string | null {
+  const configured = optionalTrimmedString(c.env.NEXTCLAW_WEB_BASE_URL ?? "");
+  if (configured) {
+    return configured.replace(/\/+$/, "");
+  }
+  const origin = readRequestOrigin(c);
+  return isLoopbackHost(origin.hostname) ? `${origin.protocol}://${origin.host}` : null;
+}
+
 function buildLegacyRemoteOpenUrl(c: Context<{ Bindings: Env }>, token: string): string {
   const origin = readRequestOrigin(c);
   return `${origin.protocol}://${origin.host}/platform/remote/open?token=${encodeURIComponent(token)}`;
 }
 
-export function buildRemoteAccessUrl(c: Context<{ Bindings: Env }>, sessionId: string, token: string): string {
+export function buildRemoteAccessUrl(c: Context<{ Bindings: Env }>, _sessionId: string, token: string): string | null {
   const origin = readRequestOrigin(c);
   const baseDomain = readRemoteAccessBaseDomain(c);
   if (!baseDomain) {
-    return buildLegacyRemoteOpenUrl(c, token);
+    return isLoopbackHost(origin.hostname) ? buildLegacyRemoteOpenUrl(c, token) : null;
   }
-  return `${origin.protocol}://${sessionId}.${baseDomain}/`;
+  return `${origin.protocol}://${baseDomain}/platform/remote/open?token=${encodeURIComponent(token)}`;
 }
 
-export function buildRemoteShareUrl(c: Context<{ Bindings: Env }>, grantToken: string): string {
-  const origin = readRequestOrigin(c);
-  return `${origin.protocol}://${origin.host}/platform/share/${encodeURIComponent(grantToken)}`;
+export function buildRemoteShareUrl(c: Context<{ Bindings: Env }>, grantToken: string): string | null {
+  const webBaseUrl = readWebBaseUrl(c);
+  if (!webBaseUrl) {
+    return null;
+  }
+  return `${webBaseUrl}/share/${encodeURIComponent(grantToken)}`;
 }
 
 function readAccessSessionIdFromHost(c: Context<{ Bindings: Env }>): string | null {
