@@ -28,6 +28,7 @@ LOG_ROOT="${TEMP_ROOT}/nextclaw-desktop-smoke-logs"
 APP_STDOUT_LOG="${LOG_ROOT}/app-stdout.log"
 APP_HEALTH_LOG="${LOG_ROOT}/health.json"
 RUNTIME_STDOUT_LOG="${LOG_ROOT}/runtime-stdout.log"
+DEFAULT_UI_PORT=55667
 
 mkdir -p "${LOG_ROOT}"
 
@@ -100,7 +101,9 @@ collect_descendant_pids() {
 
 collect_candidate_ports() {
   local -a pids=("$@")
-  local -a ports=()
+  # The packaged desktop app starts the runtime on the default UI port even when
+  # the runtime process detaches from the launcher process tree.
+  local -a ports=("${DEFAULT_UI_PORT}")
   local env_name
   local env_port
   local current_pid=""

@@ -5,6 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$DefaultUiPort = 55667
 
 function Get-DescendantPids {
   param([int]$RootPid)
@@ -51,7 +52,10 @@ function Get-SmokeTempRoot {
 function Get-CandidatePorts {
   param([int[]]$ProcessIds)
 
+  # The packaged desktop app starts the runtime on the default UI port even when
+  # the runtime process detaches from the launcher process tree.
   $ports = New-Object System.Collections.Generic.List[int]
+  $ports.Add($DefaultUiPort)
   foreach ($name in @("NEXTCLAW_UI_PORT", "NEXTCLAW_PORT", "PORT")) {
     $raw = [Environment]::GetEnvironmentVariable($name)
     $parsed = 0
