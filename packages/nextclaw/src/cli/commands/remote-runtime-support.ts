@@ -73,7 +73,22 @@ export function buildNextclawConfiguredRemoteState(config: Config): RemoteRuntim
 }
 
 export function readCurrentNextclawRemoteRuntimeState(): RemoteRuntimeState | null {
-  return currentProcessRemoteRuntimeState ?? readServiceState()?.remote ?? null;
+  const serviceState = readServiceState();
+  const currentRemoteState = currentProcessRemoteRuntimeState ?? serviceState?.remote ?? null;
+  if (!currentRemoteState) {
+    return null;
+  }
+
+  if (!serviceState || isProcessRunning(serviceState.pid)) {
+    return currentRemoteState;
+  }
+
+  return {
+    ...currentRemoteState,
+    state: currentRemoteState.enabled ? "disconnected" : "disabled",
+    lastError: currentRemoteState.lastError ?? "Managed service is not running.",
+    updatedAt: new Date().toISOString()
+  };
 }
 
 export function resolveNextclawRemoteStatusSnapshot(config: Config): RemoteStatusSnapshot {
