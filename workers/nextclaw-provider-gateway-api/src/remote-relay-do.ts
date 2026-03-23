@@ -30,6 +30,7 @@ const CONNECTOR_TAG = "connector"; const CLIENT_TAG = "client";
 
 export class NextclawRemoteRelayDurableObject {
   private readonly pending = new Map<string, PendingRelay>();
+  private readonly browserMessageLeases = new Map<string, number>();
 
   constructor(private readonly state: DurableObjectState, private readonly env: Env) {}
 
@@ -86,6 +87,7 @@ export class NextclawRemoteRelayDurableObject {
     const server = pair[1];
     server.serializeAttachment(attachment satisfies ClientAttachment);
     this.state.acceptWebSocket(server, [CLIENT_TAG]);
+    this.browserMessageLeases.set(attachment.clientId, 0);
     server.send(JSON.stringify({
       type: "connection.ready",
       connectionId: attachment.clientId,
@@ -242,9 +244,15 @@ export class NextclawRemoteRelayDurableObject {
     }
 
     if (frame.type === "request") {
-      const quotaFrame = await consumeRemoteBrowserFrameQuota(this.env, attachment, frame);
-      if (quotaFrame) {
-        this.sendToClient(attachment.clientId, quotaFrame);
+      const quotaDecision = await consumeRemoteBrowserFrameQuota({
+        env: this.env,
+        attachment,
+        frame,
+        remainingMessages: this.browserMessageLeases.get(attachment.clientId) ?? 0
+      });
+      this.browserMessageLeases.set(attachment.clientId, quotaDecision.remainingMessages);
+      if (!quotaDecision.ok) {
+        this.sendToClient(attachment.clientId, quotaDecision.frame);
         return;
       }
       connector.send(JSON.stringify({
@@ -257,9 +265,15 @@ export class NextclawRemoteRelayDurableObject {
     }
 
     if (frame.type === "stream.open") {
-      const quotaFrame = await consumeRemoteBrowserFrameQuota(this.env, attachment, frame);
-      if (quotaFrame) {
-        this.sendToClient(attachment.clientId, quotaFrame);
+      const quotaDecision = await consumeRemoteBrowserFrameQuota({
+        env: this.env,
+        attachment,
+        frame,
+        remainingMessages: this.browserMessageLeases.get(attachment.clientId) ?? 0
+      });
+      this.browserMessageLeases.set(attachment.clientId, quotaDecision.remainingMessages);
+      if (!quotaDecision.ok) {
+        this.sendToClient(attachment.clientId, quotaDecision.frame);
         return;
       }
       connector.send(JSON.stringify({
@@ -304,6 +318,7 @@ export class NextclawRemoteRelayDurableObject {
   private async handleSocketClosed(closedSocket: WebSocket): Promise<void> {
     const attachment = closedSocket.deserializeAttachment() as ConnectorAttachment | ClientAttachment | null;
     if (attachment?.type === "client") {
+      this.browserMessageLeases.delete(attachment.clientId);
       await releaseRemoteClientQuota(this.env, attachment);
       return;
     }

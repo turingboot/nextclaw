@@ -1,0 +1,143 @@
+export const REMOTE_QUOTA_WINDOW_MS = 60_000;
+export const REMOTE_QUOTA_DAY_MS = 24 * 60 * 60 * 1_000;
+export const REMOTE_QUOTA_CONNECTION_RETRY_AFTER_SECONDS = 5;
+export const REMOTE_QUOTA_DO_REQUEST_MILLI_UNITS = 1_000;
+export const REMOTE_QUOTA_RELAY_WS_MESSAGE_DO_MILLI_UNITS = 50;
+
+export const DEFAULT_REMOTE_QUOTA_USER_REQUESTS_PER_MINUTE = 300;
+export const DEFAULT_REMOTE_QUOTA_SESSION_REQUESTS_PER_MINUTE = 180;
+export const DEFAULT_REMOTE_QUOTA_USER_CONNECTIONS = 6;
+export const DEFAULT_REMOTE_QUOTA_SESSION_CONNECTIONS = 2;
+export const DEFAULT_REMOTE_QUOTA_INSTANCE_CONNECTIONS = 4;
+export const DEFAULT_REMOTE_PLATFORM_DAILY_WORKER_REQUEST_BUDGET = 100_000;
+export const DEFAULT_REMOTE_PLATFORM_DAILY_DO_REQUEST_BUDGET = 100_000;
+export const DEFAULT_REMOTE_PLATFORM_DAILY_RESERVE_PERCENT = 20;
+export const DEFAULT_REMOTE_QUOTA_USER_DAILY_WORKER_REQUEST_UNITS = 1_200;
+export const DEFAULT_REMOTE_QUOTA_SESSION_DAILY_WORKER_REQUEST_UNITS = 600;
+export const DEFAULT_REMOTE_QUOTA_USER_DAILY_DO_REQUEST_UNITS = 6_000;
+export const DEFAULT_REMOTE_QUOTA_SESSION_DAILY_DO_REQUEST_UNITS = 3_000;
+export const DEFAULT_REMOTE_QUOTA_WS_MESSAGE_LEASE_SIZE = 10;
+
+export type RemoteQuotaOperationCost = {
+  workerRequestUnits: number;
+  durableObjectMilliUnits: number;
+};
+
+export const REMOTE_RUNTIME_REQUEST_COST: RemoteQuotaOperationCost = {
+  workerRequestUnits: 1,
+  durableObjectMilliUnits: REMOTE_QUOTA_DO_REQUEST_MILLI_UNITS
+};
+
+export const REMOTE_PROXY_REQUEST_COST: RemoteQuotaOperationCost = {
+  workerRequestUnits: 1,
+  durableObjectMilliUnits: REMOTE_QUOTA_DO_REQUEST_MILLI_UNITS * 2
+};
+
+export const REMOTE_BROWSER_CONNECT_COST: RemoteQuotaOperationCost = {
+  workerRequestUnits: 1,
+  durableObjectMilliUnits: REMOTE_QUOTA_DO_REQUEST_MILLI_UNITS * 2
+};
+
+export type RemoteQuotaConfig = {
+  userRequestsPerMinute: number;
+  sessionRequestsPerMinute: number;
+  userConnections: number;
+  sessionConnections: number;
+  instanceConnections: number;
+  platformDailyWorkerRequestBudget: number;
+  platformDailyDoRequestBudgetMilli: number;
+  platformDailyReservePercent: number;
+  userDailyWorkerRequestUnits: number;
+  sessionDailyWorkerRequestUnits: number;
+  userDailyDoRequestBudgetMilli: number;
+  sessionDailyDoRequestBudgetMilli: number;
+  wsMessageLeaseSize: number;
+};
+
+export type RemoteQuotaTicket = {
+  ticket: string;
+  clientId: string;
+  sessionId: string;
+  instanceId: string;
+  connectedAtMs: number;
+};
+
+export type RemoteQuotaWindow = {
+  windowStartedAtMs: number;
+  count: number;
+};
+
+export type RemoteQuotaDailyUsage = {
+  dayKey: string;
+  workerRequestUnits: number;
+  durableObjectMilliUnits: number;
+};
+
+export type RemoteQuotaSessionState = {
+  requestWindow: RemoteQuotaWindow;
+  dailyUsage: RemoteQuotaDailyUsage;
+};
+
+export type RemoteQuotaUserState = {
+  browserConnections: Record<string, RemoteQuotaTicket>;
+  requestWindow: RemoteQuotaWindow;
+  dailyUsage: RemoteQuotaDailyUsage;
+  sessions: Record<string, RemoteQuotaSessionState>;
+};
+
+export type RemoteQuotaState = {
+  platformDailyUsage: RemoteQuotaDailyUsage;
+  users: Record<string, RemoteQuotaUserState>;
+};
+
+export type RemoteQuotaError = {
+  code:
+    | "REMOTE_USER_RATE_LIMITED"
+    | "REMOTE_SESSION_RATE_LIMITED"
+    | "REMOTE_USER_CONNECTION_LIMIT"
+    | "REMOTE_SESSION_CONNECTION_LIMIT"
+    | "REMOTE_INSTANCE_CONNECTION_LIMIT"
+    | "REMOTE_PLATFORM_WORKER_DAILY_BUDGET_EXCEEDED"
+    | "REMOTE_PLATFORM_DO_DAILY_BUDGET_EXCEEDED"
+    | "REMOTE_USER_DAILY_WORKER_BUDGET_EXCEEDED"
+    | "REMOTE_SESSION_DAILY_WORKER_BUDGET_EXCEEDED"
+    | "REMOTE_USER_DAILY_DO_BUDGET_EXCEEDED"
+    | "REMOTE_SESSION_DAILY_DO_BUDGET_EXCEEDED"
+    | "REMOTE_QUOTA_GUARD_UNAVAILABLE";
+  message: string;
+  retryAfterSeconds: number;
+};
+
+export type RemoteQuotaSuccess<T> = {
+  ok: true;
+  data: T;
+  state: RemoteQuotaState;
+};
+
+export type RemoteQuotaFailure = {
+  ok: false;
+  error: RemoteQuotaError;
+  state: RemoteQuotaState;
+};
+
+export type RemoteQuotaDecision<T> = RemoteQuotaSuccess<T> | RemoteQuotaFailure;
+
+export type ConnectionUsage = {
+  userCount: number;
+  sessionCount: number;
+  instanceCount: number;
+};
+
+export type RequestWindowUsage = {
+  userWindow: RemoteQuotaWindow;
+  sessionWindow: RemoteQuotaWindow;
+};
+
+export type RemoteQuotaBudgets = {
+  platformWorkerBudget: number;
+  platformDoBudgetMilli: number;
+  userWorkerBudget: number;
+  sessionWorkerBudget: number;
+  userDoBudgetMilli: number;
+  sessionDoBudgetMilli: number;
+};

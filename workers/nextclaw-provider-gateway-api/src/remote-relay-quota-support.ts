@@ -1,11 +1,23 @@
 import {
   buildRemoteQuotaRequestErrorFrame,
   buildRemoteQuotaStreamErrorFrame,
-  consumeRemoteQuotaRequest,
+  leaseRemoteQuotaBrowserMessages,
   releaseRemoteQuotaBrowserConnection,
 } from "./services/remote-quota-guard.service";
 import type { BrowserCommandFrame, ClientAttachment } from "./remote-relay.types";
 import type { Env } from "./types/platform";
+import { parseBoundedInt } from "./utils/platform-utils";
+
+type RemoteRelayLeaseConsumeResult =
+  | {
+    ok: true;
+    remainingMessages: number;
+  }
+  | {
+    ok: false;
+    remainingMessages: number;
+    frame: Record<string, unknown>;
+  };
 
 export function readRemoteBrowserAttachment(request: Request): ClientAttachment | null {
   const userId = request.headers.get("x-nextclaw-remote-user-id")?.trim();
@@ -26,24 +38,59 @@ export function readRemoteBrowserAttachment(request: Request): ClientAttachment 
   };
 }
 
-export async function consumeRemoteBrowserFrameQuota(
-  env: Env,
-  attachment: ClientAttachment,
-  frame: BrowserCommandFrame
-): Promise<Record<string, unknown> | null> {
-  if (frame.type === "stream.cancel") {
-    return null;
+export async function consumeRemoteBrowserFrameQuota(params: {
+  env: Env;
+  attachment: ClientAttachment;
+  frame: BrowserCommandFrame;
+  remainingMessages: number;
+}): Promise<RemoteRelayLeaseConsumeResult> {
+  if (params.frame.type === "stream.cancel") {
+    return {
+      ok: true,
+      remainingMessages: params.remainingMessages
+    };
   }
-  const quota = await consumeRemoteQuotaRequest(env, {
-    userId: attachment.userId,
-    sessionId: attachment.sessionId
+
+  if (params.remainingMessages > 0) {
+    return {
+      ok: true,
+      remainingMessages: params.remainingMessages - 1
+    };
+  }
+
+  const requestedMessages = parseBoundedInt(
+    params.env.REMOTE_QUOTA_WS_MESSAGE_LEASE_SIZE,
+    10,
+    1,
+    100
+  );
+  const quota = await leaseRemoteQuotaBrowserMessages(params.env, {
+    userId: params.attachment.userId,
+    sessionId: params.attachment.sessionId,
+    requestedMessages
   });
-  if (quota.ok) {
-    return null;
+  if (!quota.ok || quota.data.grantedMessages <= 0) {
+    return {
+      ok: false,
+      remainingMessages: 0,
+      frame: params.frame.type === "request"
+        ? buildRemoteQuotaRequestErrorFrame(params.frame.id, quota.ok ? {
+          code: "REMOTE_PLATFORM_DO_DAILY_BUDGET_EXCEEDED",
+          message: "Remote access is temporarily degraded because the platform durable object daily budget is exhausted.",
+          retryAfterSeconds: 60
+        } : quota.error)
+        : buildRemoteQuotaStreamErrorFrame(params.frame.streamId, quota.ok ? {
+          code: "REMOTE_PLATFORM_DO_DAILY_BUDGET_EXCEEDED",
+          message: "Remote access is temporarily degraded because the platform durable object daily budget is exhausted.",
+          retryAfterSeconds: 60
+        } : quota.error)
+    };
   }
-  return frame.type === "request"
-    ? buildRemoteQuotaRequestErrorFrame(frame.id, quota.error)
-    : buildRemoteQuotaStreamErrorFrame(frame.streamId, quota.error);
+
+  return {
+    ok: true,
+    remainingMessages: quota.data.grantedMessages - 1
+  };
 }
 
 export async function releaseRemoteClientQuota(env: Env, attachment: ClientAttachment): Promise<void> {

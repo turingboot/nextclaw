@@ -475,7 +475,7 @@ export async function remoteBrowserRuntimeHandler(c: Context<{ Bindings: Env }>)
   if (resolved instanceof Response) {
     return resolved;
   }
-  const quotaResponse = await enforceRemoteSessionQuota(c.env, resolved.session);
+  const quotaResponse = await enforceRemoteSessionQuota(c.env, resolved.session, "runtime_http");
   if (quotaResponse) {
     return quotaResponse;
   }
@@ -527,7 +527,7 @@ export async function remoteProxyHandler(c: Context<{ Bindings: Env }>): Promise
   if (resolved instanceof Response) {
     return resolved;
   }
-  const quotaResponse = await enforceRemoteSessionQuota(c.env, resolved.session);
+  const quotaResponse = await enforceRemoteSessionQuota(c.env, resolved.session, "proxy_http");
   if (quotaResponse) {
     return quotaResponse;
   }

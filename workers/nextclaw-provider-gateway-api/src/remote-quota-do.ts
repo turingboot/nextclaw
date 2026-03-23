@@ -2,14 +2,28 @@ import {
   acquireRemoteBrowserConnection,
   consumeRemoteRequestQuota,
   createEmptyRemoteQuotaState,
+  DEFAULT_REMOTE_PLATFORM_DAILY_DO_REQUEST_BUDGET,
+  DEFAULT_REMOTE_PLATFORM_DAILY_RESERVE_PERCENT,
+  DEFAULT_REMOTE_PLATFORM_DAILY_WORKER_REQUEST_BUDGET,
   DEFAULT_REMOTE_QUOTA_INSTANCE_CONNECTIONS,
   DEFAULT_REMOTE_QUOTA_SESSION_CONNECTIONS,
+  DEFAULT_REMOTE_QUOTA_SESSION_DAILY_DO_REQUEST_UNITS,
+  DEFAULT_REMOTE_QUOTA_SESSION_DAILY_WORKER_REQUEST_UNITS,
   DEFAULT_REMOTE_QUOTA_SESSION_REQUESTS_PER_MINUTE,
   DEFAULT_REMOTE_QUOTA_USER_CONNECTIONS,
+  DEFAULT_REMOTE_QUOTA_USER_DAILY_DO_REQUEST_UNITS,
+  DEFAULT_REMOTE_QUOTA_USER_DAILY_WORKER_REQUEST_UNITS,
   DEFAULT_REMOTE_QUOTA_USER_REQUESTS_PER_MINUTE,
+  DEFAULT_REMOTE_QUOTA_WS_MESSAGE_LEASE_SIZE,
+  leaseRemoteBrowserMessages,
   releaseRemoteBrowserConnection,
+  REMOTE_BROWSER_CONNECT_COST,
+  REMOTE_QUOTA_DO_REQUEST_MILLI_UNITS,
+  REMOTE_PROXY_REQUEST_COST,
+  REMOTE_RUNTIME_REQUEST_COST,
   type RemoteQuotaConfig,
   type RemoteQuotaDecision,
+  type RemoteQuotaOperationCost,
   type RemoteQuotaState,
 } from "./remote-quota-policy";
 import type { Env } from "./types/platform";
@@ -38,22 +52,27 @@ export class NextclawRemoteQuotaDurableObject {
     if (url.pathname === "/request/consume") {
       return await this.handleRequestConsume(request);
     }
+    if (url.pathname === "/ws-message/lease") {
+      return await this.handleWsMessageLease(request);
+    }
     return new Response("not_found", { status: 404 });
   }
 
   private async handleBrowserConnectionAcquire(request: Request): Promise<Response> {
     const payload = await readQuotaPayload(request);
+    const userId = readRequiredString(payload, "userId");
     const ticket = readRequiredString(payload, "ticket");
     const clientId = readRequiredString(payload, "clientId");
     const sessionId = readRequiredString(payload, "sessionId");
     const instanceId = readRequiredString(payload, "instanceId");
-    if (!ticket || !clientId || !sessionId || !instanceId) {
-      return jsonErrorResponse(400, "REMOTE_QUOTA_INVALID_REQUEST", "ticket, clientId, sessionId, and instanceId are required.");
+    if (!userId || !ticket || !clientId || !sessionId || !instanceId) {
+      return jsonErrorResponse(400, "REMOTE_QUOTA_INVALID_REQUEST", "userId, ticket, clientId, sessionId, and instanceId are required.");
     }
 
     return await this.runMutation((storedState, config, nowMs) => {
       return acquireRemoteBrowserConnection(storedState, config, {
         nowMs,
+        userId,
         ticket,
         clientId,
         sessionId,
@@ -64,27 +83,56 @@ export class NextclawRemoteQuotaDurableObject {
 
   private async handleBrowserConnectionRelease(request: Request): Promise<Response> {
     const payload = await readQuotaPayload(request);
+    const userId = readRequiredString(payload, "userId");
     const ticket = readRequiredString(payload, "ticket");
-    if (!ticket) {
-      return jsonErrorResponse(400, "REMOTE_QUOTA_INVALID_REQUEST", "ticket is required.");
+    if (!userId || !ticket) {
+      return jsonErrorResponse(400, "REMOTE_QUOTA_INVALID_REQUEST", "userId and ticket are required.");
     }
 
     return await this.runMutation((storedState, _config, nowMs) => {
-      return releaseRemoteBrowserConnection(storedState, nowMs, ticket);
+      return releaseRemoteBrowserConnection(storedState, nowMs, userId, ticket);
     });
   }
 
   private async handleRequestConsume(request: Request): Promise<Response> {
     const payload = await readQuotaPayload(request);
+    const userId = readRequiredString(payload, "userId");
     const sessionId = readRequiredString(payload, "sessionId");
-    if (!sessionId) {
-      return jsonErrorResponse(400, "REMOTE_QUOTA_INVALID_REQUEST", "sessionId is required.");
+    const operationKind = readRequiredString(payload, "operationKind");
+    if (!userId || !sessionId || !operationKind) {
+      return jsonErrorResponse(400, "REMOTE_QUOTA_INVALID_REQUEST", "userId, sessionId, and operationKind are required.");
+    }
+
+    const operationCost = resolveOperationCost(operationKind);
+    if (!operationCost) {
+      return jsonErrorResponse(400, "REMOTE_QUOTA_INVALID_OPERATION", "Unsupported quota operation kind.");
     }
 
     return await this.runMutation((storedState, config, nowMs) => {
       return consumeRemoteRequestQuota(storedState, config, {
         nowMs,
-        sessionId
+        userId,
+        sessionId,
+        operationCost
+      });
+    });
+  }
+
+  private async handleWsMessageLease(request: Request): Promise<Response> {
+    const payload = await readQuotaPayload(request);
+    const userId = readRequiredString(payload, "userId");
+    const sessionId = readRequiredString(payload, "sessionId");
+    const requestedMessagesRaw = payload.requestedMessages;
+    if (!userId || !sessionId || typeof requestedMessagesRaw !== "number" || !Number.isFinite(requestedMessagesRaw)) {
+      return jsonErrorResponse(400, "REMOTE_QUOTA_INVALID_REQUEST", "userId, sessionId, and requestedMessages are required.");
+    }
+
+    return await this.runMutation((storedState, config, nowMs) => {
+      return leaseRemoteBrowserMessages(storedState, config, {
+        nowMs,
+        userId,
+        sessionId,
+        requestedMessages: Math.max(1, Math.min(config.wsMessageLeaseSize, Math.floor(requestedMessagesRaw)))
       });
     });
   }
@@ -138,8 +186,69 @@ function readRemoteQuotaConfig(env: Env): RemoteQuotaConfig {
       DEFAULT_REMOTE_QUOTA_INSTANCE_CONNECTIONS,
       1,
       50
+    ),
+    platformDailyWorkerRequestBudget: parseBoundedInt(
+      env.REMOTE_PLATFORM_DAILY_WORKER_REQUEST_BUDGET,
+      DEFAULT_REMOTE_PLATFORM_DAILY_WORKER_REQUEST_BUDGET,
+      1_000,
+      10_000_000
+    ),
+    platformDailyDoRequestBudgetMilli: parseBoundedInt(
+      env.REMOTE_PLATFORM_DAILY_DO_REQUEST_BUDGET,
+      DEFAULT_REMOTE_PLATFORM_DAILY_DO_REQUEST_BUDGET,
+      1_000,
+      10_000_000
+    ) * REMOTE_QUOTA_DO_REQUEST_MILLI_UNITS,
+    platformDailyReservePercent: parseBoundedInt(
+      env.REMOTE_PLATFORM_DAILY_RESERVE_PERCENT,
+      DEFAULT_REMOTE_PLATFORM_DAILY_RESERVE_PERCENT,
+      0,
+      90
+    ),
+    userDailyWorkerRequestUnits: parseBoundedInt(
+      env.REMOTE_QUOTA_USER_DAILY_WORKER_REQUEST_UNITS,
+      DEFAULT_REMOTE_QUOTA_USER_DAILY_WORKER_REQUEST_UNITS,
+      10,
+      100_000
+    ),
+    sessionDailyWorkerRequestUnits: parseBoundedInt(
+      env.REMOTE_QUOTA_SESSION_DAILY_WORKER_REQUEST_UNITS,
+      DEFAULT_REMOTE_QUOTA_SESSION_DAILY_WORKER_REQUEST_UNITS,
+      5,
+      100_000
+    ),
+    userDailyDoRequestBudgetMilli: parseBoundedInt(
+      env.REMOTE_QUOTA_USER_DAILY_DO_REQUEST_UNITS,
+      DEFAULT_REMOTE_QUOTA_USER_DAILY_DO_REQUEST_UNITS,
+      10,
+      1_000_000
+    ) * REMOTE_QUOTA_DO_REQUEST_MILLI_UNITS,
+    sessionDailyDoRequestBudgetMilli: parseBoundedInt(
+      env.REMOTE_QUOTA_SESSION_DAILY_DO_REQUEST_UNITS,
+      DEFAULT_REMOTE_QUOTA_SESSION_DAILY_DO_REQUEST_UNITS,
+      5,
+      1_000_000
+    ) * REMOTE_QUOTA_DO_REQUEST_MILLI_UNITS,
+    wsMessageLeaseSize: parseBoundedInt(
+      env.REMOTE_QUOTA_WS_MESSAGE_LEASE_SIZE,
+      DEFAULT_REMOTE_QUOTA_WS_MESSAGE_LEASE_SIZE,
+      1,
+      100
     )
   };
+}
+
+function resolveOperationCost(operationKind: string): RemoteQuotaOperationCost | null {
+  if (operationKind === "runtime_http") {
+    return REMOTE_RUNTIME_REQUEST_COST;
+  }
+  if (operationKind === "proxy_http") {
+    return REMOTE_PROXY_REQUEST_COST;
+  }
+  if (operationKind === "browser_connect") {
+    return REMOTE_BROWSER_CONNECT_COST;
+  }
+  return null;
 }
 
 function buildQuotaDecisionResponse<T>(decision: RemoteQuotaDecision<T>): Response {

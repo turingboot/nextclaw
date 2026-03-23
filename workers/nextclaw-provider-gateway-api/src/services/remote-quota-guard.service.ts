@@ -2,6 +2,8 @@ import type { RemoteQuotaError } from "../remote-quota-policy";
 import type { Env } from "../types/platform";
 import { isRecord } from "../utils/platform-utils";
 
+const REMOTE_QUOTA_GUARD_OBJECT_NAME = "remote-platform-budget-v1";
+
 type RemoteQuotaStubSuccess<T> = {
   ok: true;
   data: T;
@@ -32,7 +34,8 @@ export async function acquireRemoteQuotaBrowserConnection(
     ticket: string;
   }
 ): Promise<RemoteQuotaStubResult<{ ticket: string }>> {
-  return await callRemoteQuotaStub(env, payload.userId, "/browser-connection/acquire", {
+  return await callRemoteQuotaStub(env, "/browser-connection/acquire", {
+    userId: payload.userId,
     ticket: payload.ticket,
     clientId: payload.clientId,
     sessionId: payload.sessionId,
@@ -47,7 +50,8 @@ export async function releaseRemoteQuotaBrowserConnection(
     ticket: string;
   }
 ): Promise<void> {
-  const result = await callRemoteQuotaStub(env, payload.userId, "/browser-connection/release", {
+  const result = await callRemoteQuotaStub(env, "/browser-connection/release", {
+    userId: payload.userId,
     ticket: payload.ticket
   });
   if (!result.ok) {
@@ -60,10 +64,28 @@ export async function consumeRemoteQuotaRequest(
   payload: {
     userId: string;
     sessionId: string;
+    operationKind: "runtime_http" | "proxy_http" | "browser_connect";
   }
 ): Promise<RemoteQuotaStubResult<{ remainingUserRequests: number; remainingSessionRequests: number }>> {
-  return await callRemoteQuotaStub(env, payload.userId, "/request/consume", {
-    sessionId: payload.sessionId
+  return await callRemoteQuotaStub(env, "/request/consume", {
+    userId: payload.userId,
+    sessionId: payload.sessionId,
+    operationKind: payload.operationKind
+  });
+}
+
+export async function leaseRemoteQuotaBrowserMessages(
+  env: Env,
+  payload: {
+    userId: string;
+    sessionId: string;
+    requestedMessages: number;
+  }
+): Promise<RemoteQuotaStubResult<{ grantedMessages: number }>> {
+  return await callRemoteQuotaStub(env, "/ws-message/lease", {
+    userId: payload.userId,
+    sessionId: payload.sessionId,
+    requestedMessages: payload.requestedMessages
   });
 }
 
@@ -113,11 +135,10 @@ export function buildRemoteQuotaStreamErrorFrame(
 
 async function callRemoteQuotaStub<T>(
   env: Env,
-  userId: string,
   path: string,
   body: Record<string, unknown>
 ): Promise<RemoteQuotaStubResult<T>> {
-  const stub = env.NEXTCLAW_REMOTE_QUOTA.get(env.NEXTCLAW_REMOTE_QUOTA.idFromName(userId));
+  const stub = env.NEXTCLAW_REMOTE_QUOTA.get(env.NEXTCLAW_REMOTE_QUOTA.idFromName(REMOTE_QUOTA_GUARD_OBJECT_NAME));
   let response: Response;
   try {
     response = await stub.fetch("https://remote-quota.internal" + path, {

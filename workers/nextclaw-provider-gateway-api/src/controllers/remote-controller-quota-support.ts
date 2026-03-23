@@ -9,11 +9,13 @@ import {
 
 export async function enforceRemoteSessionQuota(
   env: Env,
-  session: RemoteAccessSessionRow
+  session: RemoteAccessSessionRow,
+  operationKind: "runtime_http" | "proxy_http"
 ): Promise<Response | null> {
   const quota = await consumeRemoteQuotaRequest(env, {
     userId: session.user_id,
-    sessionId: session.id
+    sessionId: session.id,
+    operationKind
   });
   return quota.ok ? null : buildRemoteQuotaHttpRejection(quota.error);
 }
