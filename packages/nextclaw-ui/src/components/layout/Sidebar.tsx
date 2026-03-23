@@ -124,19 +124,20 @@ export function Sidebar({ mode }: SidebarProps) {
   return (
     <aside className="w-[240px] shrink-0 flex h-full min-h-0 flex-col overflow-hidden bg-secondary px-4 py-6">
       {mode === 'settings' ? (
-        <div className="shrink-0 px-2 pb-6">
-          <NavLink
-            to="/chat"
-            className="group inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+        <div className="shrink-0 px-2 pb-3">
+          <div
+            className="flex items-center gap-2 px-1 py-1"
+            data-testid="settings-sidebar-header"
           >
-            <ArrowLeft className="h-3.5 w-3.5 text-gray-500 group-hover:text-gray-800" />
-            <span>{t('backToMain')}</span>
-          </NavLink>
-          <div className="mt-5 px-1">
-            <div className="flex items-center gap-2.5">
-              <Settings className="h-5 w-5 text-gray-700" />
-              <h1 className="text-[28px] leading-none font-semibold tracking-[-0.02em] text-gray-900">{t('settings')}</h1>
-            </div>
+            <NavLink
+              to="/chat"
+              className="group inline-flex min-w-0 items-center gap-1.5 rounded-lg px-1 py-1 text-[12px] font-medium text-gray-500 transition-colors hover:text-gray-900"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 shrink-0 text-gray-400 group-hover:text-gray-700" />
+              <span className="truncate">{t('backToMain')}</span>
+            </NavLink>
+            <span className="h-4 w-px shrink-0 bg-[#dddfe6]" aria-hidden="true" />
+            <h1 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-gray-800">{t('settings')}</h1>
           </div>
         </div>
       ) : (
@@ -188,18 +189,17 @@ export function Sidebar({ mode }: SidebarProps) {
           {mode === 'settings' ? (
             <button
               onClick={() => presenter.accountManager.openAccountPanel()}
-              className="mb-2 w-full rounded-xl px-3 py-2.5 text-left transition-all duration-base text-gray-600 hover:bg-[#e4e7ef] hover:text-gray-900"
+              className="mb-2 w-full rounded-xl px-3 py-2.5 text-left text-gray-600 transition-all duration-base hover:bg-[#e4e7ef] hover:text-gray-900"
+              data-testid="settings-sidebar-account-entry"
             >
               <div className="flex items-start gap-3">
-                <KeyRound className={cn('mt-0.5 h-[17px] w-[17px]', accountConnected ? 'text-emerald-600' : 'text-gray-400')} />
+                <KeyRound className="mt-0.5 h-[17px] w-[17px] shrink-0 text-gray-400" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="truncate text-[14px] font-medium text-gray-900">
-                      {accountEmail || t('remoteAccountEntryManage')}
-                    </p>
-                  </div>
+                  <p className="truncate text-[14px] font-medium text-gray-600">
+                    {t('remoteAccountEntryManage')}
+                  </p>
                   <p className="mt-1 truncate text-xs text-gray-500">
-                    {accountConnected ? t('remoteAccountEntryConnected') : t('remoteAccountEntryDisconnected')}
+                    {accountConnected ? accountEmail || t('remoteAccountEntryConnected') : t('remoteAccountEntryDisconnected')}
                   </p>
                 </div>
               </div>

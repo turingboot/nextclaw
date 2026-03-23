@@ -49,16 +49,16 @@ No login/auth, no chat interface, no message history, no status/monitoring dashb
 
 ## 4. Page 1 — Models (Model configuration)
 
-**Purpose:** Set the default AI model and show workspace.
+**Purpose:** Set the default AI model and workspace.
 
 **Data shown and editable:**
 
 - **model** (string) — **Persisted.** Default model name, e.g. `minimax/MiniMax-M2.5`.  
-- **workspace** (string) — Shown and editable in UI but **not persisted** in this app (backend may have its own default).  
+- **workspace** (string) — **Persisted.** Default workspace path used by the app.  
 
 **Actions:**
 
-- One **Save** (or “Save Changes”) that sends only `{ model }` to the backend.  
+- One **Save** (or “Save Changes”) that sends `{ model, workspace }` to the backend.  
 - Success: toast “Configuration saved”. Failure: toast “Failed to save configuration: {error}”.
 
 **Layout (current, for reference):**  
@@ -184,7 +184,7 @@ boolean → toggle/switch; password → masked input (optional “show”); text
 - **Base URL:** `http://127.0.0.1:55667` (overridable via env for the app).  
 - **GET /api/config** — Full config: `agents.defaults` (model, workspace, ...), `providers` (per-provider: apiKeySet, apiBase, extraHeaders, wireApi), `channels` (per-channel key-value).  
 - **GET /api/config/meta** — Lists: `providers[]` (name, displayName, defaultApiBase, supportsWireApi, …), `channels[]` (name, displayName, enabled, tutorialUrl).  
-- **PUT /api/config/model** — Body: `{ model: string }`.  
+- **PUT /api/config/model** — Body: `{ model: string, workspace?: string }`.  
 - **PUT /api/config/providers/:provider** — Body: optional apiKey, apiBase, extraHeaders, wireApi.  
 - **PUT /api/config/channels/:channel** — Body: channel-specific key-value (see section 8).  
 - **POST /api/config/actions/:actionId/execute** — unified action execution endpoint. Body includes optional `scope` and `draftConfig`.

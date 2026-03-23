@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer } from "node:net";
@@ -120,5 +120,31 @@ describe("ui server api cors", () => {
     expect(disallowedResponse.status).toBe(200);
     expect(disallowedResponse.headers.get("access-control-allow-origin")).toBeNull();
     expect(disallowedResponse.headers.get("access-control-allow-credentials")).toBeNull();
+  });
+
+  it("does not serve index.html for /_remote runtime probes in local ui mode", async () => {
+    const port = await reservePort();
+    const rootDir = mkdtempSync(join(tmpdir(), "nextclaw-server-remote-probe-"));
+    const staticDir = join(rootDir, "ui-dist");
+    mkdirSync(staticDir, { recursive: true });
+    writeFileSync(join(staticDir, "index.html"), "<!doctype html><html><body>ui shell</body></html>");
+    const configPath = join(rootDir, "config.json");
+    const handle = startUiServer({
+      host: "127.0.0.1",
+      port,
+      configPath,
+      staticDir
+    });
+    handles.push(handle);
+
+    const baseUrl = `http://127.0.0.1:${port}`;
+    await waitForServer(baseUrl);
+
+    const runtimeResponse = await fetch(`${baseUrl}/_remote/runtime`);
+    expect(runtimeResponse.status).toBe(404);
+
+    const pageResponse = await fetch(`${baseUrl}/chat`);
+    expect(pageResponse.status).toBe(200);
+    expect(await pageResponse.text()).toContain("ui shell");
   });
 });

@@ -498,6 +498,71 @@ describe("DefaultNcpAgentConversationStateManager error and notify", () => {
       message: "missing token",
     });
   });
+
+  it("keeps the in-flight assistant message and clears active run on endpoint.error", () => {
+    const manager = new DefaultNcpAgentConversationStateManager();
+
+    manager.dispatch({
+      type: NcpEventType.MessageSent,
+      payload: {
+        sessionId: "session-1",
+        message: createMessage({
+          id: "user-1",
+          role: "user",
+          status: "final",
+          parts: [{ type: "text", text: "ping" }],
+        }),
+      },
+    });
+    manager.dispatch({
+      type: NcpEventType.RunStarted,
+      payload: {
+        sessionId: "session-1",
+        runId: "run-1",
+      },
+    });
+    manager.dispatch({
+      type: NcpEventType.MessageTextStart,
+      payload: {
+        sessionId: "session-1",
+        messageId: "assistant-1",
+      },
+    });
+    manager.dispatch({
+      type: NcpEventType.MessageTextDelta,
+      payload: {
+        sessionId: "session-1",
+        messageId: "assistant-1",
+        delta: "partial reply",
+      },
+    });
+
+    manager.dispatch({
+      type: NcpEventType.EndpointError,
+      payload: {
+        code: "runtime-error",
+        message: "stream ended without final event",
+      },
+    });
+
+    const snapshot = manager.getSnapshot();
+    expect(snapshot.activeRun).toBeNull();
+    expect(snapshot.streamingMessage).toBeNull();
+    expect(snapshot.error).toMatchObject({
+      code: "runtime-error",
+      message: "stream ended without final event",
+    });
+    expect(snapshot.messages).toHaveLength(2);
+    expect(snapshot.messages[0]).toMatchObject({
+      id: "user-1",
+      status: "final",
+    });
+    expect(snapshot.messages[1]).toMatchObject({
+      id: "assistant-1",
+      status: "error",
+      parts: [{ type: "text", text: "partial reply" }],
+    });
+  });
 });
 
 describe("DefaultNcpAgentConversationStateManager hydration", () => {

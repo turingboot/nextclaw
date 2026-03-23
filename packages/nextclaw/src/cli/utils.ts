@@ -142,6 +142,10 @@ export async function waitForExit(pid: number, timeoutMs: number): Promise<boole
 }
 
 export function resolveUiStaticDir(): string | null {
+  if (process.env.NEXTCLAW_DISABLE_STATIC_UI === "1") {
+    return null;
+  }
+
   const envDir = process.env.NEXTCLAW_UI_STATIC_DIR;
   if (envDir) {
     return existsSync(join(envDir, "index.html")) ? envDir : null;

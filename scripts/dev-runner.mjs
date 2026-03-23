@@ -132,6 +132,11 @@ if (backendPort !== preferredBackendPort) {
 if (frontendPort !== preferredFrontendPort) {
   console.warn(`[dev] Frontend port ${preferredFrontendPort} in use, fallback to ${frontendPort}.`);
 }
+if (backendPort !== preferredBackendPort || frontendPort !== preferredFrontendPort) {
+  console.warn(
+    `[dev] Another dev instance may still be running on the default ports. Use the URLs printed below; the usual ports may still point to the older instance.`
+  );
+}
 
 console.log(`[dev] API base: http://127.0.0.1:${backendPort}`);
 console.log(`[dev] Frontend: http://127.0.0.1:${frontendPort}`);
@@ -195,7 +200,8 @@ spawnProcess(
   backendDir,
   {
     NODE_OPTIONS: developmentNodeOptions,
-    NEXTCLAW_DEV_FIRST_PARTY_PLUGIN_DIR: firstPartyPluginDir
+    NEXTCLAW_DEV_FIRST_PARTY_PLUGIN_DIR: firstPartyPluginDir,
+    NEXTCLAW_DISABLE_STATIC_UI: "1"
   }
 );
 

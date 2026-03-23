@@ -24,6 +24,13 @@ function createTempDir(prefix: string): string {
 }
 
 describe("resolveUiStaticDir", () => {
+  it("returns null when NEXTCLAW_DISABLE_STATIC_UI is enabled", () => {
+    vi.stubEnv("NEXTCLAW_DISABLE_STATIC_UI", "1");
+    vi.stubEnv("NEXTCLAW_UI_STATIC_DIR", "");
+
+    expect(resolveUiStaticDir()).toBeNull();
+  });
+
   it("uses the explicit NEXTCLAW_UI_STATIC_DIR when it points to a built frontend", () => {
     const dir = createTempDir("nextclaw-ui-static-env-");
     writeFileSync(join(dir, "index.html"), "<html></html>");

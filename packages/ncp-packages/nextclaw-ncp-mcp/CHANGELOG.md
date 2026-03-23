@@ -7,6 +7,27 @@
 - Updated dependencies
   - @nextclaw/mcp@0.1.29
 
+## 0.1.28
+
+### Patch Changes
+
+- Updated dependencies
+  - @nextclaw/mcp@0.1.28
+
+## 0.1.27
+
+### Patch Changes
+
+- Updated dependencies
+  - @nextclaw/mcp@0.1.27
+
+## 0.1.26
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @nextclaw/mcp@0.1.26
 ## 0.1.25
 
 ### Patch Changes

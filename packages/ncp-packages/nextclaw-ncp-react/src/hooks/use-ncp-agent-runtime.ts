@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DefaultNcpAgentConversationStateManager } from "@nextclaw/ncp-toolkit";
 import {
   type NcpAgentClientEndpoint,
-  type NcpAgentConversationHydrationParams,
   type NcpAgentConversationSnapshot,
   type NcpEndpointEvent,
   type NcpMessage,
@@ -87,17 +86,6 @@ function normalizeSendEnvelope(input: NcpAgentSendInput, sessionId: string): Ncp
   };
 }
 
-function toHydrationPayload(
-  sessionId: string,
-  snapshot: NcpAgentConversationSnapshot,
-): NcpAgentConversationHydrationParams {
-  return {
-    sessionId,
-    messages: snapshot.messages,
-    activeRun: snapshot.activeRun,
-  };
-}
-
 export function useScopedAgentManager(sessionId: string): DefaultNcpAgentConversationStateManager {
   const managerRef = useRef<ScopedManagerRef>();
   if (!managerRef.current || managerRef.current.sessionId !== sessionId) {
@@ -156,7 +144,6 @@ export function useNcpAgentRuntime({
     }
 
     setIsSending(true);
-    const previousSnapshot = manager.getSnapshot();
     await manager.dispatch({
       type: NcpEventType.MessageSent,
       payload: {
@@ -167,9 +154,6 @@ export function useNcpAgentRuntime({
     });
     try {
       await client.send(envelope);
-    } catch (error) {
-      manager.hydrate(toHydrationPayload(sessionId, previousSnapshot));
-      throw error;
     } finally {
       setIsSending(false);
     }

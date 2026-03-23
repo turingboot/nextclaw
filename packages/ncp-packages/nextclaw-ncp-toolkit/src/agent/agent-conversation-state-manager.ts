@@ -382,45 +382,18 @@ export class DefaultNcpAgentConversationStateManager
 
   handleRunStarted(payload: NcpRunStartedPayload): void {
     this.setError(null);
-    this.activeRun = {
-      runId: payload.runId ?? null,
-      sessionId: payload.sessionId,
-    };
+    this.activeRun = { runId: payload.runId ?? null, sessionId: payload.sessionId };
     this.stateVersion += 1;
   }
 
   handleRunFinished(_payload: NcpRunFinishedPayload): void {
-    if (this.streamingMessage) {
-      const finalizedMessage: NcpMessage = {
-        ...this.streamingMessage,
-        status: "final",
-      };
-      this.upsertMessage(finalizedMessage);
-      this.replaceStreamingMessage(null);
-      clearToolCallTrackingByMessageId(
-        this.toolCallMessageIdByCallId,
-        this.toolCallArgsRawByCallId,
-        finalizedMessage.id,
-      );
-    }
+    this.settleStreamingMessage("final");
     this.setError(null);
     this.clearActiveRun();
   }
 
   handleRunError(payload: NcpRunErrorPayload): void {
-    if (this.streamingMessage) {
-      const failedMessage: NcpMessage = {
-        ...this.streamingMessage,
-        status: "error",
-      };
-      this.upsertMessage(failedMessage);
-      this.replaceStreamingMessage(null);
-      clearToolCallTrackingByMessageId(
-        this.toolCallMessageIdByCallId,
-        this.toolCallArgsRawByCallId,
-        failedMessage.id,
-      );
-    }
+    this.settleStreamingMessage("error");
     this.setError(buildRuntimeError(payload));
     this.clearActiveRun();
   }
@@ -442,6 +415,15 @@ export class DefaultNcpAgentConversationStateManager
   }
 
   handleEndpointError(payload: NcpError): void {
+    if (payload.code === "abort-error") {
+      this.handleMessageAbort({
+        sessionId: this.activeRun?.sessionId ?? this.streamingMessage?.sessionId ?? "",
+        ...(this.streamingMessage?.id ? { messageId: this.streamingMessage.id } : {})
+      });
+      return;
+    }
+    this.settleStreamingMessage("error");
+    this.clearActiveRun();
     this.setError(payload);
   }
 
@@ -630,6 +612,22 @@ export class DefaultNcpAgentConversationStateManager
     }
     this.activeRun = null;
     this.stateVersion += 1;
+  }
+  private settleStreamingMessage(status: Extract<NcpMessageStatus, "final" | "error">): void {
+    if (!this.streamingMessage) {
+      return;
+    }
+    const settledMessage: NcpMessage = {
+      ...this.streamingMessage,
+      status,
+    };
+    this.upsertMessage(settledMessage);
+    this.replaceStreamingMessage(null);
+    clearToolCallTrackingByMessageId(
+      this.toolCallMessageIdByCallId,
+      this.toolCallArgsRawByCallId,
+      settledMessage.id,
+    );
   }
 
   private notifyListeners(): void {
