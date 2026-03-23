@@ -22,20 +22,20 @@
   },
   "login": {
     "platformTag": "NextClaw Platform",
-    "heroTitle": "一个 NextClaw Account，连接你的实例和 Agent 工作流。",
-    "heroDescription": "这是 NextClaw 的统一账号入口。平台登录、实例授权、远程访问和未来账号能力，都基于同一套账号模型。",
+    "heroTitle": "登录 NextClaw Web，继续你的实例与 Agent 工作流。",
+    "heroDescription": "一个 NextClaw Account，把网页入口、远程访问和后续协作能力连成一套体验。登录之后，你的实例、分享和账号能力都会在这里汇合。",
     "highlights": {
       "password": {
-        "title": "登录使用密码",
-        "description": "已有账号直接输入邮箱和密码登录，这是平台的标准入口。"
+        "title": "一个账号，连接所有入口",
+        "description": "桌面端、网页端和后续账号能力共享同一个 NextClaw Account，不需要记两套身份。"
       },
       "register": {
-        "title": "注册先验证邮箱",
-        "description": "新账号必须先收验证码验证邮箱，再设置密码完成注册。"
+        "title": "从网页直接进入你的实例",
+        "description": "登录后可以在浏览器里查看实例、远程打开工作区，并继续你正在进行的 Agent 流程。"
       },
       "instance": {
-        "title": "实例授权同一套账号",
-        "description": "远程访问、实例列表和后续 token 能力都统一依赖同一个 NextClaw Account。"
+        "title": "分享访问，边界清晰可控",
+        "description": "需要协作时可以生成可撤销的分享链接，让他人访问指定实例，而不用暴露你的主账号。"
       }
     },
     "accountTag": "NextClaw Account",

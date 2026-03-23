@@ -103,7 +103,7 @@ async function assertLoginFlow(browser) {
   await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
   const loginEn = await page.locator("body").innerText();
 
-  if (!loginEn.includes("One NextClaw Account for your instances and agent workflows.")) {
+  if (!loginEn.includes("Sign in to NextClaw Web and continue your instances and agent workflows.")) {
     throw new Error("Login page did not render the default English hero copy.");
   }
 
@@ -111,7 +111,7 @@ async function assertLoginFlow(browser) {
   await page.waitForTimeout(300);
 
   const loginZh = await page.locator("body").innerText();
-  if (!loginZh.includes("一个 NextClaw Account，连接你的实例和 Agent 工作流。")) {
+  if (!loginZh.includes("登录 NextClaw Web，继续你的实例与 Agent 工作流。")) {
     throw new Error("Login page did not switch to Chinese.");
   }
 

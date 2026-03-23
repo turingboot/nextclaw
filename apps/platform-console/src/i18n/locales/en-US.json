@@ -22,20 +22,20 @@
   },
   "login": {
     "platformTag": "NextClaw Platform",
-    "heroTitle": "One NextClaw Account for your instances and agent workflows.",
-    "heroDescription": "This is the unified account entry for NextClaw. Platform login, instance authorization, remote access, and future account capabilities all rely on the same account model.",
+    "heroTitle": "Sign in to NextClaw Web and continue your instances and agent workflows.",
+    "heroDescription": "One NextClaw Account brings together web access, remote entry, and future collaboration features in a single experience. Once you sign in, your instances, shares, and account capabilities all meet here.",
     "highlights": {
       "password": {
-        "title": "Password-based sign-in",
-        "description": "If you already have an account, sign in directly with your email and password."
+        "title": "One account across every entry point",
+        "description": "Desktop, web, and future account capabilities all use the same NextClaw Account, so you do not have to manage separate identities."
       },
       "register": {
-        "title": "Verify email before sign-up",
-        "description": "New accounts must verify email ownership with a code before setting a password."
+        "title": "Open your instances from the browser",
+        "description": "After signing in, you can review your instances, open a workspace remotely, and continue the agent flow already running on it."
       },
       "instance": {
-        "title": "Instances use the same account",
-        "description": "Remote access, instance listing, and future token capabilities all depend on the same NextClaw Account."
+        "title": "Share access with clear control",
+        "description": "When collaboration is needed, create revocable share links for specific instances without exposing your primary account."
       }
     },
     "accountTag": "NextClaw Account",
