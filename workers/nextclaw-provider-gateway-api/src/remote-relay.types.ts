@@ -48,6 +48,10 @@ export type ConnectorAttachment = {
 export type ClientAttachment = {
   type: "client";
   clientId: string;
+  userId: string;
+  sessionId: string;
+  instanceId: string;
+  quotaTicket: string;
   connectedAt: string;
 };
 
@@ -59,11 +63,25 @@ export type BrowserCommandFrame =
 export type ConnectorClientFrame =
   | { type: "client.request"; clientId: string; id: string; target: { method: string; path: string; body?: unknown } }
   | { type: "client.response"; clientId: string; id: string; status: number; body?: unknown }
-  | { type: "client.request.error"; clientId: string; id: string; message: string; code?: string }
+  | {
+    type: "client.request.error";
+    clientId: string;
+    id: string;
+    message: string;
+    code?: string;
+    retryAfterSeconds?: number;
+  }
   | { type: "client.stream.open"; clientId: string; streamId: string; target: { method: string; path: string; body?: unknown } }
   | { type: "client.stream.event"; clientId: string; streamId: string; event: string; payload?: unknown }
   | { type: "client.stream.end"; clientId: string; streamId: string }
-  | { type: "client.stream.error"; clientId: string; streamId: string; message: string; code?: string }
+  | {
+    type: "client.stream.error";
+    clientId: string;
+    streamId: string;
+    message: string;
+    code?: string;
+    retryAfterSeconds?: number;
+  }
   | { type: "client.stream.cancel"; clientId: string; streamId: string }
   | { type: "client.event"; event: unknown };
 

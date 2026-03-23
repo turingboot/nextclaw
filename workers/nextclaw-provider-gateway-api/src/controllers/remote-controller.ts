@@ -1,4 +1,8 @@
 import type { Context } from "hono";
+import {
+  enforceRemoteSessionQuota,
+  openRemoteBrowserRelaySocket,
+} from "./remote-controller-quota-support";
 import { appendAuditLog } from "../repositories/platform-repository";
 import {
   closeRemoteAccessSessionsByGrantId,
@@ -471,6 +475,10 @@ export async function remoteBrowserRuntimeHandler(c: Context<{ Bindings: Env }>)
   if (resolved instanceof Response) {
     return resolved;
   }
+  const quotaResponse = await enforceRemoteSessionQuota(c.env, resolved.session);
+  if (quotaResponse) {
+    return quotaResponse;
+  }
 
   return c.json({
     ok: true,
@@ -492,13 +500,12 @@ export async function remoteBrowserWebSocketHandler(c: Context<{ Bindings: Env }
   if (resolved instanceof Response) {
     return resolved;
   }
-
-  const stub = c.env.NEXTCLAW_REMOTE_RELAY.get(c.env.NEXTCLAW_REMOTE_RELAY.idFromName(resolved.instance.id));
-  const headers = new Headers(c.req.raw.headers);
-  headers.set("x-nextclaw-remote-role", "browser");
-  headers.set("x-nextclaw-remote-device-id", resolved.instance.id);
-  headers.set("x-nextclaw-remote-client-id", crypto.randomUUID());
-  return stub.fetch(new Request(c.req.raw, { headers }));
+  return await openRemoteBrowserRelaySocket({
+    env: c.env,
+    rawRequest: c.req.raw,
+    session: resolved.session,
+    instanceId: resolved.instance.id
+  });
 }
 
 export async function remoteProxyHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
@@ -519,6 +526,10 @@ export async function remoteProxyHandler(c: Context<{ Bindings: Env }>): Promise
   const resolved = await resolveValidatedRemoteProxyContext(c);
   if (resolved instanceof Response) {
     return resolved;
+  }
+  const quotaResponse = await enforceRemoteSessionQuota(c.env, resolved.session);
+  if (quotaResponse) {
+    return quotaResponse;
   }
   const { instance } = resolved;
 

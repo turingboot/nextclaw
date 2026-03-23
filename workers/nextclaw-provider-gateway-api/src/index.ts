@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { remoteProxyHandler } from "./controllers/remote-controller";
+import { NextclawRemoteQuotaDurableObject } from "./remote-quota-do";
 import { NextclawRemoteRelayDurableObject } from "./remote-relay-do";
 import { registerAppRoutes } from "./register-app-routes";
 import type { Env } from "./types/platform";
@@ -26,21 +27,10 @@ app.all("*", remoteProxyHandler);
 
 app.notFound((c) => openaiError(c, 404, "endpoint not found", "not_found"));
 
-app.onError((error, c) => {
-  return openaiError(c, 500, error.message || "internal error", "internal_error");
-});
-
-export class NextclawQuotaDurableObject {
-  constructor(
-    private readonly _state: DurableObjectState,
-    private readonly _env: Env
-  ) {}
-
-  async fetch(): Promise<Response> {
-    return new Response("not_implemented", { status: 501 });
-  }
-}
+app.onError((error, c) => openaiError(c, 500, error.message || "internal error", "internal_error"));
 
 export { NextclawRemoteRelayDurableObject };
+export { NextclawRemoteQuotaDurableObject };
+export { NextclawQuotaDurableObject } from "./remote-quota-do";
 
 export default app;

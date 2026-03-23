@@ -1,5 +1,11 @@
 import { touchRemoteInstance } from "./repositories/remote-repository";
+import { dispatchRemoteRelayClientFrame } from "./remote-relay-client-frame-support";
 import { decodeRelayMessageData } from "./remote-relay-message.utils";
+import {
+  consumeRemoteBrowserFrameQuota,
+  readRemoteBrowserAttachment,
+  releaseRemoteClientQuota,
+} from "./remote-relay-quota-support";
 import {
   failPendingRelayResponse,
   finishBufferedRelayResponse,
@@ -71,19 +77,18 @@ export class NextclawRemoteRelayDurableObject {
     if (!this.getActiveConnector()) {
       return new Response("Remote device connector is offline.", { status: 503 });
     }
-    const clientId = request.headers.get("x-nextclaw-remote-client-id")?.trim() || crypto.randomUUID();
+    const attachment = readRemoteBrowserAttachment(request);
+    if (!attachment) {
+      return new Response("Remote browser quota metadata missing.", { status: 400 });
+    }
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
-    server.serializeAttachment({
-      type: "client",
-      clientId,
-      connectedAt: new Date().toISOString()
-    } satisfies ClientAttachment);
+    server.serializeAttachment(attachment satisfies ClientAttachment);
     this.state.acceptWebSocket(server, [CLIENT_TAG]);
     server.send(JSON.stringify({
       type: "connection.ready",
-      connectionId: clientId,
+      connectionId: attachment.clientId,
       protocolVersion: 1
     }));
     return new Response(null, { status: 101, webSocket: client });
@@ -152,18 +157,18 @@ export class NextclawRemoteRelayDurableObject {
     const attachment = webSocket.deserializeAttachment() as ConnectorAttachment | ClientAttachment | null;
     const raw = decodeRelayMessageData(message);
     if (attachment?.type === "client") {
-      this.state.waitUntil(this.handleBrowserMessage(attachment.clientId, raw));
+      this.state.waitUntil(this.handleBrowserMessage(attachment, raw));
       return;
     }
     this.state.waitUntil(this.handleConnectorMessage(raw));
   }
 
   webSocketClose(webSocket: WebSocket): void {
-    this.state.waitUntil(this.handleConnectorClosed(webSocket));
+    this.state.waitUntil(this.handleSocketClosed(webSocket));
   }
 
   webSocketError(webSocket: WebSocket): void {
-    this.state.waitUntil(this.handleConnectorClosed(webSocket));
+    this.state.waitUntil(this.handleSocketClosed(webSocket));
   }
 
   private async handleConnectorMessage(raw: string): Promise<void> {
@@ -207,7 +212,7 @@ export class NextclawRemoteRelayDurableObject {
     }
   }
 
-  private async handleBrowserMessage(clientId: string, raw: string): Promise<void> {
+  private async handleBrowserMessage(attachment: ClientAttachment, raw: string): Promise<void> {
     let frame: BrowserCommandFrame | null = null;
     try {
       frame = JSON.parse(raw) as BrowserCommandFrame;
@@ -221,14 +226,14 @@ export class NextclawRemoteRelayDurableObject {
     const connector = this.getActiveConnector();
     if (!connector) {
       if (frame.type === "request") {
-        this.sendToClient(clientId, {
+        this.sendToClient(attachment.clientId, {
           type: "request.error",
           id: frame.id,
           message: "Remote device connector is offline."
         });
         return;
       }
-      this.sendToClient(clientId, {
+      this.sendToClient(attachment.clientId, {
         type: "stream.error",
         streamId: frame.streamId,
         message: "Remote device connector is offline."
@@ -237,9 +242,14 @@ export class NextclawRemoteRelayDurableObject {
     }
 
     if (frame.type === "request") {
+      const quotaFrame = await consumeRemoteBrowserFrameQuota(this.env, attachment, frame);
+      if (quotaFrame) {
+        this.sendToClient(attachment.clientId, quotaFrame);
+        return;
+      }
       connector.send(JSON.stringify({
         type: "client.request",
-        clientId,
+        clientId: attachment.clientId,
         id: frame.id,
         target: frame.target
       }));
@@ -247,9 +257,14 @@ export class NextclawRemoteRelayDurableObject {
     }
 
     if (frame.type === "stream.open") {
+      const quotaFrame = await consumeRemoteBrowserFrameQuota(this.env, attachment, frame);
+      if (quotaFrame) {
+        this.sendToClient(attachment.clientId, quotaFrame);
+        return;
+      }
       connector.send(JSON.stringify({
         type: "client.stream.open",
-        clientId,
+        clientId: attachment.clientId,
         streamId: frame.streamId,
         target: frame.target
       }));
@@ -258,7 +273,7 @@ export class NextclawRemoteRelayDurableObject {
 
     connector.send(JSON.stringify({
       type: "client.stream.cancel",
-      clientId,
+      clientId: attachment.clientId,
       streamId: frame.streamId
     }));
   }
@@ -286,6 +301,15 @@ export class NextclawRemoteRelayDurableObject {
     return null;
   }
 
+  private async handleSocketClosed(closedSocket: WebSocket): Promise<void> {
+    const attachment = closedSocket.deserializeAttachment() as ConnectorAttachment | ClientAttachment | null;
+    if (attachment?.type === "client") {
+      await releaseRemoteClientQuota(this.env, attachment);
+      return;
+    }
+    await this.handleConnectorClosed(closedSocket);
+  }
+
   private async handleConnectorClosed(closedSocket: WebSocket): Promise<void> {
     const attachment = closedSocket.deserializeAttachment() as ConnectorAttachment | null;
     if (attachment?.type !== "connector") {
@@ -310,60 +334,11 @@ export class NextclawRemoteRelayDurableObject {
   }
 
   private handleConnectorClientFrame(frame: ConnectorClientFrame): void {
-    if (frame.type === "client.event") {
-      this.broadcastToClients({
-        type: "event",
-        event: frame.event
-      });
-      return;
-    }
-
-    if (frame.type === "client.response") {
-      this.sendToClient(frame.clientId, {
-        type: "response",
-        id: frame.id,
-        status: frame.status,
-        body: frame.body
-      });
-      return;
-    }
-
-    if (frame.type === "client.request.error") {
-      this.sendToClient(frame.clientId, {
-        type: "request.error",
-        id: frame.id,
-        message: frame.message,
-        code: frame.code
-      });
-      return;
-    }
-
-    if (frame.type === "client.stream.event") {
-      this.sendToClient(frame.clientId, {
-        type: "stream.event",
-        streamId: frame.streamId,
-        event: frame.event,
-        payload: frame.payload
-      });
-      return;
-    }
-
-    if (frame.type === "client.stream.end") {
-      this.sendToClient(frame.clientId, {
-        type: "stream.end",
-        streamId: frame.streamId
-      });
-      return;
-    }
-
-    if (frame.type === "client.stream.error") {
-      this.sendToClient(frame.clientId, {
-        type: "stream.error",
-        streamId: frame.streamId,
-        message: frame.message,
-        code: frame.code
-      });
-    }
+    dispatchRemoteRelayClientFrame({
+      frame,
+      sendToClient: this.sendToClient.bind(this),
+      broadcastToClients: this.broadcastToClients.bind(this)
+    });
   }
 
   private sendToClient(clientId: string, frame: Record<string, unknown>): void {

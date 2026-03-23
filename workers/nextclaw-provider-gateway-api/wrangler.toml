@@ -18,9 +18,17 @@ database_id = "748845b9-8f96-4862-87e9-c10e7c478a70"
 name = "NEXTCLAW_REMOTE_RELAY"
 class_name = "NextclawRemoteRelayDurableObject"
 
+[[durable_objects.bindings]]
+name = "NEXTCLAW_REMOTE_QUOTA"
+class_name = "NextclawRemoteQuotaDurableObject"
+
 [[migrations]]
 tag = "remote-access-v1"
 new_sqlite_classes = ["NextclawRemoteRelayDurableObject"]
+
+[[migrations]]
+tag = "remote-quota-v1"
+new_sqlite_classes = ["NextclawRemoteQuotaDurableObject"]
 
 [vars]
 DASHSCOPE_API_BASE = "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -30,3 +38,8 @@ PLATFORM_AUTH_EMAIL_PROVIDER = "resend"
 PLATFORM_AUTH_EMAIL_FROM = "NextClaw <no-reply@mail.nextclaw.io>"
 GLOBAL_FREE_USD_LIMIT = "20"
 REQUEST_FLAT_USD_PER_REQUEST = "0.0002"
+REMOTE_QUOTA_USER_REQUESTS_PER_MINUTE = "300"
+REMOTE_QUOTA_SESSION_REQUESTS_PER_MINUTE = "180"
+REMOTE_QUOTA_USER_CONNECTIONS = "6"
+REMOTE_QUOTA_SESSION_CONNECTIONS = "2"
+REMOTE_QUOTA_INSTANCE_CONNECTIONS = "4"
