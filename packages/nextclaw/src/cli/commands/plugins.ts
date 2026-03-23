@@ -1,10 +1,7 @@
 import {
   buildPluginStatusReport,
   loadOpenClawPlugins,
-  mergePluginConfigView,
   resolveUninstallDirectoryTargets,
-  toPluginConfigView,
-  type PluginChannelBinding,
   type PluginRegistry
 } from "@nextclaw/openclaw-compat";
 import {
