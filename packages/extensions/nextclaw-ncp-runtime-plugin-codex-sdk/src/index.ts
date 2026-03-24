@@ -17,6 +17,10 @@ import {
   buildUserFacingModelRoute,
   resolveExternalModelProvider,
 } from "./codex-model-provider.js";
+import {
+  createDescribeCodexSessionType,
+  type SessionTypeDescriptor,
+} from "./codex-session-type.js";
 
 const PLUGIN_ID = "nextclaw-ncp-runtime-plugin-codex-sdk";
 const CODEX_RUNTIME_KIND = "codex";
@@ -30,6 +34,9 @@ type PluginApi = {
     kind: string;
     label?: string;
     createRuntime: (params: RuntimeFactoryParams) => NcpAgentRuntime;
+    describeSessionType?:
+      | (() => Promise<SessionTypeDescriptor | null | undefined>)
+      | (() => SessionTypeDescriptor | null | undefined);
   }) => void;
 };
 
@@ -237,10 +244,15 @@ const plugin: PluginDefinition = {
   },
   register(api) {
     const pluginConfig = readRecord(api.pluginConfig) ?? {};
+    const describeCodexSessionType = createDescribeCodexSessionType({
+      config: api.config,
+      pluginConfig,
+    });
 
     api.registerNcpAgentRuntime({
       kind: CODEX_RUNTIME_KIND,
       label: "Codex",
+      describeSessionType: describeCodexSessionType,
       createRuntime: (runtimeParams) => {
         const nextConfig = api.config;
         const model = resolveCodexModel({
