@@ -1,5 +1,26 @@
 # @nextclaw/nextclaw-ncp-runtime-plugin-codex-sdk
 
+## 0.1.17
+
+### Patch Changes
+
+- 004b779: Stop surfacing Codex SDK non-fatal model metadata warnings as user-visible tool/error messages in codex sessions for OpenAI-compatible models such as DashScope `qwen3-coder-next`.
+- Updated dependencies [004b779]
+  - @nextclaw/nextclaw-ncp-runtime-codex-sdk@0.1.3
+
+## 0.1.16
+
+### Patch Changes
+
+- Release the codex bridge fix so codex sessions can keep using the codex-sdk runtime with OpenAI-compatible models that only expose chat completions, including DashScope `qwen3-coder-next`.
+
+## 0.1.15
+
+### Patch Changes
+
+- Updated dependencies
+  - @nextclaw/core@0.10.0
+
 ## 0.1.14
 
 ### Patch Changes

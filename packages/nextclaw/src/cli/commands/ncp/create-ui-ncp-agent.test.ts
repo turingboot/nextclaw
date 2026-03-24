@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   ConfigSchema,
+  type Config,
   MessageBus,
   SessionManager,
   type LLMStreamEvent,
@@ -11,6 +12,7 @@ import {
 } from "@nextclaw/core";
 import { NcpEventType, type NcpEndpointEvent, type NcpRequestEnvelope } from "@nextclaw/ncp";
 import { loadPluginRegistry, toExtensionRegistry, type NextclawExtensionRegistry } from "../plugins.js";
+import codexRuntimePlugin from "../../../../../extensions/nextclaw-ncp-runtime-plugin-codex-sdk/src/index.js";
 import { createUiNcpAgent } from "./create-ui-ncp-agent.js";
 
 const tempDirs: string[] = [];
@@ -67,7 +69,7 @@ describe("createUiNcpAgent default runtime", () => {
 
 });
 
-describe("createUiNcpAgent session types", () => {
+describe("createUiNcpAgent session types availability", () => {
   it("lists codex as an available session type when the runtime is enabled", async () => {
     const workspace = createTempWorkspace();
     const config = ConfigSchema.parse({
@@ -93,7 +95,7 @@ describe("createUiNcpAgent session types", () => {
         },
       },
     });
-    const extensionRegistry = toExtensionRegistry(loadPluginRegistry(config, workspace));
+    const extensionRegistry = createCodexExtensionRegistryFromSource(config);
 
     const ncpAgent = await createUiNcpAgent({
       bus: new MessageBus(),
@@ -112,7 +114,66 @@ describe("createUiNcpAgent session types", () => {
       ]),
     );
   });
+});
 
+describe("createUiNcpAgent session types supported models", () => {
+  it("exposes codex supported models from configured providers", async () => {
+    const workspace = createTempWorkspace();
+    const config = ConfigSchema.parse({
+      agents: {
+        defaults: {
+          workspace,
+          model: "dashscope/qwen3-coder-next",
+          contextTokens: 200000,
+          maxToolIterations: 8,
+        },
+      },
+      providers: {
+        dashscope: {
+          enabled: true,
+          apiKey: "test-dashscope-key",
+          apiBase: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+          models: ["qwen3-coder-next"],
+        },
+      },
+      plugins: {
+        load: {
+          paths: ["../extensions/nextclaw-ncp-runtime-plugin-codex-sdk"],
+        },
+        entries: {
+          "nextclaw-ncp-runtime-plugin-codex-sdk": {
+            enabled: true,
+            config: {},
+          },
+        },
+      },
+    });
+    const extensionRegistry = createCodexExtensionRegistryFromSource(config);
+
+    const ncpAgent = await createUiNcpAgent({
+      bus: new MessageBus(),
+      providerManager: new RecordingProviderManager() as unknown as ProviderManager,
+      sessionManager: new SessionManager(workspace),
+      getConfig: () => config,
+      getExtensionRegistry: () => extensionRegistry,
+    });
+
+    const sessionTypes = await ncpAgent.listSessionTypes?.();
+    expect(sessionTypes?.options).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          value: "codex",
+          label: "Codex",
+          ready: true,
+          recommendedModel: "dashscope/qwen3-coder-next",
+          supportedModels: expect.arrayContaining(["dashscope/qwen3-coder-next"]),
+        }),
+      ]),
+    );
+  });
+});
+
+describe("createUiNcpAgent session types refresh", () => {
   it("refreshes available session types when the extension registry changes after startup", async () => {
     const workspace = createTempWorkspace();
     const config = ConfigSchema.parse({
@@ -188,6 +249,112 @@ describe("createUiNcpAgent session types", () => {
       defaultType: "native",
       options: [{ value: "native", label: "Native", ready: true, reason: null, reasonMessage: null, recommendedModel: null, cta: null }],
     });
+  });
+});
+
+describe("createUiNcpAgent codex native routing", () => {
+  it("keeps codex sessions on the codex runtime for non-GPT OpenAI-compatible models", async () => {
+    const workspace = createTempWorkspace();
+    const config = ConfigSchema.parse({
+      agents: {
+        defaults: {
+          workspace,
+          model: "dashscope/qwen3-coder-next",
+          contextTokens: 200000,
+          maxToolIterations: 8,
+        },
+      },
+      providers: {
+        dashscope: {
+          enabled: true,
+          apiKey: "test-dashscope-key",
+          apiBase: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+          models: ["qwen3-coder-next"],
+        },
+      },
+      plugins: {
+        entries: {
+          "fake-codex-runtime": {
+            enabled: true,
+            config: {},
+          },
+        },
+      },
+    });
+    const extensionRegistry: NextclawExtensionRegistry = {
+      tools: [],
+      channels: [],
+      engines: [],
+      diagnostics: [],
+      ncpAgentRuntimes: [
+        {
+          pluginId: "fake-codex-runtime",
+          kind: "codex",
+          label: "Codex",
+          source: "test:fake-codex-runtime",
+          createRuntime: () => ({
+            async *run(input) {
+              yield {
+                type: NcpEventType.RunStarted,
+                payload: {
+                  sessionId: input.sessionId,
+                  messageId: "codex-run-message",
+                  runId: "codex-run-id",
+                },
+              };
+              yield {
+                type: NcpEventType.RunMetadata,
+                payload: {
+                  sessionId: input.sessionId,
+                  messageId: "codex-run-message",
+                  runId: "codex-run-id",
+                  metadata: {
+                    kind: "final",
+                  },
+                },
+              };
+              yield {
+                type: NcpEventType.RunFinished,
+                payload: {
+                  sessionId: input.sessionId,
+                  messageId: "codex-run-message",
+                  runId: "codex-run-id",
+                },
+              };
+            },
+          }),
+        },
+      ],
+    };
+    const providerManager = new RecordingProviderManager();
+    const sessionManager = new SessionManager(workspace);
+
+    const ncpAgent = await createUiNcpAgent({
+      bus: new MessageBus(),
+      providerManager: providerManager as unknown as ProviderManager,
+      sessionManager,
+      getConfig: () => config,
+      getExtensionRegistry: () => extensionRegistry,
+    });
+
+    const runEvents = await sendAndCollectEvents(
+      ncpAgent.agentClientEndpoint,
+      createEnvelope({
+        sessionId: "codex-native-fallback",
+        text: "say hi",
+        metadata: {
+          session_type: "codex",
+          preferred_model: "dashscope/qwen3-coder-next",
+        },
+      }),
+    );
+
+    expect(runEvents.at(-1)?.type).toBe(NcpEventType.RunFinished);
+    expect(providerManager.calls).toHaveLength(0);
+
+    const persistedSession = sessionManager.getIfExists("codex-native-fallback");
+    expect(persistedSession?.metadata.session_type).toBe("codex");
+    expect(persistedSession?.metadata.codex_runtime_backend).toBe("codex-sdk");
   });
 });
 
@@ -472,6 +639,33 @@ class McpAwareProviderManager {
       },
     };
   }
+}
+
+function createCodexExtensionRegistryFromSource(config: Config): NextclawExtensionRegistry {
+  const ncpAgentRuntimes: NextclawExtensionRegistry["ncpAgentRuntimes"] = [];
+  codexRuntimePlugin.register({
+    config,
+    pluginConfig:
+      config.plugins.entries?.["nextclaw-ncp-runtime-plugin-codex-sdk"]?.config ?? {},
+    registerNcpAgentRuntime(registration) {
+      ncpAgentRuntimes.push({
+        pluginId: "nextclaw-ncp-runtime-plugin-codex-sdk",
+        kind: registration.kind,
+        label: registration.label ?? "Codex",
+        createRuntime: registration.createRuntime,
+        describeSessionType: registration.describeSessionType,
+        source: "test:codex-source",
+      });
+    },
+  });
+
+  return {
+    tools: [],
+    channels: [],
+    engines: [],
+    diagnostics: [],
+    ncpAgentRuntimes,
+  };
 }
 
 function createEnvelope(params: {

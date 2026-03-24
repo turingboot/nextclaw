@@ -1,5 +1,11 @@
 # @nextclaw/ui
 
+## 0.10.0
+
+### Minor Changes
+
+- Add the Phase 1 Feishu platform foundation for NextClaw, including shared Feishu core primitives, richer message conversion, multi-account routing, and the aligned config UI/runtime release chain.
+
 ## 0.9.17
 
 ### Patch Changes
