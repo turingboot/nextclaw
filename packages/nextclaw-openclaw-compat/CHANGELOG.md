@@ -1,5 +1,25 @@
 # @nextclaw/openclaw-compat
 
+## 0.3.19
+
+### Patch Changes
+
+- Add the Phase 1 Feishu platform foundation for NextClaw, including shared Feishu core primitives, richer message conversion, multi-account routing, and the aligned config UI/runtime release chain.
+- Updated dependencies
+  - @nextclaw/core@0.10.0
+  - @nextclaw/channel-runtime@0.3.0
+  - @nextclaw/channel-plugin-dingtalk@0.2.13
+  - @nextclaw/channel-plugin-discord@0.2.13
+  - @nextclaw/channel-plugin-email@0.2.13
+  - @nextclaw/channel-plugin-feishu@0.2.13
+  - @nextclaw/channel-plugin-mochat@0.2.13
+  - @nextclaw/channel-plugin-qq@0.2.13
+  - @nextclaw/channel-plugin-slack@0.2.13
+  - @nextclaw/channel-plugin-telegram@0.2.13
+  - @nextclaw/channel-plugin-wecom@0.2.13
+  - @nextclaw/channel-plugin-whatsapp@0.2.13
+  - @nextclaw/channel-plugin-weixin@0.1.7
+
 ## 0.3.18
 
 ### Patch Changes

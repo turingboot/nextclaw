@@ -1,5 +1,13 @@
 # @nextclaw/channel-plugin-dingtalk
 
+## 0.2.13
+
+### Patch Changes
+
+- Add the Phase 1 Feishu platform foundation for NextClaw, including shared Feishu core primitives, richer message conversion, multi-account routing, and the aligned config UI/runtime release chain.
+- Updated dependencies
+  - @nextclaw/channel-runtime@0.3.0
+
 ## 0.2.12
 
 ### Patch Changes

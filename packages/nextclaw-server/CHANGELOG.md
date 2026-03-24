@@ -1,5 +1,16 @@
 # nextclaw-server
 
+## 0.10.37
+
+### Patch Changes
+
+- Add the Phase 1 Feishu platform foundation for NextClaw, including shared Feishu core primitives, richer message conversion, multi-account routing, and the aligned config UI/runtime release chain.
+- Updated dependencies
+  - @nextclaw/core@0.10.0
+  - @nextclaw/openclaw-compat@0.3.19
+  - @nextclaw/mcp@0.1.33
+  - @nextclaw/runtime@0.2.13
+
 ## 0.10.36
 
 ### Patch Changes
