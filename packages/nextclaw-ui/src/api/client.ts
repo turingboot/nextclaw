@@ -3,13 +3,14 @@ import type { ApiResponse } from './types';
 
 export async function requestApiResponse<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit & { timeoutMs?: number } = {}
 ): Promise<ApiResponse<T>> {
   const method = (options.method || 'GET').toUpperCase();
   try {
     const data = await appClient.request<T>({
       method: method as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
       path: endpoint,
+      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
       ...(options.body !== undefined ? { body: parseRequestBody(options.body) } : {})
     });
     return {
@@ -32,7 +33,8 @@ export async function requestApiResponse<T>(
 }
 
 export const api = {
-  get: <T>(path: string) => requestApiResponse<T>(path, { method: 'GET' }),
+  get: <T>(path: string, options: RequestInit & { timeoutMs?: number } = {}) =>
+    requestApiResponse<T>(path, { ...options, method: 'GET' }),
   put: <T>(path: string, body: unknown) =>
     requestApiResponse<T>(path, {
       method: 'PUT',

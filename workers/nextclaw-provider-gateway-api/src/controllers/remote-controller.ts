@@ -4,6 +4,7 @@ import {
   openRemoteBrowserRelaySocket,
 } from "./remote-controller-quota-support";
 import { appendAuditLog } from "../repositories/platform-repository";
+import { renderRemoteAccessErrorPage } from "../remote-access-error-page-renderer";
 import {
   closeRemoteAccessSessionsByGrantId,
   createRemoteShareGrant,
@@ -63,6 +64,31 @@ function requireRemoteShareUrl(c: Context<{ Bindings: Env }>, grantToken: string
     return apiError(c, 503, "REMOTE_SHARE_URL_UNAVAILABLE", "NextClaw Web base URL is not configured.");
   }
   return shareUrl;
+}
+
+function isHtmlNavigationRequest(c: Context<{ Bindings: Env }>): boolean {
+  if (c.req.method !== "GET") {
+    return false;
+  }
+  const dest = c.req.header("sec-fetch-dest")?.trim().toLowerCase();
+  if (dest === "document") {
+    return true;
+  }
+  const mode = c.req.header("sec-fetch-mode")?.trim().toLowerCase();
+  return mode === "navigate";
+}
+
+async function maybeRenderRemoteAccessErrorPage(c: Context<{ Bindings: Env }>, response: Response): Promise<Response> {
+  if (!isHtmlNavigationRequest(c)) {
+    return response;
+  }
+  const message = (await response.text()).trim() || "Remote access unavailable.";
+  const webBaseUrl = optionalTrimmedString(c.env.NEXTCLAW_WEB_BASE_URL ?? "");
+  return renderRemoteAccessErrorPage({
+    status: response.status,
+    message,
+    webBaseUrl
+  });
 }
 
 export async function listRemoteShareGrantsHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
@@ -397,7 +423,7 @@ export async function remoteProxyHandler(c: Context<{ Bindings: Env }>): Promise
 
   const resolved = await resolveValidatedRemoteProxyContext(c);
   if (resolved instanceof Response) {
-    return resolved;
+    return await maybeRenderRemoteAccessErrorPage(c, resolved);
   }
   const quotaResponse = await enforceRemoteSessionQuota(c.env, resolved.session, "proxy_http");
   if (quotaResponse) {

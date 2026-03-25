@@ -15,8 +15,7 @@ export function useAuthStatus() {
     queryKey: ['auth-status'],
     queryFn: fetchAuthStatus,
     staleTime: 5_000,
-    retry: 3,
-    retryDelay: (attempt) => Math.min(1000 * attempt, 3000),
+    retry: 0,
     refetchOnWindowFocus: true
   });
 }

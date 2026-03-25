@@ -6,6 +6,7 @@ export type RequestInput = {
   method: RequestMethod;
   path: string;
   body?: unknown;
+  timeoutMs?: number;
 };
 
 export type StreamEvent = {

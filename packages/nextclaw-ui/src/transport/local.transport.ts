@@ -114,14 +114,35 @@ export class LocalAppTransport implements AppTransport {
   }
 
   async request<T>(input: RequestInput): Promise<T> {
-    const response = await requestRawApiResponse<T>(input.path, {
-      method: input.method,
-      ...(input.body !== undefined ? { body: JSON.stringify(input.body) } : {})
-    });
-    if (!response.ok) {
-      throw createTransportError(response, `Request failed for ${input.method} ${input.path}`);
+    const timeoutMs = Number.isFinite(input.timeoutMs) && (input.timeoutMs ?? 0) > 0
+      ? Math.trunc(input.timeoutMs as number)
+      : null;
+    const controller = timeoutMs ? new AbortController() : null;
+    const timeoutId = timeoutMs
+      ? window.setTimeout(() => controller?.abort(`Request timed out after ${timeoutMs}ms: ${input.method} ${input.path}`), timeoutMs)
+      : null;
+
+    try {
+      const response = await requestRawApiResponse<T>(input.path, {
+        method: input.method,
+        ...(input.body !== undefined ? { body: JSON.stringify(input.body) } : {}),
+        ...(controller ? { signal: controller.signal } : {})
+      });
+      if (!response.ok) {
+        throw createTransportError(response, `Request failed for ${input.method} ${input.path}`);
+      }
+      return response.data;
+    } catch (error) {
+      if (controller?.signal.aborted) {
+        const reason = controller.signal.reason;
+        throw new Error(typeof reason === 'string' && reason.trim() ? reason : `Request timed out: ${input.method} ${input.path}`);
+      }
+      throw error;
+    } finally {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     }
-    return response.data;
   }
 
   openStream<TFinal = unknown>(input: StreamInput): StreamSession<TFinal> {

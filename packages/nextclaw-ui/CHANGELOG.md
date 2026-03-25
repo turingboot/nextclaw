@@ -1,5 +1,11 @@
 # @nextclaw/ui
 
+## 0.10.2
+
+### Patch Changes
+
+- Polish remote access failure handling so startup auth bootstrap no longer degrades into a blank screen, keep the remote request path on websocket multiplex with explicit timeouts, and align the bundled NextClaw release group with the updated remote access UX.
+
 ## 0.10.1
 
 ### Patch Changes

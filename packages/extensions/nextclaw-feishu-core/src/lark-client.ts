@@ -1,5 +1,5 @@
 import * as Lark from "@larksuiteoapi/node-sdk";
-import { Readable } from "node:stream";
+import type { Readable } from "node:stream";
 import type { FeishuBrand, FeishuResolvedAccount } from "./accounts.js";
 import type { FeishuProbeResult } from "./probe.js";
 

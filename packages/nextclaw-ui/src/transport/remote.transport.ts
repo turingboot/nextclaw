@@ -27,6 +27,7 @@ type RemoteBrowserCommand =
 type PendingRequest = {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
+  timeoutId: number;
 };
 
 type PendingStream = {
@@ -69,6 +70,8 @@ function createId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+const REMOTE_REQUEST_TIMEOUT_MS = 15_000;
+
 export class RemoteSessionMultiplexTransport implements AppTransport {
   private socket: WebSocket | null = null;
   private connectPromise: Promise<void> | null = null;
@@ -87,10 +90,18 @@ export class RemoteSessionMultiplexTransport implements AppTransport {
   async request<T>(input: RequestInput): Promise<T> {
     await this.ensureSocket();
     const id = createId('req');
+    const timeoutMs = Number.isFinite(input.timeoutMs) && (input.timeoutMs ?? 0) > 0
+      ? Math.trunc(input.timeoutMs as number)
+      : REMOTE_REQUEST_TIMEOUT_MS;
     return await new Promise<T>((resolve, reject) => {
+      const timeoutId = window.setTimeout(() => {
+        this.pendingRequests.delete(id);
+        reject(new Error(`Timed out waiting for remote request response after ${timeoutMs}ms: ${input.method} ${input.path}`));
+      }, timeoutMs);
       this.pendingRequests.set(id, {
         resolve: (value) => resolve(value as T),
-        reject
+        reject,
+        timeoutId
       });
       this.send({
         type: 'request',
@@ -297,6 +308,7 @@ export class RemoteSessionMultiplexTransport implements AppTransport {
 
   private failPendingWork(error: Error): void {
     for (const pending of this.pendingRequests.values()) {
+      window.clearTimeout(pending.timeoutId);
       pending.reject(error);
     }
     this.pendingRequests.clear();
@@ -331,6 +343,7 @@ export class RemoteSessionMultiplexTransport implements AppTransport {
       return;
     }
     this.pendingRequests.delete(frame.id);
+    window.clearTimeout(pending.timeoutId);
     if (frame.type === 'request.error') {
       pending.reject(new Error(frame.message));
       return;

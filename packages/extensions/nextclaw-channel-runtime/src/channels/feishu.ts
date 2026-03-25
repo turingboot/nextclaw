@@ -7,8 +7,7 @@ import {
   buildInboundMetadata,
   extractMessageInfo,
   extractMentions,
-  extractSenderInfo,
-  inferFeishuResourceMimeType
+  extractSenderInfo
 } from "./feishu-message-support.js";
 import {
   buildFeishuConvertContext,

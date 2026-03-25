@@ -30,6 +30,18 @@ describe('api/client', () => {
     });
   });
 
+  it('forwards timeout overrides to appClient.request', async () => {
+    mocks.request.mockResolvedValue({ ok: true });
+
+    await api.get<{ ok: boolean }>('/api/auth/status', { timeoutMs: 5000 });
+
+    expect(mocks.request).toHaveBeenCalledWith({
+      method: 'GET',
+      path: '/api/auth/status',
+      timeoutMs: 5000
+    });
+  });
+
   it('parses JSON request bodies before sending to appClient.request', async () => {
     mocks.request.mockResolvedValue({ success: true });
 

@@ -1,5 +1,11 @@
 # @nextclaw/mcp
 
+## 0.1.44
+
+### Patch Changes
+
+- Polish remote access failure handling so startup auth bootstrap no longer degrades into a blank screen, keep the remote request path on websocket multiplex with explicit timeouts, and align the bundled NextClaw release group with the updated remote access UX.
+
 ## 0.1.43
 
 ### Patch Changes
