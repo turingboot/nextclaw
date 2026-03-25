@@ -10,12 +10,42 @@ import {
 import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
 
+const AUTH_STATUS_BOOTSTRAP_MAX_RETRIES = 20;
+export const AUTH_STATUS_BOOTSTRAP_RETRY_DELAY_MS = 500;
+
+export function isTransientAuthStatusBootstrapError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const message = error.message.trim().toLowerCase();
+  if (!message) {
+    return false;
+  }
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('networkerror') ||
+    message.includes('network request failed') ||
+    message.includes('load failed') ||
+    message.includes('request timed out') ||
+    message.includes('timed out waiting for remote request response') ||
+    message.includes('remote transport connection closed')
+  );
+}
+
+export function shouldRetryAuthStatusBootstrap(failureCount: number, error: unknown): boolean {
+  if (failureCount >= AUTH_STATUS_BOOTSTRAP_MAX_RETRIES) {
+    return false;
+  }
+  return isTransientAuthStatusBootstrapError(error);
+}
+
 export function useAuthStatus() {
   return useQuery({
     queryKey: ['auth-status'],
     queryFn: fetchAuthStatus,
     staleTime: 5_000,
-    retry: 0,
+    retry: shouldRetryAuthStatusBootstrap,
+    retryDelay: AUTH_STATUS_BOOTSTRAP_RETRY_DELAY_MS,
     refetchOnWindowFocus: true
   });
 }

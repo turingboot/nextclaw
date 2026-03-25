@@ -104,6 +104,33 @@ function inferHomeScope(command) {
   return "unknown";
 }
 
+function isNextclawServeCommand(command) {
+  if (!/\bserve --ui-port \d+/.test(command)) {
+    return false;
+  }
+
+  return (
+    command.includes("src/cli/index.ts") ||
+    command.includes("src/cli/index.js") ||
+    command.includes("dist/cli.js") ||
+    command.includes("dist/cli/index.js") ||
+    command.includes("packages/nextclaw/src/cli/index.js") ||
+    command.includes("packages/nextclaw/dist/cli/index.js")
+  );
+}
+
+function isStandaloneServeWrapper(command) {
+  if (!/\bserve --ui-port \d+/.test(command)) {
+    return false;
+  }
+
+  return (
+    /pnpm .*packages\/nextclaw .*dev:build/.test(command) ||
+    /pnpm .*packages\/nextclaw .*exec tsx/.test(command) ||
+    /pnpm .*--filter nextclaw .*exec tsx/.test(command)
+  );
+}
+
 function classifyProcess(entry) {
   const command = entry.command;
   const roles = [];
@@ -119,19 +146,13 @@ function classifyProcess(entry) {
   if (/tsx.*\swatch\b.*src\/cli\/index\.ts serve --ui-port \d+/.test(command)) {
     roles.push("backend-watch");
   }
-  if (
-    command.includes("src/cli/index.ts serve --ui-port") &&
-    !roles.includes("backend-watch")
-  ) {
+  if (isNextclawServeCommand(command) && !roles.includes("backend-watch")) {
     roles.push("backend-runtime");
   }
   if (command.includes("vite/bin/vite.js")) {
     roles.push("frontend-vite");
   }
-  if (
-    /pnpm -C packages\/nextclaw dev:build serve --ui-port \d+/.test(command) ||
-    /pnpm -C packages\/nextclaw exec tsx src\/cli\/index\.ts serve --ui-port \d+/.test(command)
-  ) {
+  if (isStandaloneServeWrapper(command)) {
     roles.push("standalone-serve-pnpm");
   }
 
