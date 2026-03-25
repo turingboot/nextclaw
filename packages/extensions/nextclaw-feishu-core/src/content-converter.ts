@@ -24,7 +24,7 @@ function convertImage(raw: string): FeishuConvertedContent {
   const imageKey = typeof parsed?.image_key === "string" ? parsed.image_key : "";
   return imageKey
     ? {
-        content: `![image](${imageKey})`,
+        content: "[image]",
         resources: [{ type: "image", fileKey: imageKey }]
       }
     : { content: "[image]", resources: [] };
@@ -38,7 +38,7 @@ function convertFile(raw: string): FeishuConvertedContent {
   }
   const fileName = typeof parsed?.file_name === "string" ? parsed.file_name : undefined;
   return {
-    content: fileName ? `<file key="${fileKey}" name="${fileName}"/>` : `<file key="${fileKey}"/>`,
+    content: fileName ? `<file name="${fileName}"/>` : "[file]",
     resources: [{ type: "file", fileKey, fileName }]
   };
 }
@@ -52,7 +52,7 @@ function convertAudio(raw: string): FeishuConvertedContent {
   const duration = typeof parsed?.duration === "number" ? parsed.duration : undefined;
   const durationSuffix = duration !== undefined ? ` duration="${formatDuration(duration)}"` : "";
   return {
-    content: `<audio key="${fileKey}"${durationSuffix}/>`,
+    content: `<audio${durationSuffix}/>`,
     resources: [{ type: "audio", fileKey, duration }]
   };
 }
@@ -62,7 +62,7 @@ function convertSticker(raw: string): FeishuConvertedContent {
   const fileKey = typeof parsed?.file_key === "string" ? parsed.file_key : "";
   return fileKey
     ? {
-        content: `<sticker key="${fileKey}"/>`,
+        content: "[sticker]",
         resources: [{ type: "sticker", fileKey }]
       }
     : { content: "[sticker]", resources: [] };

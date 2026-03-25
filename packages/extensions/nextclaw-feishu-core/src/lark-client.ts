@@ -1,4 +1,5 @@
 import * as Lark from "@larksuiteoapi/node-sdk";
+import { Readable } from "node:stream";
 import type { FeishuBrand, FeishuResolvedAccount } from "./accounts.js";
 import type { FeishuProbeResult } from "./probe.js";
 
@@ -22,8 +23,80 @@ type FeishuCredentials = {
   };
 };
 
+export type FeishuMessageResourceDownloadType = "image" | "file";
+
+export type DownloadMessageResourceParams = {
+  messageId: string;
+  fileKey: string;
+  type: FeishuMessageResourceDownloadType;
+};
+
+export type DownloadMessageResourceResult = {
+  buffer: Buffer;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeExternalKey(value: string, label: string): string {
+  const normalized = value.trim();
+  if (!normalized || normalized.length > 512) {
+    throw new Error(`Feishu ${label} download failed: invalid ${label}`);
+  }
+  if (/[\u0000-\u001f\u007f]/.test(normalized)) {
+    throw new Error(`Feishu ${label} download failed: invalid ${label}`);
+  }
+  if (normalized.includes("/") || normalized.includes("\\") || normalized.includes("..")) {
+    throw new Error(`Feishu ${label} download failed: invalid ${label}`);
+  }
+  return normalized;
+}
+
+async function readBinaryResponse(params: { response: unknown; errorPrefix: string }): Promise<Buffer> {
+  const responseAny = params.response as Record<PropertyKey, unknown>;
+  const code = typeof responseAny.code === "number" ? responseAny.code : undefined;
+  if (code !== undefined && code !== 0) {
+    const message = typeof responseAny.msg === "string" ? responseAny.msg : `code ${code}`;
+    throw new Error(`${params.errorPrefix}: ${message}`);
+  }
+
+  if (Buffer.isBuffer(params.response)) {
+    return params.response;
+  }
+  if (params.response instanceof ArrayBuffer) {
+    return Buffer.from(params.response);
+  }
+  if (Buffer.isBuffer(responseAny.data)) {
+    return responseAny.data;
+  }
+  if (responseAny.data instanceof ArrayBuffer) {
+    return Buffer.from(responseAny.data);
+  }
+  if (typeof responseAny.getReadableStream === "function") {
+    const stream = responseAny.getReadableStream as () => AsyncIterable<Uint8Array | Buffer>;
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream()) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  }
+  if (typeof responseAny[Symbol.asyncIterator] === "function") {
+    const chunks: Buffer[] = [];
+    for await (const chunk of params.response as AsyncIterable<Uint8Array | Buffer>) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  }
+  if (typeof responseAny.read === "function") {
+    const chunks: Buffer[] = [];
+    for await (const chunk of params.response as Readable) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  }
+
+  throw new Error(`${params.errorPrefix}: unexpected response format`);
 }
 
 function resolveSdkDomain(brand: FeishuBrand): Lark.Domain | string {
@@ -213,6 +286,21 @@ export class LarkClient {
         reaction_type: { emoji_type: emojiType }
       }
     });
+  }
+
+  async downloadMessageResource(params: DownloadMessageResourceParams): Promise<DownloadMessageResourceResult> {
+    const messageId = normalizeExternalKey(params.messageId, "message_id");
+    const fileKey = normalizeExternalKey(params.fileKey, "file_key");
+    const response = await this.sdk.im.messageResource.get({
+      path: { message_id: messageId, file_key: fileKey },
+      params: { type: params.type }
+    });
+    return {
+      buffer: await readBinaryResponse({
+        response,
+        errorPrefix: "Feishu message resource download failed"
+      })
+    };
   }
 
   dispose(): void {

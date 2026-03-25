@@ -43,11 +43,11 @@ function renderPostElement(
   }
   if (tag === "img" && typeof element.image_key === "string") {
     resources.push({ type: "image", fileKey: element.image_key });
-    return `![image](${element.image_key})`;
+    return "[image]";
   }
   if (tag === "media" && typeof element.file_key === "string") {
     resources.push({ type: "file", fileKey: element.file_key });
-    return `<file key="${element.file_key}"/>`;
+    return "[file]";
   }
   if (tag === "code_block") {
     const language = typeof element.language === "string" ? element.language : "";

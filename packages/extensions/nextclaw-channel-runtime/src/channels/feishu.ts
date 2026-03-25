@@ -17,6 +17,7 @@ import {
   getEnabledFeishuAccounts,
   LarkClient
 } from "@nextclaw/feishu-core";
+import { FeishuInboundMediaResolver, type FeishuInboundResource } from "./feishu-inbound-media.js";
 
 type ActiveFeishuAccount = {
   accountId: string;
@@ -34,9 +35,11 @@ export class FeishuChannel extends BaseChannel<Config["channels"]["feishu"]> {
   private clients = new Map<string, ActiveFeishuAccount>();
   private processedMessageIds: string[] = [];
   private processedSet: Set<string> = new Set();
+  private readonly inboundMediaResolver: FeishuInboundMediaResolver;
 
   constructor(config: Config["channels"]["feishu"], bus: MessageBus) {
     super(config, bus);
+    this.inboundMediaResolver = new FeishuInboundMediaResolver(this.config.mediaMaxMb);
   }
 
   async start(): Promise<void> {
@@ -126,7 +129,7 @@ export class FeishuChannel extends BaseChannel<Config["channels"]["feishu"]> {
     if (mentionState.requireMention && !mentionState.wasMentioned) {
       return;
     }
-    const payload = this.buildInboundPayload(account, messageInfo, mentions);
+    const payload = await this.buildInboundPayload(account, messageInfo, mentions);
     if (!payload) {
       return;
     }
@@ -246,30 +249,27 @@ export class FeishuChannel extends BaseChannel<Config["channels"]["feishu"]> {
     };
   }
 
-  private convertResource(resource: {
-    type: "audio" | "file" | "image" | "sticker";
-    fileKey: string;
-    fileName?: string;
-    duration?: number;
-  }): InboundAttachment {
-    return {
-      id: resource.fileKey,
-      name: resource.fileName,
-      source: "feishu",
-      status: "remote-only",
-      mimeType: inferFeishuResourceMimeType(resource.type),
-      url: resource.fileKey
-    };
+  private async convertResource(params: {
+    account: ActiveFeishuAccount;
+    messageId?: string;
+    resource: FeishuInboundResource;
+  }): Promise<InboundAttachment> {
+    return this.inboundMediaResolver.resolve({
+      client: params.account.client,
+      messageId: params.messageId,
+      resource: params.resource
+    });
   }
 
-  private buildInboundPayload(
+  private async buildInboundPayload(
     account: ActiveFeishuAccount,
     messageInfo: {
       rawContent: string;
       msgType: string;
+      messageId?: string;
     },
     mentions: unknown[]
-  ): { content: string; attachments: InboundAttachment[] } | null {
+  ): Promise<{ content: string; attachments: InboundAttachment[] } | null> {
     const converted = convertFeishuMessageContent(
       messageInfo.rawContent,
       messageInfo.msgType,
@@ -280,13 +280,22 @@ export class FeishuChannel extends BaseChannel<Config["channels"]["feishu"]> {
         botName: account.botName
       })
     );
-    const content = converted.content.trim();
-    if (!content) {
+    const content = converted.content.trim() || `[${messageInfo.msgType || "message"}]`;
+    const attachments = await Promise.all(
+      converted.resources.map((resource) =>
+        this.convertResource({
+          account,
+          messageId: messageInfo.messageId,
+          resource
+        })
+      )
+    );
+    if (!content && attachments.length === 0) {
       return null;
     }
     return {
       content,
-      attachments: converted.resources.map((resource) => this.convertResource(resource))
+      attachments
     };
   }
 }
