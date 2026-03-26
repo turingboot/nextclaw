@@ -17,6 +17,53 @@ Core product principle:
 
 This means a marketplace skill may depend on external tools, but the skill itself must provide a full onboarding, validation, usage, and troubleshooting loop.
 
+## Responsibility Boundary
+
+Use this three-layer split to keep marketplace skills decoupled:
+
+- User goal layer
+  The user only expresses the job to be done.
+- Skill layer
+  The skill explains capability boundaries, detects missing prerequisites, guides setup, runs readiness checks, chooses the right workflow, communicates risk, and tells the AI when to stop or ask for confirmation.
+- Runtime layer
+  The external tool, service, CLI, browser extension, local app, or API performs the real execution.
+
+The skill is the orchestration and onboarding contract, not the runtime itself.
+
+## What The Skill Owns
+
+A NextClaw marketplace skill should own these responsibilities:
+
+- user-facing explanation,
+- prerequisite discovery,
+- setup guidance,
+- readiness verification,
+- workflow selection,
+- risk and permission disclosure,
+- confirmation rules for destructive or write actions,
+- bounded troubleshooting steps,
+- and success criteria for the first real task.
+
+From the user's point of view, this should feel complete.
+
+## What The Skill Must Not Own
+
+A NextClaw marketplace skill must not silently take over responsibilities that belong elsewhere:
+
+- It must not pretend to be the external runtime.
+- It must not hide missing prerequisites.
+- It must not silently rewrite system behavior just to create fake "it works" moments.
+- It must not embed ad hoc runtime patches for third-party incidents.
+- It must not turn itself into a long-lived installer, daemon manager, or compatibility layer unless that is an explicit product surface owned by NextClaw itself.
+- It must not blur read actions and write actions.
+- It must not present third-party capability as native NextClaw capability without saying so clearly.
+
+In short:
+
+- The skill owns the user journey.
+- The runtime owns execution.
+- NextClaw owns marketplace packaging, trust labeling, and product expectations.
+
 ## When To Use
 
 Trigger this skill when work includes any of these:
@@ -100,6 +147,11 @@ For any wrapped external tool skill, require these guardrails:
 - Distinguish read actions from write actions in the skill wording.
 - Say clearly when the skill relies on local machine state, logged-in browser state, external accounts, or third-party software.
 - Do not present a third-party runtime as if it were built into NextClaw.
+
+Decoupling check:
+
+- If the external runtime disappeared tomorrow, would the marketplace skill still read like a clear user workflow contract?
+- If not, the skill is too coupled to implementation detail and should be rewritten.
 
 The goal is simple:
 
