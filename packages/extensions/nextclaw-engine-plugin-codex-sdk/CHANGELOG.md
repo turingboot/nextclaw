@@ -1,5 +1,13 @@
 # @nextclaw/nextclaw-engine-codex-sdk
 
+## 0.3.5
+
+### Patch Changes
+
+- Ship the full set of current unreleased workspace package changes in one release batch, including the server/CLI updates already sitting in the working tree and the previously committed public package drift that has not been published yet. Republish the NCP agent runtime export surface so NextClaw can resolve `LocalAttachmentStore` after update, and add a release guard that blocks shipping public workspace dependents when a package has drifted past its published tag without a pending changeset.
+- Updated dependencies
+  - @nextclaw/core@0.11.2
+
 ## 0.3.4
 
 ### Patch Changes
@@ -74,6 +82,7 @@
 - Unified minor release for accumulated architecture, engine, and chat UX updates.
 
   Includes:
+
   - New pluggable engine runtime support (Codex SDK / Claude Agent SDK)
   - Skill-context propagation and chat interaction stability improvements
   - Main workspace routing and conversation UX refinements

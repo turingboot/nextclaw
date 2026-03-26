@@ -16,7 +16,11 @@ if (command !== "start") {
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const backendDir = resolve(rootDir, "packages/nextclaw");
 const frontendDir = resolve(rootDir, "packages/nextclaw-ui");
-const nextclawHome = resolve(process.env.NEXTCLAW_HOME ?? join(homedir(), ".nextclaw"));
+const explicitNextclawHome =
+  typeof process.env.NEXTCLAW_HOME === "string" && process.env.NEXTCLAW_HOME.trim().length > 0
+    ? process.env.NEXTCLAW_HOME
+    : null;
+const nextclawHome = resolve(explicitNextclawHome ?? join(homedir(), ".nextclaw"));
 const normalizeWatchPath = (filePath) => filePath.replaceAll("\\", "/");
 const toRelativeWatchPath = (baseDir, targetPath) => {
   const normalizedRelative = normalizeWatchPath(relative(baseDir, targetPath));
@@ -140,6 +144,7 @@ if (backendPort !== preferredBackendPort || frontendPort !== preferredFrontendPo
 
 console.log(`[dev] API base: http://127.0.0.1:${backendPort}`);
 console.log(`[dev] Frontend: http://127.0.0.1:${frontendPort}`);
+console.log(`[dev] NEXTCLAW_HOME: ${nextclawHome}`);
 
 const children = [];
 let shuttingDown = false;
@@ -201,7 +206,9 @@ spawnProcess(
   {
     NODE_OPTIONS: developmentNodeOptions,
     NEXTCLAW_DEV_FIRST_PARTY_PLUGIN_DIR: firstPartyPluginDir,
-    NEXTCLAW_DISABLE_STATIC_UI: "1"
+    NEXTCLAW_DISABLE_STATIC_UI: "1",
+    NEXTCLAW_REMOTE_LOCAL_ORIGIN: `http://127.0.0.1:${frontendPort}`,
+    NEXTCLAW_HOME: nextclawHome
   }
 );
 

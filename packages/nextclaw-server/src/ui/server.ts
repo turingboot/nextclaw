@@ -11,6 +11,10 @@ import { createUiRouter } from "./router.js";
 import type { UiServerEvent, UiServerHandle, UiServerOptions } from "./types.js";
 import { serveStatic } from "hono/serve-static";
 
+type UiServerStartOptions = UiServerOptions & {
+  applyLiveConfigReload?: () => Promise<void>;
+};
+
 const DEFAULT_CORS_ORIGINS = (origin: string | undefined | null) => {
   if (!origin) {
     return undefined;
@@ -77,7 +81,7 @@ function applyCorsHeaders(params: {
   appendVaryHeader(params.headers, "Access-Control-Request-Headers");
 }
 
-export function startUiServer(options: UiServerOptions): UiServerHandle {
+export function startUiServer(options: UiServerStartOptions): UiServerHandle {
   const app = new Hono();
   app.use("/*", compress());
   const corsPolicy = options.corsOrigins ?? DEFAULT_CORS_ORIGINS;
@@ -127,6 +131,7 @@ export function startUiServer(options: UiServerOptions): UiServerHandle {
       configPath: options.configPath,
       productVersion: options.productVersion,
       publish,
+      applyLiveConfigReload: options.applyLiveConfigReload,
       marketplace: options.marketplace,
       cronService: options.cronService,
       chatRuntime: options.chatRuntime,

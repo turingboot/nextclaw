@@ -1,5 +1,14 @@
 # @nextclaw/ncp-react
 
+## 0.3.6
+
+### Patch Changes
+
+- Ship the full set of current unreleased workspace package changes in one release batch, including the server/CLI updates already sitting in the working tree and the previously committed public package drift that has not been published yet. Republish the NCP agent runtime export surface so NextClaw can resolve `LocalAttachmentStore` after update, and add a release guard that blocks shipping public workspace dependents when a package has drifted past its published tag without a pending changeset.
+- Updated dependencies
+  - @nextclaw/ncp@0.3.3
+  - @nextclaw/ncp-toolkit@0.4.3
+
 ## 0.3.5
 
 ### Patch Changes

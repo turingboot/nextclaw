@@ -48,6 +48,13 @@ export class ConfigRoutesController {
     };
   }
 
+  private async publishConfigUpdates(paths: string[]): Promise<void> {
+    for (const path of paths) {
+      this.options.publish({ type: "config.updated", payload: { path } });
+    }
+    await this.options.applyLiveConfigReload?.();
+  }
+
   readonly getConfig = (c: Context) => {
     const config = loadConfigOrDefault(this.options.configPath);
     return c.json(ok(buildConfigView(config, this.getPluginConfigOptions())));
@@ -79,12 +86,14 @@ export class ConfigRoutesController {
       workspace: body.data.workspace
     });
 
+    const changedPaths: string[] = [];
     if (hasModel) {
-      this.options.publish({ type: "config.updated", payload: { path: "agents.defaults.model" } });
+      changedPaths.push("agents.defaults.model");
     }
     if (typeof body.data.workspace === "string") {
-      this.options.publish({ type: "config.updated", payload: { path: "agents.defaults.workspace" } });
+      changedPaths.push("agents.defaults.workspace");
     }
+    await this.publishConfigUpdates(changedPaths);
 
     return c.json(ok({
       model: view.agents.defaults.model,
@@ -98,7 +107,7 @@ export class ConfigRoutesController {
       return c.json(err("INVALID_BODY", "invalid json body"), 400);
     }
     const result = updateSearch(this.options.configPath, body.data as SearchConfigUpdate);
-    this.options.publish({ type: "config.updated", payload: { path: "search" } });
+    await this.publishConfigUpdates(["search"]);
     return c.json(ok(result));
   };
 
@@ -112,7 +121,7 @@ export class ConfigRoutesController {
     if (!result) {
       return c.json(err("NOT_FOUND", `unknown provider: ${provider}`), 404);
     }
-    this.options.publish({ type: "config.updated", payload: { path: `providers.${provider}` } });
+    await this.publishConfigUpdates([`providers.${provider}`]);
     return c.json(ok(result));
   };
 
@@ -125,7 +134,7 @@ export class ConfigRoutesController {
       this.options.configPath,
       body.data as ProviderCreateRequest
     );
-    this.options.publish({ type: "config.updated", payload: { path: `providers.${result.name}` } });
+    await this.publishConfigUpdates([`providers.${result.name}`]);
     return c.json(ok({
       name: result.name,
       provider: result.provider
@@ -138,7 +147,7 @@ export class ConfigRoutesController {
     if (result === null) {
       return c.json(err("NOT_FOUND", `custom provider not found: ${provider}`), 404);
     }
-    this.options.publish({ type: "config.updated", payload: { path: `providers.${provider}` } });
+    await this.publishConfigUpdates([`providers.${provider}`]);
     return c.json(ok({
       deleted: true,
       provider
@@ -210,7 +219,7 @@ export class ConfigRoutesController {
       return c.json(err("NOT_FOUND", "provider auth session not found"), 404);
     }
     if (result.status === "authorized") {
-      this.options.publish({ type: "config.updated", payload: { path: `providers.${provider}` } });
+      await this.publishConfigUpdates([`providers.${provider}`]);
     }
     return c.json(ok(result satisfies ProviderAuthPollResult));
   };
@@ -222,7 +231,7 @@ export class ConfigRoutesController {
       if (!result) {
         return c.json(err("NOT_SUPPORTED", `provider cli auth import is not supported: ${provider}`), 404);
       }
-      this.options.publish({ type: "config.updated", payload: { path: `providers.${provider}` } });
+      await this.publishConfigUpdates([`providers.${provider}`]);
       return c.json(ok(result satisfies ProviderAuthImportResult));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -240,7 +249,7 @@ export class ConfigRoutesController {
     if (!result) {
       return c.json(err("NOT_FOUND", `unknown channel: ${channel}`), 404);
     }
-    this.options.publish({ type: "config.updated", payload: { path: `channels.${channel}` } });
+    await this.publishConfigUpdates([`channels.${channel}`]);
     return c.json(ok(result));
   };
 
@@ -297,7 +306,7 @@ export class ConfigRoutesController {
       return c.json(err("NOT_FOUND", "channel auth session not found"), 404);
     }
     if (result.status === "authorized") {
-      this.options.publish({ type: "config.updated", payload: { path: `channels.${channel}` } });
+      await this.publishConfigUpdates([`channels.${channel}`]);
     }
     return c.json(ok(result satisfies ChannelAuthPollResult));
   };
@@ -308,7 +317,7 @@ export class ConfigRoutesController {
       return c.json(err("INVALID_BODY", "invalid json body"), 400);
     }
     const result = updateSecrets(this.options.configPath, body.data as SecretsConfigUpdate);
-    this.options.publish({ type: "config.updated", payload: { path: "secrets" } });
+    await this.publishConfigUpdates(["secrets"]);
     return c.json(ok(result));
   };
 
@@ -318,18 +327,18 @@ export class ConfigRoutesController {
       return c.json(err("INVALID_BODY", "invalid json body"), 400);
     }
     const result = updateRuntime(this.options.configPath, body.data);
+    const changedPaths: string[] = [];
     if (body.data.agents?.defaults && Object.prototype.hasOwnProperty.call(body.data.agents.defaults, "contextTokens")) {
-      this.options.publish({ type: "config.updated", payload: { path: "agents.defaults.contextTokens" } });
+      changedPaths.push("agents.defaults.contextTokens");
     }
     if (body.data.agents?.defaults && Object.prototype.hasOwnProperty.call(body.data.agents.defaults, "engine")) {
-      this.options.publish({ type: "config.updated", payload: { path: "agents.defaults.engine" } });
+      changedPaths.push("agents.defaults.engine");
     }
     if (body.data.agents?.defaults && Object.prototype.hasOwnProperty.call(body.data.agents.defaults, "engineConfig")) {
-      this.options.publish({ type: "config.updated", payload: { path: "agents.defaults.engineConfig" } });
+      changedPaths.push("agents.defaults.engineConfig");
     }
-    this.options.publish({ type: "config.updated", payload: { path: "agents.list" } });
-    this.options.publish({ type: "config.updated", payload: { path: "bindings" } });
-    this.options.publish({ type: "config.updated", payload: { path: "session" } });
+    changedPaths.push("agents.list", "bindings", "session");
+    await this.publishConfigUpdates(changedPaths);
     return c.json(ok(result));
   };
 

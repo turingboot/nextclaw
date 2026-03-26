@@ -1,5 +1,11 @@
 # @nextclaw/feishu-core
 
+## 0.2.1
+
+### Patch Changes
+
+- Ship the full set of current unreleased workspace package changes in one release batch, including the server/CLI updates already sitting in the working tree and the previously committed public package drift that has not been published yet. Republish the NCP agent runtime export surface so NextClaw can resolve `LocalAttachmentStore` after update, and add a release guard that blocks shipping public workspace dependents when a package has drifted past its published tag without a pending changeset.
+
 ## 0.2.0
 
 ### Minor Changes

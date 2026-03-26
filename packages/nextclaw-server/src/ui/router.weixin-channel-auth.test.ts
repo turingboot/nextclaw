@@ -74,11 +74,13 @@ describe("weixin plugin channel auth route", () => {
     const configPath = createTempConfigPath();
     saveConfig(ConfigSchema.parse({}), configPath);
     const publish = vi.fn();
+    const applyLiveConfigReload = vi.fn(async () => undefined);
     const { binding, start, poll } = createWeixinPluginBinding();
 
     const app = createUiRouter({
       configPath,
       publish,
+      applyLiveConfigReload,
       getPluginChannelBindings: () => [binding]
     });
 
@@ -150,5 +152,6 @@ describe("weixin plugin channel auth route", () => {
       type: "config.updated",
       payload: { path: "channels.weixin" }
     });
+    expect(applyLiveConfigReload).toHaveBeenCalledTimes(1);
   });
 });

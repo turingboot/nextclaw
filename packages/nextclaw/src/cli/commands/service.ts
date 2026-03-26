@@ -1096,6 +1096,7 @@ export class ServiceCommands {
       configPath: getConfigPath(),
       productVersion: getPackageVersion(),
       staticDir: uiStaticDir ?? undefined,
+      applyLiveConfigReload: this.applyLiveConfigReload ?? undefined,
       cronService,
       marketplace: {
         apiBaseUrl: process.env.NEXTCLAW_MARKETPLACE_API_BASE,

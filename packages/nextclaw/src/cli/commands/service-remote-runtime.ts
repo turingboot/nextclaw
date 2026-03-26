@@ -238,11 +238,16 @@ export function createManagedRemoteModule(params: {
 export function createManagedRemoteModuleForUi(params: {
   loadConfig: () => Config;
   uiConfig: Pick<Config["ui"], "enabled" | "host" | "port">;
+  localOriginOverride?: string;
 }): RemoteServiceModule | null {
+  const explicitLocalOrigin = params.localOriginOverride?.trim() ?? process.env.NEXTCLAW_REMOTE_LOCAL_ORIGIN?.trim();
   return createManagedRemoteModule({
     loadConfig: params.loadConfig,
     uiEnabled: params.uiConfig.enabled,
-    localOrigin: resolveUiApiBase(params.uiConfig.host, params.uiConfig.port)
+    localOrigin:
+      explicitLocalOrigin && explicitLocalOrigin.length > 0
+        ? explicitLocalOrigin.replace(/\/+$/, "")
+        : resolveUiApiBase(params.uiConfig.host, params.uiConfig.port)
   });
 }
 

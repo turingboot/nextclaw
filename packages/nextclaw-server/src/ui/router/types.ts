@@ -22,6 +22,7 @@ export type UiRouterOptions = {
   configPath: string;
   productVersion?: string;
   publish: (event: UiServerEvent) => void;
+  applyLiveConfigReload?: () => Promise<void>;
   marketplace?: MarketplaceApiConfig;
   cronService?: InstanceType<typeof NextclawCore.CronService>;
   chatRuntime?: UiChatRuntime;

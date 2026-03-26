@@ -57,10 +57,12 @@ describe("weixin plugin channel config route", () => {
     const configPath = createTempConfigPath();
     saveConfig(ConfigSchema.parse({}), configPath);
     const publish = vi.fn();
+    const applyLiveConfigReload = vi.fn(async () => undefined);
 
     const app = createUiRouter({
       configPath,
       publish,
+      applyLiveConfigReload,
       getPluginChannelBindings: () => [createWeixinPluginBinding()],
       getPluginUiMetadata: () => [createWeixinPluginUiMetadata()]
     });
@@ -143,5 +145,6 @@ describe("weixin plugin channel config route", () => {
       type: "config.updated",
       payload: { path: "channels.weixin" }
     });
+    expect(applyLiveConfigReload).toHaveBeenCalledTimes(1);
   });
 });

@@ -84,6 +84,7 @@ pnpm dev
 ```
 
 This starts the NextClaw development stack and prints the local URLs in the terminal.
+By default it uses `~/.nextclaw`. Set `NEXTCLAW_HOME=/path/to/home` if you want to run development against a different data directory.
 
 If you only need one side, you can run them separately:
 

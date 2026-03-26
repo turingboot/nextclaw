@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { ConfigSchema, SessionManager } from "@nextclaw/core";
 import { LocalAttachmentStore } from "@nextclaw/ncp-agent-runtime";
 import { NextclawNcpContextBuilder } from "./nextclaw-ncp-context-builder.js";

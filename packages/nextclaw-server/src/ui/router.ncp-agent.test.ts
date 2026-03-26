@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, expect, it } from "vitest";
 import { ConfigSchema, saveConfig } from "@nextclaw/core";
 import {
   NcpEventType,
@@ -104,7 +104,8 @@ class StubNcpAgent implements NcpAgentClientEndpoint, NcpSessionApi {
       if (!record) {
         return null;
       }
-      const { filePath: _filePath, ...rest } = record;
+      const { filePath, ...rest } = record;
+      void filePath;
       return rest;
     },
     resolveContentPath: (uri: string) => this.attachments.get(uri)?.filePath ?? null,
