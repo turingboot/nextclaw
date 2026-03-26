@@ -794,3 +794,45 @@ describe("provider connection test route", () => {
     }
   });
 });
+
+describe("provider meta catalog", () => {
+  it("exposes dashscope coding plan as a dedicated provider in meta", async () => {
+    const configPath = createTempConfigPath();
+    saveConfig(ConfigSchema.parse({}), configPath);
+
+    const app = createUiRouter({
+      configPath,
+      publish: () => {}
+    });
+
+    const metaResponse = await app.request("http://localhost/api/config/meta");
+    expect(metaResponse.status).toBe(200);
+    const metaPayload = await metaResponse.json() as {
+      ok: true;
+      data: {
+        providers: Array<{
+          name: string;
+          displayName?: string;
+          envKey?: string;
+          defaultApiBase?: string;
+          defaultModels?: string[];
+        }>;
+      };
+    };
+    const codingPlan = metaPayload.data.providers.find((provider) => provider.name === "dashscope-coding-plan");
+    expect(codingPlan).toBeDefined();
+    expect(codingPlan?.displayName).toBe("DashScope Coding Plan");
+    expect(codingPlan?.envKey).toBe("DASHSCOPE_CODING_PLAN_API_KEY");
+    expect(codingPlan?.defaultApiBase).toBe("https://coding.dashscope.aliyuncs.com/v1");
+    expect(codingPlan?.defaultModels).toEqual([
+      "dashscope-coding-plan/qwen3.5-plus",
+      "dashscope-coding-plan/qwen3-max-2026-01-23",
+      "dashscope-coding-plan/qwen3-coder-next",
+      "dashscope-coding-plan/qwen3-coder-plus",
+      "dashscope-coding-plan/MiniMax-M2.5",
+      "dashscope-coding-plan/glm-5",
+      "dashscope-coding-plan/glm-4.7",
+      "dashscope-coding-plan/kimi-k2.5"
+    ]);
+  });
+});

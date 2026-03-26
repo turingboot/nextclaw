@@ -17,6 +17,14 @@ describe("provider apiBase routing", () => {
             isLocal: false
           },
           {
+            name: "dashscope-coding-plan",
+            keywords: ["dashscope-coding-plan", "coding-plan"],
+            envKey: "DASHSCOPE_CODING_PLAN_API_KEY",
+            defaultApiBase: "https://coding.dashscope.aliyuncs.com/v1",
+            isGateway: false,
+            isLocal: false
+          },
+          {
             name: "deepseek",
             keywords: ["deepseek"],
             envKey: "DEEPSEEK_API_KEY",
@@ -83,6 +91,19 @@ describe("provider apiBase routing", () => {
 
     expect(getProviderName(config, "custom-1/gpt-4o-mini")).toBe("custom-1");
     expect(getApiBase(config, "custom-1/gpt-4o-mini")).toBe("https://relay-b.example.com/v1");
+  });
+
+  it("routes dashscope coding plan by its dedicated provider prefix", () => {
+    const config = ConfigSchema.parse({
+      providers: {
+        "dashscope-coding-plan": {
+          apiKey: "sk-sp-test-key"
+        }
+      }
+    });
+
+    expect(getProviderName(config, "dashscope-coding-plan/qwen3.5-plus")).toBe("dashscope-coding-plan");
+    expect(getApiBase(config, "dashscope-coding-plan/qwen3.5-plus")).toBe("https://coding.dashscope.aliyuncs.com/v1");
   });
 
   it("skips disabled providers during routing", () => {

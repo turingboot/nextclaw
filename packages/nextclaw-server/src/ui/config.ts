@@ -60,13 +60,7 @@ const MASK_MIN_LENGTH = 8;
 const EXTRA_SENSITIVE_PATH_PATTERNS = [/authorization/i, /cookie/i, /session/i, /bearer/i];
 const PREFERRED_PROVIDER_ORDER = [
   "nextclaw",
-  "openai",
-  "anthropic",
-  "gemini",
-  "openrouter",
-  "dashscope",
-  "deepseek",
-  "minimax",
+  "openai", "anthropic", "gemini", "openrouter", "dashscope-coding-plan", "dashscope", "deepseek", "minimax",
   "moonshot",
   "zhipu"
 ] as const;

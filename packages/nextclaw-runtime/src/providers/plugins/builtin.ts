@@ -1,7 +1,6 @@
 import type { ProviderCatalogPlugin } from "@nextclaw/core";
-
-export const builtinProviderPlugin: ProviderCatalogPlugin = {
-  id: "builtin-runtime-providers",
+import { dashscopeCodingPlanProviderSpec } from "./dashscope-coding-plan.js";
+export const builtinProviderPlugin: ProviderCatalogPlugin = { id: "builtin-runtime-providers",
   providers: [
     {
       name: "nextclaw",
@@ -200,6 +199,7 @@ export const builtinProviderPlugin: ProviderCatalogPlugin = {
       supportsResponsesApi: false,
       logo: "dashscope.png"
     },
+    dashscopeCodingPlanProviderSpec,
     {
       name: "qwen-portal",
       keywords: ["qwen-portal", "qwen"],
