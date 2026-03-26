@@ -1,5 +1,11 @@
 # @nextclaw/nextclaw-ncp-runtime-plugin-codex-sdk
 
+## 0.1.22
+
+### Patch Changes
+
+- Publish the latest Codex runtime plugin changes from HEAD, including the new access-mode mapping, bundled packaging alignment, and prompt/input cleanup.
+
 ## 0.1.21
 
 ### Patch Changes

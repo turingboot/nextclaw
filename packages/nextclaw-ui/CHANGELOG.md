@@ -1,5 +1,11 @@
 # @nextclaw/ui
 
+## 0.10.4
+
+### Patch Changes
+
+- Release frontend UI changes and aligned CLI/server release group packages.
+
 ## 0.10.3
 
 ### Patch Changes

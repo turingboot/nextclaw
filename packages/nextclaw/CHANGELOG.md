@@ -1,5 +1,16 @@
 # nextclaw
 
+## 0.15.12
+
+### Patch Changes
+
+- Release frontend UI changes and aligned CLI/server release group packages.
+- Updated dependencies
+  - @nextclaw/mcp@0.1.50
+  - @nextclaw/server@0.10.54
+  - @nextclaw/ncp-mcp@0.1.49
+  - @nextclaw/remote@0.1.48
+
 ## 0.15.11
 
 ### Patch Changes
