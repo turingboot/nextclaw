@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "prepack": "pnpm run build",
+    "prepack": "node ../../scripts/verify-package-release-artifacts.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "tsc": "tsc --noEmit",

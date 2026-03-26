@@ -39,7 +39,7 @@
     "dev": "tsx watch --tsconfig tsconfig.json src/cli/index.ts",
     "dev:build": "tsx src/cli/index.ts",
     "build": "node scripts/sync-usage-template.mjs && tsup src/index.ts src/cli/index.ts --format esm --dts --out-dir dist && node scripts/copy-ui-dist.mjs",
-    "prepack": "pnpm run build",
+    "prepack": "node ../../scripts/verify-package-release-artifacts.mjs",
     "start": "node dist/cli.js",
     "lint": "eslint .",
     "tsc": "tsc -p tsconfig.json",
