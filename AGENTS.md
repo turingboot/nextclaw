@@ -283,11 +283,17 @@
   - 反例：明知仓库有命名规范 skill，却在未读取 skill 的情况下直接创建 `chatManager.ts`、`helpers.ts`、`chat.service.manager.ts`；或文件名包含 `cache`，实现却只有纯映射、拼装、去重或 view updater 逻辑；或直到收尾阶段才被动发现命名不合规。
   - 执行方式：发生命名决策前必须先打开 `file-naming-convention` skill，按单一主职责完成 role 分类，再生成目标文件名；触达存量文件时按“改动即治理”评估是否需要顺手重命名；若本次存在新增/改名，最终说明中必须给出命名决策结果（新文件名，或 `old -> new` 映射）；收尾阶段通过 `post-edit-maintainability-guard` 执行 diff-only 命名职责检查，并在保留债务时说明是否为历史遗留、为何暂不重命名以及下一步迁移位点。
   - 维护责任人：当前助手。
+- **directory-file-budget-must-stay-explicit**：
+  - 约束/适用范围：凡本仓库触达源码、脚本、测试文件所在目录时，必须防止“一个目录下无理由堆过多直接手写代码文件”。默认以直接子文件计数，不递归子目录；`12` 个起进入 review 区间，`20` 个以上默认禁止。`__tests__`、`tests`、`__fixtures__`、`fixtures`、`generated`、`migrations` 目录默认不纳入该约束。
+  - 示例：`src/components/chat/` 直接代码文件达到 `12` 个后，继续新增功能前先拆成 `containers/`、`presenters/`、`adapters/`；若 `src/pages/` 因框架路由必须保留扁平结构并超过 `20` 个文件，则在该目录 `README.md` 中加入 `## 目录预算豁免` 与 `- 原因：...` 明确说明。
+  - 反例：长期把 `utils`、`components`、`services` 混放在同一目录直到二三十个文件；目录已经超过 `20` 个直接代码文件，却既不拆分也不留下任何明确理由；把“可能以后再拆”当作默认豁免。
+  - 执行方式：收尾阶段通过 `post-edit-maintainability-guard` 自动检查被触达目录的直接代码文件数，并按 diff-only 原则识别“进入 review 区间 / 穿越 hard limit / 超限但无豁免说明”。若目录确需超过 `20` 个文件，必须在该目录 `README.md` 添加 `## 目录预算豁免` + `- 原因：...`；否则视为阻塞项。
+  - 维护责任人：当前助手。
 - **post-edit-maintainability-guard-required**：
   - 约束/适用范围：凡本次任务触达项目代码、脚本、测试或影响运行链路的配置，收尾前必须执行项目内 skill `post-edit-maintainability-guard` 的自检；纯文档、措辞或元信息微调不适用，但必须明确说明“不适用”。
-  - 示例：修改 `packages/nextclaw/src/cli/commands/service.ts` 后，在最终回复前运行 `node .codex/skills/post-edit-maintainability-guard/scripts/check-maintainability.mjs`，并说明是否存在“新文件超预算 / 超限文件继续增长 / 穿越预算线 / 新增的文件名-职责错配”。
+  - 示例：修改 `packages/nextclaw/src/cli/commands/service.ts` 后，在最终回复前运行 `node .codex/skills/post-edit-maintainability-guard/scripts/check-maintainability.mjs`，并说明是否存在“新文件超预算 / 目录进入或穿越文件数预算线 / 超限文件继续增长 / 新增的文件名-职责错配”。
   - 反例：代码改完只跑功能验证，不做任何可维护性自检；或发现超长文件继续增长却不提示风险和拆分缝。
-  - 执行方式：默认在收尾阶段运行 `node .codex/skills/post-edit-maintainability-guard/scripts/check-maintainability.mjs`；如只需检查特定文件，可加 `--paths <file...>`；结果除文件级/函数级预算外，还要关注 diff-only 的命名职责一致性告警；若出现阻塞项，优先继续拆分或更名，否则需在结果中明确债务、原因与下一步拆分位点。
+  - 执行方式：默认在收尾阶段运行 `node .codex/skills/post-edit-maintainability-guard/scripts/check-maintainability.mjs`；如只需检查特定文件，可加 `--paths <file...>`；结果除文件级/目录级/函数级预算外，还要关注 diff-only 的命名职责一致性告警；若出现阻塞项，优先继续拆分、补豁免说明或更名，否则需在结果中明确债务、原因与下一步拆分位点。
   - 维护责任人：当前助手。
 - **hotspot-touch-must-record-debt-status**：
   - 约束/适用范围：凡触达仓库红区文件（以 [`scripts/maintainability-hotspots.mjs`](scripts/maintainability-hotspots.mjs) 为准），本次 `docs/logs/v<semver>-<slug>/README.md` 必须新增 `## 红区触达与减债记录`，并为每个红区文件单独记录“本次是否减债 / 说明 / 下一步拆分缝”。

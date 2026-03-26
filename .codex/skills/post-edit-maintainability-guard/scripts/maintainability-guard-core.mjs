@@ -11,6 +11,7 @@ import {
   readFileText,
   suggestSeam
 } from "./maintainability-guard-support.mjs";
+import { collectDirectoryBudgetFindings } from "./maintainability-guard-directory-budget.mjs";
 import { collectHotspotGovernanceFindings } from "./maintainability-guard-hotspots.mjs";
 import { buildSignature, lintContent } from "./maintainability-guard-lint.mjs";
 
@@ -33,7 +34,12 @@ function toPayload(item) {
     metric_value: item.metric_value ?? null,
     previous_metric_value: item.previous_metric_value ?? null,
     naming_role: item.naming_role ?? null,
-    matched_signals: item.matched_signals ?? null
+    matched_signals: item.matched_signals ?? null,
+    current_count: item.current_count ?? null,
+    previous_count: item.previous_count ?? null,
+    delta_count: item.delta_count ?? null,
+    exception_path: item.exception_path ?? null,
+    exception_reason: item.exception_reason ?? null
   };
 }
 
@@ -209,6 +215,8 @@ export function inspectPaths(paths) {
     }
   }
 
+  findings.push(...collectDirectoryBudgetFindings(inspectedPaths));
+
   findings.sort((left, right) => {
     if ((left.level === "error") !== (right.level === "error")) {
       return left.level === "error" ? -1 : 1;
@@ -251,6 +259,7 @@ export function inspectPaths(paths) {
     },
     findings: findings.map(toPayload),
     file_findings: findings.filter((item) => item.source === "file-budget").map(toPayload),
+    directory_findings: findings.filter((item) => item.source === "directory-budget").map(toPayload),
     function_findings: findings.filter((item) => item.source === "eslint-function-budget" || item.source === "disable-comment").map(toPayload),
     naming_findings: findings.filter((item) => item.source === "filename-role").map(toPayload),
     hotspot_findings: findings.filter((item) => item.source === "hotspot-governance").map(toPayload)
@@ -274,8 +283,6 @@ export function printHuman(report) {
   }
 
   for (const item of report.findings) {
-    const deltaText = item.delta_lines == null ? "n/a" : `${item.delta_lines >= 0 ? "+" : ""}${item.delta_lines}`;
-    const previousText = item.previous_lines == null ? "new" : String(item.previous_lines);
     const budgetText = item.budget == null ? "" : `, budget=${item.budget}`;
     const ruleText = item.rule_id ? `, rule=${item.rule_id}` : "";
     const symbolText = item.symbol_name ? `, symbol=${item.symbol_name}` : "";
@@ -292,10 +299,28 @@ export function printHuman(report) {
     const matchedSignalsText = Array.isArray(item.matched_signals) && item.matched_signals.length > 0
       ? `, matched_signals=${item.matched_signals.join("|")}`
       : "";
+    const countText = item.current_count == null
+      ? ""
+      : (() => {
+          const previousCountText = item.previous_count == null ? "new" : String(item.previous_count);
+          const deltaCountText = item.delta_count == null ? "n/a" : `${item.delta_count >= 0 ? "+" : ""}${item.delta_count}`;
+          return `, count=${item.current_count}, previous_count=${previousCountText}, delta_count=${deltaCountText}`;
+        })();
+    const lineCountText = item.current_count == null
+      ? (() => {
+          const deltaText = item.delta_lines == null ? "n/a" : `${item.delta_lines >= 0 ? "+" : ""}${item.delta_lines}`;
+          const previousText = item.previous_lines == null ? "new" : String(item.previous_lines);
+          return `, current=${item.current_lines}, previous=${previousText}, delta=${deltaText}`;
+        })()
+      : "";
+    const exceptionText = item.exception_path ? `, exception=${item.exception_path}` : "";
     console.log(
-      `- [${item.level}] ${item.path} (source=${item.source}, current=${item.current_lines}, previous=${previousText}, delta=${deltaText}${budgetText}${ruleText}${symbolText}${locationText}${metricText}${namingRoleText}${matchedSignalsText})`
+      `- [${item.level}] ${item.path} (source=${item.source}${lineCountText}${countText}${budgetText}${ruleText}${symbolText}${locationText}${metricText}${namingRoleText}${matchedSignalsText}${exceptionText})`
     );
     console.log(`  ${item.message}`);
+    if (item.exception_reason) {
+      console.log(`  exception reason: ${item.exception_reason}`);
+    }
     console.log(`  seam: ${item.suggested_seam}`);
   }
 }
