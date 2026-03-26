@@ -46,6 +46,8 @@ import {
   sanitizeResponseHeaders,
 } from "../utils/platform-utils";
 
+const REMOTE_DOCUMENT_CACHE_CONTROL = "private, no-store, max-age=0, must-revalidate";
+
 function requireRemoteAccessUrls(
   c: Context<{ Bindings: Env }>,
   sessionId: string,
@@ -76,6 +78,39 @@ function isHtmlNavigationRequest(c: Context<{ Bindings: Env }>): boolean {
   }
   const mode = c.req.header("sec-fetch-mode")?.trim().toLowerCase();
   return mode === "navigate";
+}
+
+function appendVaryCookie(headers: Headers): void {
+  const current = headers.get("vary");
+  if (!current) {
+    headers.set("Vary", "Cookie");
+    return;
+  }
+  const segments = current
+    .split(",")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+  if (segments.some((segment) => segment.toLowerCase() === "cookie")) {
+    return;
+  }
+  headers.set("Vary", [...segments, "Cookie"].join(", "));
+}
+
+function applyRemoteDocumentCachePolicy(
+  c: Context<{ Bindings: Env }>,
+  response: Response
+): Response {
+  const headers = new Headers(response.headers);
+  const contentType = headers.get("content-type")?.toLowerCase() ?? "";
+  if (!isHtmlNavigationRequest(c) && !contentType.includes("text/html")) {
+    return response;
+  }
+  headers.set("Cache-Control", REMOTE_DOCUMENT_CACHE_CONTROL);
+  appendVaryCookie(headers);
+  return new Response(response.body, {
+    status: response.status,
+    headers
+  });
 }
 
 async function maybeRenderRemoteAccessErrorPage(c: Context<{ Bindings: Env }>, response: Response): Promise<Response> {
@@ -312,6 +347,8 @@ export async function openRemoteSessionRedirectHandler(c: Context<{ Bindings: En
     maxAgeSeconds: DEFAULT_REMOTE_SESSION_TTL_SECONDS
   }));
   headers.set("Location", "/");
+  headers.set("Cache-Control", REMOTE_DOCUMENT_CACHE_CONTROL);
+  appendVaryCookie(headers);
   return new Response(null, { status: 302, headers });
 }
 
@@ -423,7 +460,7 @@ export async function remoteProxyHandler(c: Context<{ Bindings: Env }>): Promise
 
   const resolved = await resolveValidatedRemoteProxyContext(c);
   if (resolved instanceof Response) {
-    return await maybeRenderRemoteAccessErrorPage(c, resolved);
+    return applyRemoteDocumentCachePolicy(c, await maybeRenderRemoteAccessErrorPage(c, resolved));
   }
   const quotaResponse = await enforceRemoteSessionQuota(c.env, resolved.session, "proxy_http");
   if (quotaResponse) {
@@ -461,8 +498,8 @@ export async function remoteProxyHandler(c: Context<{ Bindings: Env }>): Promise
       bodyBase64: rawBody ? encodeBase64(rawBody) : ""
     })
   });
-  return new Response(response.body, {
+  return applyRemoteDocumentCachePolicy(c, new Response(response.body, {
     status: response.status,
     headers: sanitizeResponseHeaders(response.headers)
-  });
+  }));
 }
